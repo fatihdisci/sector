@@ -273,3 +273,31 @@ test('MKK settlement issuer/title pair is muted across suffixes and tracking ove
  assert.equal(decide(item(101,{title,companyTitle:'TEST SANAYİ A.Ş.'}),p,null).action,'instant');
  assert.equal(decide(item(101,{title:'Payların Geri Alınmasına İlişkin Bildirim',stockCode:'KPEKS'}),p,null).action,'instant');
 });
+
+test('empty official listing is valid but malformed data stays rejected',async()=>{
+ assert.deepEqual(parseListing([],NOW),[]);
+ for(const value of [null,{},'',{data:[]},[{}],Array(10001).fill({})])assert.throws(()=>parseListing(value,NOW));
+ const client=new KapClient(async()=>new Response('[]',{headers:{'Content-Type':'application/json'}}));
+ assert.deepEqual(await client.listing(),[]);
+});
+test('empty discovery preserves cursors, preferences and pending records and recovers health',async()=>{
+ const {store,close}=setup();try{
+  const live=store.claim('live',NOW)!;store.save(item(),live,NOW,true);store.finish(live,NOW,30000);
+  const before=JSON.stringify({jobs:store.rows("SELECT name,cursor,ceiling FROM jobs WHERE name!='discovery'"),queue:store.rows('SELECT * FROM queue'),preferences:store.get('preferences'),start:store.get('notification_start')});
+  store.run("UPDATE jobs SET failures=5,last_error='kap_listing_shape' WHERE name='discovery'");
+  const collector=new KapCollector(store,{listing:async()=>[],disclosure:async()=>null,indices:async()=>{throw Error('unused');}},()=>NOW+60001);
+  await collector.run('discovery');
+  assert.equal(JSON.stringify({jobs:store.rows("SELECT name,cursor,ceiling FROM jobs WHERE name!='discovery'"),queue:store.rows('SELECT * FROM queue'),preferences:store.get('preferences'),start:store.get('notification_start')}),before);
+  assert.equal(store.latest(),100);assert.equal(store.get<{count:number}>('last_listing')!.count,0);
+  assert.deepEqual({...store.row<Record<string,unknown>>('SELECT failures,last_error,last_ok FROM jobs WHERE name=\'discovery\'')},{failures:0,last_error:null,last_ok:NOW+60001});
+ }finally{close();}
+});
+test('first empty discovery waits for a real high-water mark without replaying history',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'sector-kap-empty-')),store=new KapStore(join(dir,'kap.sqlite'));
+ try{const lease=store.claim('discovery',NOW)!;store.discover([],lease,NOW);
+  assert.equal(store.get('notification_start'),null);assert.equal(store.latest(),0);
+  store.discover([{id:100,publishedAt:new Date(NOW-1000).toISOString()}],lease,NOW);
+  assert.equal(store.row<{cursor:number}>("SELECT cursor FROM jobs WHERE name='live'")!.cursor,100);
+  assert.equal(store.rows('SELECT * FROM queue').length,0);
+ }finally{store.close();rmSync(dir,{recursive:true,force:true});}
+});

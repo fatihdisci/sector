@@ -69,7 +69,11 @@ export class KapStore {
   this.run('UPDATE jobs SET lease_token=NULL,lease_until=0,next_at=?,failures=?,last_error=?,last_ok=CASE WHEN ? IS NULL THEN ? ELSE last_ok END WHERE name=? AND lease_token=?',now+wait,failures,error??null,error??null,now,lease.job,lease.token);
  }
  discover(list:Listing[],lease:Lease,now:number){this.transaction(()=>{
-  this.guard(lease,now);const ids=list.map(x=>x.id),max=Math.max(...ids),min=Math.min(...ids);
+  this.guard(lease,now);
+  // A quiet day is a successful empty observation, not an invalid response.
+  // Never bootstrap cursors from an empty list or reset the previous high-water mark.
+  if(!list.length){this.set('last_listing',{at:now,max:this.latest(),count:0,oldestPublished:null});return;}
+  const ids=list.map(x=>x.id),max=Math.max(...ids),min=Math.min(...ids);
   if(this.get<number>('notification_start')===null){
    this.set('notification_start',now);this.set('bootstrap',{at:new Date(now).toISOString(),latest:max,oldestListed:min});
    this.run("UPDATE jobs SET cursor=? WHERE name='live'",max);
