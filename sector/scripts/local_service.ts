@@ -1,5 +1,5 @@
 import {newsReviewArtifact} from './news_review_artifact';
-import {COMPANY_CATALOG_VERSION,catalogEntities} from '../src/news-company-catalog';
+import {COMPANY_CATALOG_VERSION,COMPANY_CATALOG_PROVENANCE,catalogEntities} from '../src/news-company-catalog';
 import {kapDeliveryHealth} from '../src/kap-health';
 import {pollBuybacks} from '../src/buyback-pipeline';
 import {readBuybackImage} from './buyback_reader';
@@ -135,7 +135,7 @@ async function telegramCommandsLoop(){
  }
 }
 try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
- await status('runtime_identity',{release:process.env.SECTOR_RELEASE_ID??'unknown',catalog:{version:COMPANY_CATALOG_VERSION,companies:new Set(catalogEntities.map(c=>c.code)).size},news_review_artifact:await newsReviewArtifact(process.cwd()),at:new Date().toISOString()});
+ await status('runtime_identity',{release:process.env.SECTOR_RELEASE_ID??'unknown',catalog:{version:COMPANY_CATALOG_VERSION,companies:new Set(catalogEntities.map(c=>c.code)).size,issuers:COMPANY_CATALOG_PROVENANCE.issuer_count,equity_codes:COMPANY_CATALOG_PROVENANCE.equity_count},news_review_artifact:await newsReviewArtifact(process.cwd()),at:new Date().toISOString()});
  await writeFile(directory+'/service-ready.json',JSON.stringify({pid:process.pid,release:process.env.SECTOR_RELEASE_ID??'',started_at:new Date().toISOString()}),{mode:0o600});
  await cleanupSourceArtifacts().catch(()=>0);lastArtifactCleanup=Date.now();
  if(!await awaitActivation(directory,process.env.SECTOR_RELEASE_ID,()=>stopping()))return;
