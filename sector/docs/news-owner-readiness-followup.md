@@ -14,7 +14,7 @@ Gerçek paketin salt okunur yeniden değerlendirmesi: 12 etiket, 2 instant / 8 d
 
 ## Gerçek kalan kapılar
 
-`entity_review` yok: mevcut 710 şirketin tüm resmî ad/alias eşleşmeleri için insan kaynak incelemesi kanıtı yoktur. `scope_review` yok: şirket listesi, boş takip listesi ve seçki ayarlarına bağlı sürümlü kapsam kabul kaydı yoktur. Onaylı 12 haber bu iki kabulün yerine geçirilmez. Katalog oluşturma kaynakları insan incelemesi olarak etiketlenmez. Dolayısıyla ready=false; shadow ve otomatik seçki kapalı kalır. Aktivasyon başlangıcı ve etkin sonraki slot yoktur; 12:30/18:30 yalnız yapılandırılmış varsayılan saatlerdir. Aynı 12 haber için yeniden onay gerekmez.
+`entity_review` yok: mevcut katalog hash’i için sahip adına verilmiş inceleme-kabul kaydı ve her farklı kod için resmî kaynak/zaman referansı yoktur. Kod 710 ayrı onay veya 710 ayrı tıklama istemez; tek entity_review kaydı ile kaynak kapsamını kontrol eder. Her satırın insan tarafından okunması önceki belgedeki inceleme yöntemidir, kodun ölçebildiği bir koşul değildir. `scope_review` yok: şirket listesi, boş takip listesi ve seçki ayarlarına bağlı sürümlü kapsam kabul kaydı yoktur. Onaylı 12 haber bu iki kabulün yerine geçirilmez. Katalog oluşturma kaynakları insan incelemesi olarak etiketlenmez. Ayrıntılı ve sınırlı karar paketi: news-catalog-acceptance-package.md. Dolayısıyla ready=false; shadow ve otomatik seçki kapalı kalır. Aktivasyon başlangıcı ve etkin sonraki slot yoktur; 12:30/18:30 yalnız yapılandırılmış varsayılan saatlerdir. Aynı 12 haber için yeniden onay gerekmez.
 
 ## TEST kanıtının sınırı
 

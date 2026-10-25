@@ -8,7 +8,7 @@ Sahip erişimli `/golgerapor`, güncel kural sürümünü, şirket/kapsam/etiket
 
 Gerçek inceleme için:
 
-1. `entities` içindeki ad–kod eşleşmelerini KAP veya Borsa İstanbul şirket sayfalarıyla tek tek doğrula. Ad benzerliği/iştirak ilişkisi yeterli değildir. Her kod için resmî HTTPS bağlantısını ve gerçek kontrol zamanını kaydet.
+1. `entities` içindeki ad–kod eşleştirmelerinin kaynak ve kapsamını incele. Kod, tek bir entity_review kabulü ile her kod için resmî kaynak/zaman referansı ister; kişi başına 710 ayrı tıklama ya da her satırın insan tarafından okunduğuna dair ayrı kayıt şartı yoktur. Satır bazında inceleme önerilen doğrulama yöntemidir; otomatik kaynak karşılaştırması insan kabulü yerine geçmez. Ad benzerliği/iştirak ilişkisi yeterli değildir. Her kod için resmî HTTPS bağlantısını ve gerçek kontrol zamanını kaydet.
 2. Takip listesi, endeks kapsamı ve seçki saatlerini gözden geçir. Boş takip listesi de bilinçli olarak incelenmelidir. Kaynak güvenilirliği rota doğruluğu anlamına gelmez.
 3. `/golgerapor` adaylarını kaynaklarıyla incele; `/aday <kimlik> instant|digest|archive` ile beklenen rotayı etiketle. Karar/beklenti, iddia/yalanlama, yeni dönem bilançosu, endeks dışı şirket, şirket adı içermeyen makro olay ve kopyaları örnekleme dahil et. Eski filtreye takılan adayları da incele.
 4. En az 12 gerçek etiket, üç beklenen rota ve `legacy_eligible=0/1` gruplarının ikisi gerekir. Bu yalnız asgari kabul tabanıdır; 12 etiket bütün trafiğin hatasız olduğunu kanıtlamaz. Kritik kaçırma, önemli haberi arşivleme ve yanlış kritik sayıları sıfır olmalı; yoksa kuralları düzeltip etiketlerle yeniden karşılaştır. Etiket yoksa doğruluk ölçülmüş sayılmaz.
@@ -37,6 +37,6 @@ Yeni adapter, onaylanmış sınıflandırma ve teslim dosyalarının birebir ayn
 
 Geçerli pakette `metrics` taze bağlamı ölçer, `metric_basis` bunu açıklar; `historical_metrics` ve eski labels ayrı kalır. Her örnek yayın + 1 dakika simülasyonuyla yeniden değerlendirilir; bu geçmişte verilmiş gerçek karar veya tarihsel doğruluk oranı değildir. Kabul edilen etiketler çıktıyı zorla değiştirmez; ölçülen kritik hatalar aktivasyonu yine engeller. Beğeniler kullanılmaz.
 
-Mevcut onaylı 12 örnek 2 anlık / 8 seçki / 2 arşiv olarak doğrulanmıştır. Bu, 710 şirketin tüm resmî unvan/alias eşleştirmesinin insan tarafından tek tek incelendiği anlamına gelmez. `entity_review` ve `scope_review` kapıları korunur; eksik kodlar `missing_evidence.company_codes` içinde ayrı raporlanır. Aynı 12 örnek için yeniden onay istenmez.
+Mevcut onaylı 12 örnek 2 anlık / 8 seçki / 2 arşiv olarak doğrulanmıştır. Bu, katalog hash’i ve kaynak kapsamının insan tarafından kabul edildiği anlamına gelmez. `entity_review` ve `scope_review` kapıları korunur; eksik kodlar `missing_evidence.company_codes` içinde ayrı raporlanır. Aynı 12 örnek için yeniden onay istenmez.
 
 Yerel `scripts/bind_owner_review.ts <database> <private-binding.json>` varsayılan salt okunur doğrulama yapar; açık `--apply` yalnız doğrulanan bağlam paketini, eski kayıt üzerine yazmadan ekler. `TELEGRAM_USER_ID` güvenli ortamdan alınır. Güncel DB yedeği ve kontrollü kurulum olmadan üretimde çalıştırılmaz. Tercih, oy, tarihsel etiket, TEST veya yayın makbuzu değiştirmez.
