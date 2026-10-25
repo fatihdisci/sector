@@ -4,7 +4,7 @@ import {sha256} from '../src/utils/text';
 import {canonical} from '../src/news-owner-review';
 export async function newsReviewArtifact(root:string){
  const files:Record<string,string>={};
- for(const file of ['src/news-routing.ts','src/news-company-catalog.ts','src/newsroom.ts','src/news-readiness.ts','src/news-owner-review.ts','src/news-event-matching.ts','src/news-schedule-review.ts'])files[file]=await sha256(await readFile(join(root,file),'utf8'));
+ for(const file of ['src/news-routing.ts','src/news-company-catalog.ts','src/newsroom.ts','src/news-readiness.ts','src/news-owner-review.ts','src/news-event-matching.ts','src/news-schedule-review.ts','src/news-maintenance-review.ts','src/article.ts','src/gallery-range.ts','src/gallery-save.ts','src/pipeline.ts','src/news-inbox.ts','src/report-card.ts','src/types.ts'])files[file]=await sha256(await readFile(join(root,file),'utf8'));
  const catalog_hash=await sha256(await readFile(join(root,'src/data/news-companies.json'),'utf8'));
  return {files,catalog_hash,hash:await sha256(canonical({files,catalog_hash}))};
 }

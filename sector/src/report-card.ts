@@ -6,6 +6,7 @@ import {normalizeCardText} from './card-text';
 import {circuitOmissionNote} from './circuit-selection';
 const esc=(s:string)=>normalizeCardText(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 export function reportCard(d:Pick<Draft,'headline'|'body'|'card_data'|'output_preferences'>):string{
+ if(d.card_data!.report!.kind==='range')return rangeCard(d);
  if(d.card_data!.report!.buyback)return buybackCard(d.card_data!.report!.buyback!);
  if(d.card_data!.report!.general)return generalCard(d.card_data!.report!.general!,d.output_preferences?.show_time===true,d.output_preferences?.show_footer!==false);
  const data=d.card_data!.report!,rows=data.rows,cols=1,height=55;
@@ -37,4 +38,12 @@ function generalCard(g:NonNullable<NonNullable<import('./types').CardData['repor
  if(!g.rows.length)svg+=t('Doğrulanmış günlük işlem satırı yok.',60,top,32);
  if(showFooter)svg+=t('Yalnız KAP pay geri alımı bildirimleri esas alınmıştır. Farklılık gösterebilir.',60,height-82,24)+t(g.partial?'Toplayıcı kapsamı kısmi; yalnız kayıtlı işlemler gösterilir.':g.missing?'Eksik fiyatlar — ile gösterilir. Toplam tutar kısmi olabilir.':'Ortalama fiyat lot ağırlıklıdır. Tutar işlem satırlarından hesaplanmıştır.',60,height-40,24);
  return svg+'</g></svg>';
+}
+
+function rangeCard(d:Pick<Draft,'headline'|'body'|'card_data'|'output_preferences'>){
+ const rows=d.card_data!.report!.rows;if(rows.length>15)throw Error('report_card_capacity_exceeded');
+ const t=(s:string,x:number,y:number,size:number,color=COLORS.paper)=>`<text x="${x}" y="${y}" font-size="${size}" fill="${color}">${esc(s)}</text>`;
+ let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="${COLORS.navy}"/><g font-family="Noto Sans, sans-serif"><image href="${PROFILE_DATA}" x="64" y="52" width="64" height="64"/>`+t('ENDEKS HABER',148,94,30)+t('BIST 30 • 100 GÜNLÜK DİP–ZİRVE',64,210,38);
+ const xs=[64,240,420,600,810];['HİSSE','DİP (TL)','ZİRVE (TL)','DİBE UZAKLIK','ZİRVEYE UZAKLIK'].forEach((s,i)=>svg+=t(s,xs[i],310,21,COLORS.steel));
+ rows.forEach((r,i)=>{const cells=[r.label,...r.value.split('|')];if(cells.length!==5)throw Error('gallery_cell_missing');cells.forEach((v,j)=>{const text=j>2?'%'+v:v;if(reportTextWidth(text,27)>[160,160,160,190,205][j])throw Error('report_cell_capacity_exceeded');svg+=t(text,xs[j],365+i*55,27);});});return svg+'</g></svg>';
 }

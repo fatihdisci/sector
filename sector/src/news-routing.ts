@@ -31,6 +31,7 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const results=/\b(bilanco\w*|finansal (?:tablo|sonuc)\w*|net kar\w*|net zarar\w*)\b/.test(text);
  const forecastTitle=/\b(beklenti\w*|tahmin\w*|ongoru\w*|hedef fiyat|teknik analiz)\b/.test(title)&&!/\bbeklenti\w* (?:uzerinde|altinda|asti|asarak)\b/.test(title);
  const realizedResults=!forecastTitle&&results&&/\b(acikla\w*|gerceklesti|oldu|artti|geriledi|azaldi|yukseldi|asti)\b/.test(text)&&!/\b(bekleniyor|tahmin\w*|ongoru\w*|olabilir)\b/.test(title);
+ const economicData=!codes.length&&!issuerMentions.length&&!unresolvedIssuers.length&&/dogrudan yabanci yatirim|yabanci (?:yatirim|sermaye)|dis ticaret|ithalat|ihracat/.test(text)&&/\d/.test(text)&&/yuzde|milyar|milyon|dolar|euro/.test(text)&&/azal|gerile|artti|yuksel|dustu/.test(text);
  const market=/\b(piyasa\w*|hisse senet\w*|dolar|borsa\w*|tahvil\w*|riskten kacis)\b/.test(text);
  const opinion=/\b(stratejist\w*|analist\w*|piyasa gorusu|teknik analiz|hedef fiyat|beklenti\w*)\b/.test(text)&&!realizedResults;
  const expected=!denied&&!realizedResults&&(outlook||opinion);
@@ -42,7 +43,7 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const bid=/\b(ihale\w*)\b/.test(text)&&/\b(teklif (?:ver\w*|sun\w*)|teklifini (?:ver\w*|sun\w*)|katildi|basvurdu)\b/.test(text);
  const awarded=/\b(ihale\w*)\b/.test(text)&&/\b(kazandi\w*|uhdesinde kal\w*)\b/.test(text);
  const defaultEvent=/\b(temerrut\w*|odeme\w* (?:aksa|gecik)\w*|borc\w* odeyem\w*|odeme\w* yapama\w*)\b/.test(text);
- const event=retail?'retail_promotion':investment&&opened?'investment':defaultEvent?'payment_default':signed?'contract':/\b(ihale\w*)\b/.test(text)?'tender':results?'financial':/\b(sozlesme\w*|anlasma\w*)\b/.test(text)?'contract':/\b(iptal\w*)\b/.test(text)?'cancel':/politika faizi|faiz karar|(?:fed|tcmb).*faiz|faiz.*(?:indirdi|artirdi|sabit)/.test(text)?'rate':/\b(enflasyon\w*|gsyh|cari denge|issizlik\w*)\b/.test(text)?'macro_data':/uretim.*dur|faaliyet.*dur/.test(text)?'halt':/duzenleme|yonetmelik|yaptirim|tarife|yururluk/.test(text)?'regulation':/\b(pay|hisse)\b.*\b(aldi|satti|alimi|satimi)\b/.test(text)?'share_trade':market&&expected?'market_outlook':'other';
+ const event=retail?'retail_promotion':investment&&opened?'investment':defaultEvent?'payment_default':signed?'contract':/\b(ihale\w*)\b/.test(text)?'tender':results?'financial':economicData?'macro_data':/\b(sozlesme\w*|anlasma\w*)\b/.test(text)?'contract':/\b(iptal\w*)\b/.test(text)?'cancel':/politika faizi|faiz karar|(?:fed|tcmb).*faiz|faiz.*(?:indirdi|artirdi|sabit)/.test(text)?'rate':/\b(enflasyon\w*|gsyh|cari denge|issizlik\w*)\b/.test(text)?'macro_data':/uretim.*dur|faaliyet.*dur/.test(text)?'halt':/duzenleme|yonetmelik|yaptirim|tarife|yururluk/.test(text)?'regulation':/\b(pay|hisse)\b.*\b(aldi|satti|alimi|satimi)\b/.test(text)?'share_trade':market&&expected?'market_outlook':'other';
  const promo=/\b(webinar|etkinlik|sponsor|reklam|tanitim|zirvesi|konferans|kayit olun|egitim programi|urun tanitti)\b/.test(text);
  const tech=/\b(yapay zeka|telefon|oyun|teknoloji|uygulama|lansman)\b/.test(text);
  const fundCrisis=/\bfon (?:kriz|sorustur|tasfiye)/.test(text)&&/\b(iade|odeme|erisim|kisiti|yakalama|gozalt|tutukla|duzenleyici|sorusturma baslat|sorusturma ac)\w*/.test(text);
@@ -50,7 +51,7 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const timelyAnalysis=/\bbist 30\b/.test(title)&&/dip|zirve/.test(title)&&/\d/.test(text)&&/analiz|tablo|uzaklik/.test(text);
  const concreteClaim=issuerMentions.length>0||codes.length>0||macro||/uretim|sozlesme|tedarik|ihracat|faaliyet|faiz|petrol fiyati|gaz arz|yaptirim|tarife/.test(text);
  const offTopic=/dogu ekspres|kpss|hava durumu|meteoroloji|magazin|tatil|gezi rehberi|unlu oyuncu|ask hayati|kisisel hayat/.test(title)||(/putin|siyasi|secim anket/.test(text)&&!concreteClaim&&!fundCrisis);
- const relevance=fundCrisis||timelyAnalysis||unresolvedIssuers.length>0||issuerMentions.length>0||codes.length>0||macro||sector||market;
+ const relevance=economicData||fundCrisis||timelyAnalysis||unresolvedIssuers.length>0||issuerMentions.length>0||codes.length>0||macro||sector||market;
  const sufficient=item.title.trim().length>=15&&item.summary.trim().length>=25;
  let route:NewsRoute='digest';
  if(!eligible){route=Number.isFinite(date)&&now-date>24*3600000?'archive':'digest';reasons.push('invalid_or_old_date');}
@@ -61,6 +62,7 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  else if(!relevance){route=/sirket|yatirim|ekonomi|finans|carrefour/.test(text)?'digest':'archive';reasons.push(route==='digest'?'relevance_uncertain':'no_investor_evidence');}
  else if((fundCrisis||timelyAnalysis)&&sufficient&&!expected){route='instant';reasons.push(fundCrisis?'concrete_fund_crisis_development':'timely_bist_data_analysis');}
  else if(unresolvedIssuers.length&&!codes.length&&!issuerMentions.length&&!macro&&!sector&&!market){route='digest';reasons.push('official_issuer_instrument_unresolved');}
+ else if(economicData&&!macro){route='digest';reasons.push('concrete_economic_data');}
  else if(expected||bid){route='digest';reasons.push('expectation_or_allegation');}
  else if(denied){route=sufficient&&concreteClaim?'instant':'archive';reasons.push(concreteClaim?'denial_or_correction':'no_material_investor_claim');}
  else if(decided&&event!=='other'&&sufficient){route='instant';reasons.push('new_concrete_investor_event');}
