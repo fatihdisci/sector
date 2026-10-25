@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; owner_answer:Sentinel_d8281e0383e08191854491c351f808b5",
+  "accepted_recorded_at": 1792949696809,
+  "rule_version": "investor-v6",
+  "catalog_version": "kap-equities-2026-10-25-v3-d35b3b466e3b",
+  "entity_hash": "38d5608f5f23f6e1fd29d62b09befad6247ee144ce99cd8ba7a8d6323afb9be0",
+  "scope_hash": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
+  "review_scope_hash": "a65f7fabcd61b96cb5b48be5f784f755fe17b05bdbe1f200db34226bc3b1cf27",
+  "activated_at": 1792944442701,
+  "timezone": "Europe/Istanbul",
+  "times": [
+    "10:30",
+    "14:30",
+    "18:30",
+    "22:30"
+  ],
+  "watchlist": [],
+  "parent_binding_hash": "489de0b994f1511b5fa07ae752247c5d0f115cf781df86ea08dafa0530232ecd",
+  "parent_artifact": {
+    "files": {
+      "src/news-routing.ts": "523d0e4d256de93dac945da1cd38c4a5a678c3ebecbfdee3fec26a341a33800e",
+      "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
+      "src/newsroom.ts": "726b712d8d65b1f425aca60b44eb51bea9fab4cf6162d1d4d506db1f76229a2c",
+      "src/news-readiness.ts": "9f41d982aa330288d64730b4f0e725ea969ca9eb6b8a6d0dfadb6a3f56881be4",
+      "src/news-owner-review.ts": "bd907f83423a5b92343797769c4d23512ed9a9c818efb0844d4617fe4c81233d",
+      "src/news-event-matching.ts": "78008cc7ab87cfac839b815523babc60d8f24c2fbeb0bd8d535263aae7bc5381"
+    },
+    "catalog_hash": "0cfd919e2e164f84d801eb6d693d20bd0bf4af75b79d95d0dc71a058293f327c",
+    "hash": "cfaa8639e4e9131245c0400e06808c36f9895b4898296f3d81b93182cc9243c5"
+  },
+  "parent_review_scope": "d41f0f4095111e033bf3fd717f92173f6b0d51929a47ef3a5d52929cbd10b24e",
+  "runtime_files": {
+    "src/news-routing.ts": "d55ace24a92fbc292a05807300b70e74f785ef36cba24adcff3382dfcf20cb82",
+    "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
+    "src/newsroom.ts": "41a8164c8da1baff8831b5ce419f9388039f0223d7440b4e3d34b524c45029fe",
+    "src/news-readiness.ts": "8ab6aac6e94e209d1bf53d4c7978f20ef48453f6e36a6a5abafb9de6025cc132",
+    "src/news-owner-review.ts": "bd907f83423a5b92343797769c4d23512ed9a9c818efb0844d4617fe4c81233d",
+    "src/news-event-matching.ts": "78008cc7ab87cfac839b815523babc60d8f24c2fbeb0bd8d535263aae7bc5381",
+    "src/news-schedule-review.ts": "74788f3d3636cbc748580a39d34b2828cd77a46179f42f7dedffa7c6ab5b3f0f"
+  },
+  "parent_scope": "f27a06b4065644740726871b3ce9c5a4269b4dd021be09eeed32f8c6dcbeb4f1"
+}
