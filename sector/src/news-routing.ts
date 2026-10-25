@@ -2,8 +2,9 @@ import {catalogEntities,matchingCompanies,matchingIssuerMentions,unresolvedIssue
 import {newsReadiness} from './news-readiness';
 import type {Env,Item,Source} from './types';
 import {sha256} from './utils/text';
+import {articleURL,sameNewsEvent,legalStage,eventFold} from './news-event-matching';
 import {titleSimilarity} from './dedupe';
-export const NEWS_RULE_VERSION='investor-v5';
+export const NEWS_RULE_VERSION='investor-v6';
 export type NewsRoute='instant'|'digest'|'archive';
 export type NewsPreferences={mode:'shadow'|'active';approved_by_owner:boolean;digest_enabled:boolean;digest_times:string[];activated_at:number;watchlist:string[];entities:{name:string;code:string;verified:boolean;issuer_oid?:string;index?:30|100;excluded_contexts?:string[]}[];requested_mode?:'shadow'|'active';readiness_reasons?:string[]};
 export const DEFAULT_NEWS_PREFERENCES:NewsPreferences={mode:'shadow',approved_by_owner:false,digest_enabled:false,digest_times:['12:30','18:30'],activated_at:0,watchlist:[],entities:catalogEntities};
@@ -44,17 +45,24 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const event=retail?'retail_promotion':investment&&opened?'investment':defaultEvent?'payment_default':signed?'contract':/\b(ihale\w*)\b/.test(text)?'tender':results?'financial':/\b(sozlesme\w*|anlasma\w*)\b/.test(text)?'contract':/\b(iptal\w*)\b/.test(text)?'cancel':/politika faizi|faiz karar|(?:fed|tcmb).*faiz|faiz.*(?:indirdi|artirdi|sabit)/.test(text)?'rate':/\b(enflasyon\w*|gsyh|cari denge|issizlik\w*)\b/.test(text)?'macro_data':/uretim.*dur|faaliyet.*dur/.test(text)?'halt':/duzenleme|yonetmelik|yaptirim|tarife|yururluk/.test(text)?'regulation':/\b(pay|hisse)\b.*\b(aldi|satti|alimi|satimi)\b/.test(text)?'share_trade':market&&expected?'market_outlook':'other';
  const promo=/\b(webinar|etkinlik|sponsor|reklam|tanitim|zirvesi|konferans|kayit olun|egitim programi|urun tanitti)\b/.test(text);
  const tech=/\b(yapay zeka|telefon|oyun|teknoloji|uygulama|lansman)\b/.test(text);
- const relevance=unresolvedIssuers.length>0||issuerMentions.length>0||codes.length>0||macro||sector||market;
+ const fundCrisis=/\bfon (?:kriz|sorustur|tasfiye)/.test(text)&&/\b(iade|odeme|erisim|kisiti|yakalama|gozalt|tutukla|duzenleyici|sorusturma baslat|sorusturma ac)\w*/.test(text);
+ const legal=legalStage(item.title);
+ const timelyAnalysis=/\bbist 30\b/.test(title)&&/dip|zirve/.test(title)&&/\d/.test(text)&&/analiz|tablo|uzaklik/.test(text);
+ const concreteClaim=issuerMentions.length>0||codes.length>0||macro||/uretim|sozlesme|tedarik|ihracat|faaliyet|faiz|petrol fiyati|gaz arz|yaptirim|tarife/.test(text);
+ const offTopic=/dogu ekspres|kpss|hava durumu|meteoroloji|magazin|tatil|gezi rehberi|unlu oyuncu|ask hayati|kisisel hayat/.test(title)||(/putin|siyasi|secim anket/.test(text)&&!concreteClaim&&!fundCrisis);
+ const relevance=fundCrisis||timelyAnalysis||unresolvedIssuers.length>0||issuerMentions.length>0||codes.length>0||macro||sector||market;
  const sufficient=item.title.trim().length>=15&&item.summary.trim().length>=25;
  let route:NewsRoute='digest';
  if(!eligible){route=Number.isFinite(date)&&now-date>24*3600000?'archive':'digest';reasons.push('invalid_or_old_date');}
+ else if(offTopic&&!macro&&!codes.length){route='archive';reasons.push('outside_investor_scope');}
  else if(retail){route='archive';reasons.push('retail_consumer_promotion');}
  else if(promo&&!((issuerMentions.length>0||codes.length>0||macro||sector||market)&&(event!=='other'||denied||expected))){route='archive';reasons.push('promotion_or_event');}
  else if(tech&&!relevance){route='archive';reasons.push('general_technology');}
- else if(!relevance){route='digest';reasons.push('relevance_uncertain');}
+ else if(!relevance){route=/sirket|yatirim|ekonomi|finans|carrefour/.test(text)?'digest':'archive';reasons.push(route==='digest'?'relevance_uncertain':'no_investor_evidence');}
+ else if((fundCrisis||timelyAnalysis)&&sufficient&&!expected){route='instant';reasons.push(fundCrisis?'concrete_fund_crisis_development':'timely_bist_data_analysis');}
  else if(unresolvedIssuers.length&&!codes.length&&!issuerMentions.length&&!macro&&!sector&&!market){route='digest';reasons.push('official_issuer_instrument_unresolved');}
  else if(expected||bid){route='digest';reasons.push('expectation_or_allegation');}
- else if(denied){route=sufficient?'instant':'digest';reasons.push('denial_or_correction');}
+ else if(denied){route=sufficient&&concreteClaim?'instant':'archive';reasons.push(concreteClaim?'denial_or_correction':'no_material_investor_claim');}
  else if(decided&&event!=='other'&&sufficient){route='instant';reasons.push('new_concrete_investor_event');}
  else {reasons.push(sufficient?'routine_or_unresolved':'insufficient_metadata');}
  if(issuers.some(i=>i.candidate_codes.length>1&&!i.candidate_codes.some(c=>codes.includes(c))))reasons.push('issuer_verified_share_class_unresolved');
@@ -63,17 +71,19 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const periods=[...text.matchAll(/\b20\d{2}(?:\s+(?:[1-9]|1[0-2]))?\b/g)].map(m=>m[0]);
  const numbers=[...text.matchAll(/\b\d+(?:\s+\d+)*(?:\s+(?:milyon|milyar|bin|yuzde|tl|dolar))?\b/g)].map(m=>m[0]);
  const occurredDefault=defaultEvent&&/\b(temerrude dustu|aksa\w*|gecik\w*|odeyemedi|yapamadi)\b/.test(text);
- const stage=denied?'denied':expected?'expected':occurredDefault?'occurred':/iptal/.test(text)?'cancelled':/duzelt|revize|tutar.*degis/.test(text)?'corrected':signed?'signed':awarded?'awarded':bid?'bid':decided?'decided':'unresolved';
+ const stage=legal??(denied?'denied':expected?'expected':occurredDefault?'occurred':/iptal/.test(text)?'cancelled':/duzelt|revize|tutar.*degis/.test(text)?'corrected':signed?'signed':awarded?'awarded':bid?'bid':decided?'decided':'unresolved');
  return {route,reasons,eligible,confidence:{catalog_version:COMPANY_CATALOG_VERSION,entity:codes.length?'verified':macro?'named_institution':'unresolved',event_confidence:event==='other'?'low':'explicit',evidence:sufficient?'metadata_only':'insufficient',priority:(entities.some(e=>e.index===30)?30:entities.some(e=>e.index===100)?15:0)+(codes.some(c=>p.watchlist.includes(c))?20:0),codes,issuers,unresolved_issuers:unresolvedIssuers,event,stage,periods,numbers},identity:JSON.stringify([codes.sort(),issuers.map(i=>i.oid).sort(),macro,sector,event,stage,periods,numbers]),normalizedTitle:title};
 }
 export async function recordNewsCandidate(env:Env,item:Item,source:Source,legacyEligible:boolean,now=Date.now(),p?:NewsPreferences){
- const previous=await env.DB.prepare('SELECT title,summary,published_at FROM news_candidates WHERE url=?').bind(item.url).first<{title:string;summary:string;published_at:string|null}>();
- if(previous&&(previous.title!==item.title.slice(0,1000)||previous.summary!==item.summary.slice(0,4000)||previous.published_at!==item.published_at)){const version=await sha256(JSON.stringify([item.title,item.summary,item.published_at]));item={...item,url:item.url+'#endeks-event='+version.slice(0,16)};}
+ item={...item,url:articleURL(item.url)};
+ const previous=await env.DB.prepare('SELECT * FROM news_candidates WHERE url=?').bind(item.url).first<any>();
+ if(previous&&sameNewsEvent(previous,item))return {id:previous.id,article:previous.article_id,decision:{eligible:!!previous.eligible,route:previous.route,reasons:JSON.parse(previous.reasons),confidence:JSON.parse(previous.confidence)},group:previous.event_group,item};
+ if(previous&&(previous.title!==item.title.slice(0,1000)||previous.summary!==item.summary.slice(0,4000)||previous.published_at!==item.published_at)){const version=await sha256(JSON.stringify([eventFold(item.title),eventFold(item.summary)]));item={...item,url:item.url+'#endeks-event='+version.slice(0,16)};}
  const prefs=p??await newsPreferences(env),decision=evaluateNews(item,source,prefs,now),article=await sha256(item.url),id=article.slice(0,32),signature=await sha256(decision.identity);
- const rows=(await env.DB.prepare('SELECT id,title,event_group,signature,confidence,published_at FROM news_candidates WHERE evaluated_at>? ORDER BY evaluated_at DESC LIMIT 250').bind(now-86400000).all<{id:string;title:string;event_group:string;signature:string;confidence:string;published_at:string}>()).results;
+ const rows=(await env.DB.prepare('SELECT id,title,summary,event_group,signature,confidence,published_at FROM news_candidates WHERE evaluated_at>? ORDER BY evaluated_at DESC LIMIT 250').bind(now-86400000).all<{id:string;title:string;summary:string;event_group:string;signature:string;confidence:string;published_at:string}>()).results;
  // Unknown entities only yield suggestions. Similarity alone never suppresses an item.
  const related=rows.filter(r=>r.signature===signature&&titleSimilarity(r.title,item.title)>.5);
- const exact=decision.confidence.entity!=='unresolved'?related.find(r=>titleSimilarity(r.title,item.title)>=.9&&Math.abs(Date.parse(r.published_at)-Date.parse(item.published_at??''))<6*3600000):undefined;
+ const exact=rows.find(r=>sameNewsEvent(r,{...item,confidence:decision.confidence}));
  const group=exact?.event_group??id;if(exact&&exact.id!==id)decision.reasons.push('same_event_copy');
  const stages=rows.filter(r=>{const c=JSON.parse(r.confidence);return decision.confidence.codes.some(code=>c.codes?.includes(code))&&['contract','tender','cancel'].includes(c.event)&&['contract','tender','cancel'].includes(decision.confidence.event);});
  const family=/\bReuters\b/i.test(item.summary)?'wire-reuters':/\bAnadolu Ajansı\b|\(AA\)/i.test(item.summary)?'wire-aa':source.family??source.id;
