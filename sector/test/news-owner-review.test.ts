@@ -43,3 +43,15 @@ test('successor rejects wrong hashes, versions, forged approval, missing samples
  const mutations=[(i:any)=>i.binding.successor.approval_source='forged',(i:any)=>delete i.binding.successor.approval_source,(i:any)=>i.binding.successor.previous_sample_hash='x',(i:any)=>i.binding.successor.version=2,(i:any)=>i.binding.successor.actor='intruder',(i:any)=>i.binding.successor.recorded_at=now-1,(i:any)=>i.binding.successor.artifact_hash='x',(i:any)=>i.rule='wrong',(i:any)=>i.catalog='wrong',(i:any)=>i.scope='wrong',(i:any)=>i.artifact.catalog_hash='x',(i:any)=>i.rows.pop(),(i:any)=>i.rows[1]=i.rows[0],(i:any)=>i.binding.snapshot.pop(),(i:any)=>i.evaluate=()=>({route:'digest',reasons:['changed'],confidence:{codes:[],event:'other',stage:'unresolved'}})];
  for(const mutate of mutations){const f=await successorFixture();mutate(f.input);const r=await validateOwnerReview(f.input,f.trusted,f.t);assert.equal(r.valid,false);assert.equal(r.reviewed,0);}
 });
+async function policyFixture(){
+ const f=await successorFixture(),i=f.input as any,original=i.evaluate;
+ i.evaluate=(r:any)=>{const d=original(r);return r.id===i.binding.snapshot[0].id?{...d,route:'digest'}:d};
+ const t={...f.t,rule_version:'new-policy-rule',approval_source:'new-policy-real-owner-answer',parent_binding_hash:await sha256(canonical(i.binding.successor)),policy_changes:[{id:i.binding.snapshot[0].id,original_label:'instant',route:'digest',reason:'explicit fixture policy'}],semantic_hash:await sha256(canonical(i.binding.snapshot.map((s:any)=>{const d=i.evaluate(s);return{id:s.id,route:d.route,reasons:d.reasons,codes:d.confidence.codes,event:d.confidence.event,stage:d.confidence.stage}})))};
+ i.rule=t.rule_version;i.binding.policy={...i.binding.successor,rule_version:t.rule_version,approval_source:t.approval_source};return{...f,t};
+}
+test('new explicitly approved policy changes prospective label without rewriting original approval',async()=>{
+ const f=await policyFixture();const original=canonical(f.input.rows);const r=await validateOwnerReview(f.input,f.trusted,f.t,f.t);assert(r.valid);assert.equal(r.metrics.false_critical,0);assert.equal(r.rows[0].original_label,'instant');assert.equal(r.rows[0].label,'digest');assert.equal(canonical(f.input.rows),original);
+});
+test('policy rejects missing parent, forged source, changed unapproved semantics and stale runtime',async()=>{
+ for(const mutate of [(i:any)=>delete i.binding.successor,(i:any)=>i.binding.successor.artifact_hash='wrong',(i:any)=>i.binding.policy.approval_source='forged',(i:any)=>i.binding.policy.artifact_hash='wrong',(i:any)=>i.evaluate=()=>({route:'archive',reasons:['unapproved']})]){const f=await policyFixture();mutate(f.input);const r=await validateOwnerReview(f.input,f.trusted,f.t,f.t);assert(!r.valid);}
+});

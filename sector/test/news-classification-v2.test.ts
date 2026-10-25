@@ -31,5 +31,5 @@ test('event stages generalize: default/bid/award/signed/forecast/decision and de
 test('catalog provision is not active-mode readiness or owner approval; no feedback learning',async()=>{
  const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8')),env={DB,TELEGRAM_USER_ID:'owner'} as Env;
  const p=await newsPreferences(env);assert(p.entities.length>500);assert.equal(p.mode,'shadow');assert.equal(p.digest_enabled,false);
- await DB.prepare("INSERT INTO system_state VALUES('news_filter_preferences',?)").bind(JSON.stringify({mode:'active',approved_by_owner:true,entities:[]})).run();assert.equal((await newsPreferences(env)).mode,'shadow');assert.equal((await DB.prepare('SELECT COUNT(*) n FROM news_feedback').first<any>()).n,0);assert.equal(NEWS_RULE_VERSION,'investor-v5');
+ await DB.prepare("INSERT INTO system_state VALUES('news_filter_preferences',?)").bind(JSON.stringify({mode:'active',approved_by_owner:true,entities:[]})).run();assert.equal((await newsPreferences(env)).mode,'shadow');assert.equal((await DB.prepare('SELECT COUNT(*) n FROM news_feedback').first<any>()).n,0);assert.equal(NEWS_RULE_VERSION,'investor-v6');
 });

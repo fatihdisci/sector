@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; question:Sentinel_00bd5dc3f99081919094be2644780744; owner_answer:Sentinel_0941a660cdbc8191afa5b9a072958d0d",
+  "accepted_recorded_at": 1792944006829,
+  "rule_version": "investor-v6",
+  "catalog_version": "kap-equities-2026-10-25-v3-d35b3b466e3b",
+  "catalog_hash": "0cfd919e2e164f84d801eb6d693d20bd0bf4af75b79d95d0dc71a058293f327c",
+  "scope_hash": "d41f0f4095111e033bf3fd717f92173f6b0d51929a47ef3a5d52929cbd10b24e",
+  "entity_hash": "38d5608f5f23f6e1fd29d62b09befad6247ee144ce99cd8ba7a8d6323afb9be0",
+  "code_files": {
+    "src/news-routing.ts": "5cf86c506799f41fe951becc1260201b746d056bcdf3796c31506d262c30e16f",
+    "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
+    "src/newsroom.ts": "726b712d8d65b1f425aca60b44eb51bea9fab4cf6162d1d4d506db1f76229a2c",
+    "src/news-event-matching.ts": "78008cc7ab87cfac839b815523babc60d8f24c2fbeb0bd8d535263aae7bc5381"
+  },
+  "semantic_hash": "b25ed34737b38338695cf77f063a286dc721057cd310b73195d0ef81edf1cc39",
+  "previous_sample_hash": "5f271abb3a76b70ea132e6d92ce8bc54e448df88c31e92e745ddc975489e92ea",
+  "parent_binding_hash": "366f42fbf3f2a3ec6199f911d5ec34131e8ee7c6406db99f463ec54f13408780",
+  "policy_changes": [
+    {
+      "id": "9063a0075b9868d1552ae3290d7b15fa",
+      "original_label": "digest",
+      "route": "instant",
+      "reason": "New owner-approved fund-crisis legal-stage policy; prospective only"
+    }
+  ]
+}
