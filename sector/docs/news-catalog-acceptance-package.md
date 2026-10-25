@@ -1,60 +1,95 @@
-# Sahip incelemesi için en küçük katalog/kapsam karar paketi
+# Şirket/pay kodu katalog karar paketi — 25 Ekim 2026
 
-25 Ekim 2026 09:35 TRT — yalnız salt okunur kaynak karşılaştırması. Bu belge onay kaydı değildir.
+Bu belge yeni kapsamın teknik inceleme paketidir; insan kabulü veya aktif filtre izni değildir. Önceki 45 çok-kodlu kuruluşu toptan dışlayan yaklaşım kaldırıldı. KAP filtresi, panel, canlı kayıtlar ve gönderim defteri değiştirilmedi.
 
-## Kodun gerçekten istediği
+## Kaynak ve ayrım
+- Katalog: `kap-equities-2026-10-25-v3-d35b3b466e3b`; dosya SHA256 `0cfd919e2e164f84d801eb6d693d20bd0bf4af75b79d95d0dc71a058293f327c`.
+- 755 kuruluş OID, 604 kanıtlı pay kodu, 600 payı doğrulanmış kuruluş; 155 kuruluş için pay türü henüz doğrulanmadı.
+- Resmî şirket başlığındaki virgüllü kodlar yalnız kuruluş ilişkisini gösterir; kurum üye/borçlanma/pay ayrımı sayılmaz. XUTUM içerik satırındaki stockCode + mkkMemberOid veya şirket profilindeki Fiili Dolaşımdaki Paylar / Borsa Kodu alanı pay kanıtıdır. Her pay satırında URL, alınma zamanı, kaynak hash’i ve alan adı vardır.
+- BIST30/100 üyeliği bu katalogda öncelik alanı olarak kullanılmaz. XUTUM yalnız araç türü kanıtıdır. Güncel işlem/askı/kottan çıkma durumu bütün kayıtlarda unknown; aktif işlem iddiası yok.
+- Kuruluş listesi: https://www.kap.org.tr/tr/bist-sirketler, 2026-10-25T06:43:29.689841+00:00, SHA256 `500cb49c4051b78251ea4e1f6ed915d64a455513ac9f1a3e55fc6a5773c2723f`.
+- XUTUM görüntüsü: https://www.kap.org.tr/tr/Endeksler, 2026-10-25T06:44:38.204672+00:00, SHA256 `7a5dfeaccccb4828846a91656744f163fb94c156112a707985d39b1c1317bf3a`.
+- 99 profil projeksiyonu alındı; 96 profil isteği sonuçlanmadı. Son doğrudan deneme HTTP 429 döndü. Eksik profil, pay yokluğu veya kottan çıkma kanıtı değildir. Yeniden istek yağmuru yapılmadı.
+- ISATR/ISBTR/ISCTR ve KRDMA/KRDMB/KRDMD aynı OID altında ayrı paylardır. Genel İş Bankası/Kardemir adı tek sınıfa veya tüm sınıflara çevrilmez: kuruluş ve aday sınıflar ayrıca gösterilir. ISKUR başlıkta mevcut, eldeki tür kanıtında yok; unresolved korunur, TIB ile birlikte rastgele paylaştırılmaz.
+- QNB Yatırım banka payı sayılmaz; Borusan ve yabancı Carrefour belirsizliği, KOCHL yazımının düzeltilmemesi, iştirak/negatif bağlam korumaları geçerlidir.
 
-`src/news-readiness.ts` içindeki `newsReadiness()` tek `entity_review` kaydının sahip kimliğini, gerçek zamanını ve sıralanmış ad/kod listesinin hash’ini doğrular. Her farklı kod için `sources` içinde KAP/Borsa İstanbul HTTPS URL’si ve inceleme zamanından ileri olmayan `checked_at` ister. Aynı resmî liste URL’si birden çok kod için kullanılabilir. Kod 710 ayrı insan onayı veya her satırın tek tek okunduğunu gösteren 710 kayıt istemez. Önceki “tek tek insan incelemesi zorunlu” ifadesi belge yorumu ile teknik koşulu karıştırıyordu.
+## Kod farkı
+Yeni kanıtla kazanılan 21 kod: A1CAP, ALBRK, GARAN, GLBMD, HALKB, ICBCT, INFO, ISATR, ISBTR, ISCTR, ISMEN, KRDMA, KRDMB, KRDMD, OSMEN, OYYAT, SKBNK, SKYMD, TSKB, VAKBN, YKBNK.
+Önceki tek-kod varsayımından pay kanıtı bulunamayan 127 kod: ADLVY, AKCVR, AKDFA, AKFK, AKSFA, AKTVK, ALJF, ARSNF, ARSVY, ATAVK, ATLFA, BLKOM, BNPPI, BRGFK, BRKT, CAGFA, CLKMT, CMSAN, DENFA, DENVA, DFKTR, DGRVK, DIMES, DKVRL, DKYVK, DMLKT, DNFIN, DNYVA, DNZEN, DOGVY, DRPHN, DTRND, DVRLK, DYBNK, ECZIP, EKER, EKOFA, EKTVK, EMIRV, EMVAR, ERGLI, FAIRF, FIGOF, FKPET, GARFL, GGBVK, GSIPD, GYVAR, HALKF, HAYVK, HDFFL, HDFVK, HLVKS, HUZFA, INALR, ISBIR, ISFAK, ISTFK, ISTVY, ISYAT, KATVK, KENT, KERVN, KFILO, KLVKS, KNTFA, KOCFN, KONTR, KORTS, KPTGY, KSFIN, KSTUR, KTKVK, KTSVK, MBFTR, MDIAZ, MEGAP, MILKS, MINTF, MMCAS, MNGFA, MRBKF, MTRYO, NURVK, OPET, ORFIN, ORMA, OSVKS, OTOSR, OYAYO, PRFFK, QNBFF, QNBFK, QNBVK, QUFIN, QYHOL, RALYH, SARTN, SMRFA, SNPAM, SODSN, SUMAS, TAMFA, TARFN, TEBFA, TEVKS, TFNVK, TRFFA, TRILC, TRKFN, TRKNT, TRYKI, TV8TV, UMPAS, USAK, VAKVK, VDFAS, VDFLO, VKFYO, YATVK, YBTAS, YKFIN, YKFKT, YONGA, YYAPI, ZKBVK, ZKBVR.
+Bu kuruluşlar silinmedi: issuers kayıtlarında kaynak kodları ve unresolved_codes korunur; pay oldukları iddia edilmez.
 
-`scope_review` tek sahip kabulü + zaman + hash ister. Hash; sıralı watchlist, entity hash, digest_enabled ve digest_times alanlarını kapsar. Boş takip listesi bilinçli kapsam olarak kabul edilebilir. Bu iki kabul kaydı şu an yoktur; kaynak karşılaştırması veya 12 rota onayı bunları otomatik oluşturmaz.
-
-## Kaynak ve çalıştırılan kontroller
-
-- Resmî liste: https://www.kap.org.tr/tr/bist-sirketler
-- İndirme: 2026-10-23T11:48:46.074Z (23 Ekim 14:48:46 TRT); bugün yeniden çekilmiş güncel piyasa listesi iddiası yok.
-- Katalog: `kap-companies-2026-10-23-v2-9349306c1bc7`
-- Dosya SHA256: `cffbff22a41205bc088e2485e279deae52c49ee3b4f328c6cfd24585bfd11958`
-- Orijinal resmî HTML SHA256: `d99e4e7d4ae5d75c2e0cd6fda2efc643d1ba9466452e247658590ad391376423` — yerelde tutulan kaynakla eşleşti.
-- 710 kayıt, 710 tekil kod, 710 tekil kuruluş OID. Kaynak kod–yasal unvan–OID karşılaştırmasında 0 uyuşmazlık.
-- Katalog kayıtları hash’i doğrulandı. Normalize ad/aliasın farklı kodlarla çakışması: 0. Kabul edilen kaynak altkümesinde eksik/fazla kayıt: 0.
-- Aktiflik sınırı: yalnız KAP listesindeki `kapMemberType=IGS` ve tek kod biçimi kontrol edildi. Kaynak alanlarında işlemde/askıda/kottan çıkmış durumu yok. 710 kaydın tamamının bugün işlem gören pay olduğu veya güncel aktiflik durumu doğrulanmış değildir.
-
-## Değişen aliasların tam listesi (v1 → v2)
-
-| Kod | Alias | Kaynaktaki yasal unvan |
+## Çok-kodlu 45 kuruluşun tamamı
+| Kaynak kodları | Kanıtlı paylar | Türü henüz çözülmeyen kodlar |
 |---|---|---|
-| ARCLK | Arçelik | ARÇELİK A.Ş. |
-| ASTOR | Astor Enerji | ASTOR ENERJİ A.Ş. |
-| BYDNR | Baydöner | BAYDÖNER RESTORANLARI A.Ş. |
-| KCHOL | Koç Holding | KOÇ HOLDİNG A.Ş. |
-| NETAS | Netaş | NETAŞ TELEKOMÜNİKASYON A.Ş. |
-| THYAO | Türk Hava Yolları | TÜRK HAVA YOLLARI A.O. |
+| FBB, FBBNK | — | FBB, FBBNK |
+| AFB, AKTIF | — | AFB, AKTIF |
+| HALKB, THL | HALKB | THL |
+| EXIMB, THR | — | EXIMB, THR |
+| AYTEM, YYA | — | AYTEM, YYA |
+| ATA, ATAYM | — | ATA, ATAYM |
+| GLB, GLBMD | GLBMD | GLB |
+| BRGAN, BUR | — | BRGAN, BUR |
+| ISMEN, IYM | ISMEN | IYM |
+| TSK, TSKB | TSKB | TSK |
+| MRBAS, MRS | — | MRBAS, MRS |
+| GARAN, TGB | GARAN | TGB |
+| ISATR, ISBTR, ISCTR, ISKUR, TIB | ISATR, ISBTR, ISCTR | ISKUR, TIB |
+| ADB, ADBNK | — | ADB, ADBNK |
+| KRDMA, KRDMB, KRDMD | KRDMA, KRDMB, KRDMD | — |
+| KLN, KLNMA | — | KLN, KLNMA |
+| OYA, OYYAT | OYYAT | OYA |
+| NRBNK, NYB | — | NRBNK, NYB |
+| TVB, VAKBN | VAKBN | TVB |
+| A1CAP, ACP | A1CAP | ACP |
+| TERA, TRA | — | TERA, TRA |
+| PBT, PBTR | — | PBT, PBTR |
+| IAZ, INVAZ | — | IAZ, INVAZ |
+| TAC, TCRYT | — | TAC, TCRYT |
+| GRM, GRYAT | — | GRM, GRYAT |
+| ALNUS, ANC | — | ALNUS, ANC |
+| AKM, AKMEN | — | AKM, AKMEN |
+| FIN, QNBTR | — | FIN, QNBTR |
+| OMD, OSMEN | OSMEN | OMD |
+| ALBRK, ALK | ALBRK | ALK |
+| HALKI, HLY | — | HALKI, HLY |
+| SEK, SKBNK | SKBNK | SEK |
+| YKR, YKYAT | — | YKR, YKYAT |
+| YKB, YKBNK | YKBNK | YKB |
+| ICB, ICBCT | ICBCT | ICB |
+| BLS, BLSMD | — | BLS, BLSMD |
+| INFO, IYF | INFO | IYF |
+| TRMEN, TVM | — | TRMEN, TVM |
+| MEKMD, MSA | — | MEKMD, MSA |
+| SKY, SKYMD | SKYMD | SKY |
+| MDASM, MDS | — | MDASM, MDS |
+| MSY, MSYBN | — | MSY, MSYBN |
+| HDFYB, HYB | — | HDFYB, HYB |
+| TAE, TRBNK | — | TAE, TRBNK |
+| QYATB, YBQ | — | QYATB, YBQ |
 
-Bu altı eşleştirme yukarıdaki KAP listesindeki ayırt edici unvanlardan açıkça seçildi; marka/iştirak çıkarımı yapılmadı. Diğer mevcut aliaslar:
-- AKFGY: Akfen GYO, Akfen Gayrimenkul Yatırım Ortaklığı
-- ASELS: Aselsan
-- BIMAS: BİM, Bim Birleşik Mağazalar
-- CRFSA: CarrefourSA
-- EBEBK: Ebebek
-- EREGL: Erdemir, Ereğli Demir ve Çelik
+## Korunan gerçek rota etiketleri
+Özgün onay kaynağı: `thread:01a16797-9b60-72ba-879f-e236fd1d3028; question:Sentinel_fa4f5e1442888191960ea833fbd582cb; owner_answer:Sentinel_22ec5289383c8191be6646295d350e78`. Örnek hash’i `5f271abb3a76b70ea132e6d92ce8bc54e448df88c31e92e745ddc975489e92ea`.
+Aşağıdaki yeniden değerlendirme yalnız yayın zamanı + 1 dakika bağlamında teknik karşılaştırmadır. Eski insan etiketleri değiştirilmedi; yeni katalog hash’i için onay uydurulmadı. 12/12 rota aynı (2 instant / 8 digest / 2 archive). Kod/kanıt değişimi yeni sürüm olarak saklanır.
+| Haber | Korunan insan etiketi | Yeni teknik rota |
+|---|---|---|
+| BU ÜRÜNLER YOK SATACAK! BU HAFTA A101’E NELER GELİYOR? (A101 27 EKİM-4 KASIM) | archive | archive |
+| Yatırım fonlarında haftanın tablosu: En çok yükselenler ve düşenler | digest | digest |
+| Arçelik'ten Manisa'ya 200 milyon euroluk yatırım: Yeni fabrika açıldı | instant | instant |
+| OpenAI ve Anthropic’ten biyogüvenlik laboratuvarına 200 milyon sterline kadar destek | archive | archive |
+| QNB Yatırım 1.24 milyar TL’lik net satış; ASTOR, THYAO, KCHOL dahil tam 10 hisse… | digest | digest |
+| Hangi yatırım aracı ne kazandırdı? | digest | digest |
+| Fon soruşturması: Türkiye Sigorta ve Türkiye Hayat Emeklilik eski Genel Müdürü Taha Çakmak tutuklandı | digest | digest |
+| BofA: Hisse senetleri ve dolarda düşüş Kasım ortasına kadar sürebilir | digest | digest |
+| BofA’dan 19-23 Ekim haftasında yüklü satış! ASELS, EREGL, TUPRS, KOCHL... | digest | digest |
+| Carrefour hisselerinde küresel finans krizinden beri en sert düşüş | digest | digest |
+| Bu hafta yatırımcılarına temettü dağıtacak 5 şirket | digest | digest |
+| Aselsan, Netaş, Baydöner, Borusan... Borsada 8 şirket milyarlık anlaşma ve yatırım açıkladı | instant | instant |
 
-EREGL alias kaynağı: https://www.kap.org.tr/tr/sirket-bilgileri/ozet/944-eregli-demir-ve-celik-fabrikalari-t-a-s ; 23 Ekim 2026 11:52:48 UTC. Yerel orijinal profil hash’i `2c8754d8e921570f76ccab061872ffe9217c85f2b709c7afbe52484ee6c5526a` eşleşti. Diğerleri kaynak yasal unvanından; GYO ve BİM gibi kısaltmalar açık kuraldır, bağımsız başka kaynak teyidi iddiası yok.
+## Gereken en küçük gerçek karar ve geçiş sınırı
+Sahip, yukarıda hash ile belirtilen kuruluş/pay ayrımını, açık unresolved kayıtlarını, ad/alias politikasını ve boş ek takip listesiyle BIST/Türkiye merkezli haber kapsamını inceleyip kabul etmeli. Eski eksik katalog için risk kabulü istenmiyor; düzeltilmiş kanıtlı liste sunuluyor. Kabul henüz alınmış değil. Aynı 12 haber etiketini yeniden üretmek gerekmiyor; bunların yeni kod/sürümle bağlanması ayrıca izlenebilir kabul gerektirir.
+Hazırlık kapısı eski hash veya investor-v3 onayını investor-v4 için kabul etmez. Shadow/off korunur. Aktif filtre veya otomatik seçki açılmaz. TEST 3189 yeniden gönderilmez.
+Main commit/CI, canlı release ile aynı şey değildir. Sonraki yetkili kurulumda d513419 tabanına yalnız filtre commitleri cherry-pick -x ile ayrı release hazırlanmalı; 0d4e4a KAP commit’i dahil edilmemeli. Ayrı release commit’inin CI’si, kaynak manifesti ve tutarlı yerel yedek doğrulanmadan kurulum yapılmamalı. Uygulama rollback’i canlı DB üzerine eski yedek kopyalamaz.
 
-## Belirsizlikler ve kapsam kayıpları
+## Yerel doğrulama
 
-- Carrefour → CRFSA, QNB Yatırım → QNB banka ve genel Borusan → tek şirket eşleştirmesi yapılmaz. KOCHL otomatik KCHOL düzeltilmez. Fon kodları pay kodu sayılmaz. İştirak/ana şirket ve ASELSAN NET, Erdemir Madencilik gibi dışlanan bağlamlar korunur.
-- Kaynakta 45 çok-kodlu kuruluş kataloğa alınmamış. Bu güvenli belirsizlik tercihinin gerçek kapsama maliyeti var: GARAN, ISCTR, YKBNK, VAKBN, HALKB, KRDMD ve ISMEN gibi paylar da katalogda yok. Bunların ad/kod doğrulaması bu katalogla yapılamaz. Mevcut görev bu eşlemeleri sessizce genişletmez.
-- Tam dışlanan kaynak kod grupları: AKM, AKMEN; AFB, AKTIF; ALBRK, ALK; ALNUS, ANC; ADB, ADBNK; ATA, ATAYM; AYTEM, YYA; A1CAP, ACP; BLS, BLSMD; BRGAN, BUR; FBB, FBBNK; GRM, GRYAT; GLB, GLBMD; HALKI, HLY; HDFYB, HYB; ICB, ICBCT; IAZ, INVAZ; INFO, IYF; ISMEN, IYM; KRDMA, KRDMB, KRDMD; MRBAS, MRS; MEKMD, MSA; MDASM, MDS; MSY, MSYBN; NRBNK, NYB; OMD, OSMEN; OYA, OYYAT; PBT, PBTR; QYATB, YBQ; FIN, QNBTR; SKY, SKYMD; SEK, SKBNK; TAC, TCRYT; TAE, TRBNK; TERA, TRA; TRMEN, TVM; GARAN, TGB; HALKB, THL; EXIMB, THR; ISATR, ISBTR, ISCTR, ISKUR, TIB; KLN, KLNMA; TSK, TSKB; TVB, VAKBN; YKR, YKYAT; YKB, YKBNK.
-
-## İncelenecek takip kapsamı
-
-- Yalnız KAP dışı otomatik haber rotası. Manuel istekler ve KAP kapsamı değişmez. BIST/Türkiye ekonomisi öncelikli; somut yatırımcı etkisi olan küresel gelişmeler korunur. Kaynak güvenilirliği rota kararıyla aynı şey değildir.
-- Ek watchlist boş. Katalogda endeks üyeliği alanı yok; bu nedenle mevcut varsayılan haber eşleştirmelerinde BIST30/100 önceliği eklenmiş sayılmaz. KAP’ın ayrı endeks filtresi korunur.
-- Onaylanmış 12 taze örnek: 2 instant / 8 digest / 2 archive. Bu etiketler korunuyor; tekrar istenmiyor. Like/dislike politika veya yasak değildir.
-- Planlanan seçki 12:30 ve 18:30 Europe/Istanbul; sayfa başına 10, tüm uygun gruplar sayfalı. Şu an shadow/off. Aktivasyon olursa yeni kesimle eski haber replay’i önlenir.
-
-## Parent’ın kullanıcıya sunacağı tek somut karar
-
-“Bu kaynak/tarih/hash ile tanımlanan mevcut katalog ve açıkça belirtilen kapsam eksiklerini (45 çok-kodlu kuruluş ve bağımsız aktiflik teyidi yokluğu dahil), ad/alias eşleştirme politikası ve boş ek takip listesiyle haber filtresinin bu sürümü için kabul ediyor musun; yoksa önce çok-kodlu kuruluş/aktiflik doğrulamasını mı tamamlayalım? 12 haber rota onayı zaten korunuyor; tekrar istenmiyor.”
-
-Bu karar henüz alınmış gibi işaretlenmedi. Sahip kabul ederse gerçek kaynak referansları ve gerçek kabul zamanı ile tek entity_review/scope_review kaydı bağlanabilir; eski tarih veya 710 ayrı insan kontrolü uydurulmaz. Kabul yoksa shadow/off ve kurulum/aktivasyon bu kapıda durur.
+Node 22 TypeScript kontrolü, 415 test (ZIP manifest/kaynak/runtime ve 26 PNG dahil), dry-run build geçti. Proje PDF venv ile 68 Python testi geçti, iki koşullu OCR atlandı; ayrıca macOS Vision için 1 OCR ve 3 gerçek geri alım görsel testi geçti. Beş yeni katalog regresyonu kaynak yeniden üretimi, OID/pay ayrımı, eski eksik önemli kodlar, çoklu sınıf, çakışma ve negatif bağlamı kapsıyor. ZIP değişmedi: `7916100962f698d8482645e053ebda8636c5454bff5de2c52b1c488b7548aec5`.
