@@ -14,7 +14,9 @@ export function galleryRange(html:string,url:string,source:Source):GalleryRange{
   page_urls[page-1]=pageURL;
   const quote=clean(slide.querySelector('.content-text')?.textContent??'');if(!quote||quote.length>4000)throw Error('gallery_text_budget');
   const symbol=/\(([A-Z][A-Z0-9]{3,4})\):/.exec(quote)?.[1];if(!symbol){if(page>2)throw Error('gallery_row_missing');continue;}
-  const prices=[...quote.matchAll(/(\d+(?:\.\d{3})*(?:,\d+)?)\s*TL\b/g)].map(m=>m[1]),percent=[...quote.matchAll(/yüzde\s+(\d+(?:,\d+)?)/gi)].map(m=>m[1]);
+  const priceTokens=[...quote.matchAll(/([^\s]+)\s*TL\b/g)],percentTokens=[...quote.matchAll(/yüzde\s+(\S+)/gi)];
+  const prices=priceTokens.map(m=>m[1]),percent=percentTokens.map(m=>m[1].replace(/[.,;]$/,''));
+  if(prices.some(v=>!/^\d+(?:\.\d{3})*(?:,\d{1,4})?$/.test(v))||priceTokens.some(m=>/\d\s+$/.test(quote.slice(0,m.index)))||percent.some(v=>!/^\d+(?:,\d{1,4})?$/.test(v)))throw Error('gallery_number_conflict');
   if(prices.length!==2||percent.length!==2)throw Error('gallery_cell_missing');const number=(v:string)=>Number(v.replace(/\./g,'').replace(',','.'));if(number(prices[0])<=0||number(prices[1])<number(prices[0])||percent.some(p=>number(p)<0||number(p)>100))throw Error('gallery_number_conflict');
   if(!bodies[0].includes(quote))throw Error('gallery_conflicting_evidence');if(rows.some(r=>r.ticker===symbol))throw Error('gallery_duplicate_or_conflicting_row');rows.push({ticker:symbol,low:prices[0],high:prices[1],fromLow:percent[0],fromHigh:percent[1],page,url:pageURL,quote});
  }
