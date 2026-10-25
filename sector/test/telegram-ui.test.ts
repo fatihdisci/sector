@@ -54,7 +54,7 @@ test('legacy revisionless publication and copy controls redirect safely; expired
  }finally{f.restore();}
 });
 test('shadow report separates owner interests from human route evaluation and preserves old detailed feedback',async()=>{
- const e=await setup(),f=fake();try{await e.DB.prepare("INSERT INTO news_feedback VALUES(1,'old','repeat',?)").bind(now).run();await press(e,`ni:l:${news}`,2,80);await newsroomMessage(e,{text:'/golgerapor'});const sent=f.calls.find(c=>c.method==='sendMessage')!;const report=JSON.parse(sent.body.get('text'));assert.equal(report.interest_feedback.likes,1);assert.equal(report.metrics.reviewed,0);assert.equal(report.ready,false);assert.equal((await e.DB.prepare("SELECT COUNT(*) n FROM news_feedback WHERE kind='repeat'").first<any>()).n,1);
+ const e=await setup(),f=fake();try{await e.DB.prepare("INSERT INTO news_feedback VALUES(1,'old','repeat',?)").bind(now).run();await press(e,`ni:l:${news}`,2,80);await newsroomMessage(e,{text:'/golgerapor'});const sent=f.calls.find(c=>c.method==='sendMessage'||c.method==='sendDocument')!;const report=JSON.parse(sent.method==='sendDocument'?await sent.body.get('document').text():sent.body.get('text'));assert.equal(report.historical_metrics.reviewed,0);assert.equal(report.owner_context_reviews.reviewed,0);assert.equal(report.interest_feedback.likes,1);assert.equal(report.metrics.reviewed,0);assert.equal(report.ready,false);assert.equal((await e.DB.prepare("SELECT COUNT(*) n FROM news_feedback WHERE kind='repeat'").first<any>()).n,1);
  }finally{f.restore();}
 });
 test('UI schema upgrades a populated previous schema without altering source, publication or detailed-feedback rows',async()=>{
