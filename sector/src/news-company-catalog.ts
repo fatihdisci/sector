@@ -9,3 +9,12 @@ export function matchingCompanies<T extends {name:string;code:string;verified:bo
  // An alias shared by distinct legal entities is not a verified identity.
  return candidates.filter(e=>new Set(entities.filter(x=>fold(x.name)===fold(e.name)).map(x=>x.code)).size===1);
 }
+
+// Only catalogued equity codes in explicit equity context; ordinary words/fund lists do not qualify.
+export function explicitEquityCodes(raw:string,fold:(s:string)=>string):string[]{
+ const folded=fold(raw);
+ if(/\bfon (?:kodu|kodlari)\b/.test(folded))return [];
+ if(!/\b(hisse\w*|borsa\w*|bist|pay senedi)\b/.test(folded))return [];
+ const known=new Set(catalog.companies.map(c=>c.code));
+ return [...new Set([...raw.matchAll(/(?:^|[^A-Za-z0-9])([A-Z][A-Z0-9]{3,4})(?![A-Za-z0-9])/g)].map(m=>m[1]).filter(c=>known.has(c)))];
+}

@@ -1,9 +1,9 @@
-import {catalogEntities,matchingCompanies,COMPANY_CATALOG_VERSION} from './news-company-catalog';
+import {catalogEntities,matchingCompanies,explicitEquityCodes,COMPANY_CATALOG_VERSION} from './news-company-catalog';
 import {newsReadiness} from './news-readiness';
 import type {Env,Item,Source} from './types';
 import {sha256} from './utils/text';
 import {titleSimilarity} from './dedupe';
-export const NEWS_RULE_VERSION='investor-v2';
+export const NEWS_RULE_VERSION='investor-v3';
 export type NewsRoute='instant'|'digest'|'archive';
 export type NewsPreferences={mode:'shadow'|'active';approved_by_owner:boolean;digest_enabled:boolean;digest_times:string[];activated_at:number;watchlist:string[];entities:{name:string;code:string;verified:boolean;index?:30|100;excluded_contexts?:string[]}[];requested_mode?:'shadow'|'active';readiness_reasons?:string[]};
 export const DEFAULT_NEWS_PREFERENCES:NewsPreferences={mode:'shadow',approved_by_owner:false,digest_enabled:false,digest_times:['12:30','18:30'],activated_at:0,watchlist:[],entities:catalogEntities};
@@ -18,7 +18,7 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const date=item.published_at?Date.parse(item.published_at):NaN;
  const eligible=Number.isFinite(date)&&date<=now+300000&&now-date<=24*3600000;
  const entities=matchingCompanies(text,p.entities,foldNews);
- const codes=[...new Set(entities.map(e=>e.code).concat([...((item.title+' '+item.summary).matchAll(/(?:BIST|hisse kodu|borsa kodu)\s*[:：]\s*([A-Z][A-Z0-9]{3,4})(?![A-Z0-9])/g))].map(m=>m[1])))];
+ const codes=[...new Set(entities.map(e=>e.code).concat(explicitEquityCodes(item.title+' '+item.summary,foldNews)))];
  const macro=/\b(tcmb|tuik|enflasyon|politika faizi|merkez bankasi|fed|spk|borsa istanbul|gsyh|issizlik|cari denge)\b/.test(text);
  const sector=/\b(petrol|dogal gaz|enerji|bankacilik|otomotiv|celik|havacilik|yari iletken|tarife|yaptirim)\b/.test(text);
  // Event semantics precede routing. Technology words in a market opinion do not define its topic.
@@ -31,12 +31,14 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const opinion=/\b(stratejist\w*|analist\w*|piyasa gorusu|teknik analiz|hedef fiyat|beklenti\w*)\b/.test(text)&&!realizedResults;
  const expected=!denied&&!realizedResults&&(outlook||opinion);
  const retail=/\b(indirim katalog\w*|aktuel urun\w*|aktuel katalog\w*|indirim firsat\w*|raflarda|market brosur\w*)\b/.test(text);
- const decided=realizedResults||/\b(karar verdi|kararini acikladi|acikladi|imzaladi\w*|kazandi\w*|onayladi|yururluge girdi|durdurdu|durduruldu|iptal etti|tamamlandi|artirdi|indirdi|sabit tuttu|aciklandi)\b/.test(text);
+ const investment=/\b(yatirim\w*|fabrika\w*|tesis\w*)\b/.test(text);
+ const opened=investment&&/\b(acildi|acilis\w* (?:yapildi|gerceklestirildi)|devreye aldi|hizmete acti|fabrikasini acti)\b/.test(text);
+ const decided=opened||realizedResults||/\b(karar verdi|kararini acikladi|acikladi|imzaladi\w*|kazandi\w*|onayladi|yururluge girdi|durdurdu|durduruldu|iptal etti|tamamlandi|artirdi|indirdi|sabit tuttu|aciklandi)\b/.test(text);
  const signed=/\b(sozlesme|anlasma)\w*\b.*\b(imzaladi\w*|imzalandi\w*|imzalamis\w*)\b/.test(text);
  const bid=/\b(ihale\w*)\b/.test(text)&&/\b(teklif (?:ver\w*|sun\w*)|teklifini (?:ver\w*|sun\w*)|katildi|basvurdu)\b/.test(text);
  const awarded=/\b(ihale\w*)\b/.test(text)&&/\b(kazandi\w*|uhdesinde kal\w*)\b/.test(text);
  const defaultEvent=/\b(temerrut\w*|odeme\w* (?:aksa|gecik)\w*|borc\w* odeyem\w*|odeme\w* yapama\w*)\b/.test(text);
- const event=retail?'retail_promotion':defaultEvent?'payment_default':signed?'contract':/\b(ihale\w*)\b/.test(text)?'tender':results?'financial':/\b(sozlesme\w*|anlasma\w*)\b/.test(text)?'contract':/\b(iptal\w*)\b/.test(text)?'cancel':/politika faizi|faiz karar|(?:fed|tcmb).*faiz|faiz.*(?:indirdi|artirdi|sabit)/.test(text)?'rate':/\b(enflasyon\w*|gsyh|cari denge|issizlik\w*)\b/.test(text)?'macro_data':/uretim.*dur|faaliyet.*dur/.test(text)?'halt':/duzenleme|yonetmelik|yaptirim|tarife|yururluk/.test(text)?'regulation':/\b(pay|hisse)\b.*\b(aldi|satti|alimi|satimi)\b/.test(text)?'share_trade':market&&expected?'market_outlook':'other';
+ const event=retail?'retail_promotion':investment&&opened?'investment':defaultEvent?'payment_default':signed?'contract':/\b(ihale\w*)\b/.test(text)?'tender':results?'financial':/\b(sozlesme\w*|anlasma\w*)\b/.test(text)?'contract':/\b(iptal\w*)\b/.test(text)?'cancel':/politika faizi|faiz karar|(?:fed|tcmb).*faiz|faiz.*(?:indirdi|artirdi|sabit)/.test(text)?'rate':/\b(enflasyon\w*|gsyh|cari denge|issizlik\w*)\b/.test(text)?'macro_data':/uretim.*dur|faaliyet.*dur/.test(text)?'halt':/duzenleme|yonetmelik|yaptirim|tarife|yururluk/.test(text)?'regulation':/\b(pay|hisse)\b.*\b(aldi|satti|alimi|satimi)\b/.test(text)?'share_trade':market&&expected?'market_outlook':'other';
  const promo=/\b(webinar|etkinlik|sponsor|reklam|tanitim|zirvesi|konferans|kayit olun|egitim programi|urun tanitti)\b/.test(text);
  const tech=/\b(yapay zeka|telefon|oyun|teknoloji|uygulama|lansman)\b/.test(text);
  const relevance=codes.length>0||macro||sector||market;

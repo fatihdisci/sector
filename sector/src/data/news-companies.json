@@ -1,9 +1,9 @@
 {
-  "version": "kap-companies-2026-10-23-v1-4d8be3f58e20",
+  "version": "kap-companies-2026-10-23-v2-9349306c1bc7",
   "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
   "retrieved_at": "2026-10-23T11:48:46.074Z",
   "source_sha256": "d99e4e7d4ae5d75c2e0cd6fda2efc643d1ba9466452e247658590ad391376423",
-  "companies_sha256": "4d8be3f58e20c679af1670194f5941f81acb50f3304d1c765811be014c8ae21b",
+  "companies_sha256": "9349306c1bc7e4de4eec8557801cb2104af503153a407c3a5785b55f30601e38",
   "alias_sources": [
     {
       "url": "https://www.kap.org.tr/tr/sirket-bilgileri/ozet/944-eregli-demir-ve-celik-fabrikalari-t-a-s",
@@ -479,8 +479,10 @@
       "code": "ARCLK",
       "title": "ARÇELİK A.Ş.",
       "oid": "4028e4a240e95dc90140ed55b43900cf",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Arçelik"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
@@ -593,8 +595,10 @@
       "code": "ASTOR",
       "title": "ASTOR ENERJİ A.Ş.",
       "oid": "8acae2c562329bd10164405fe6c17996",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Astor Enerji"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
@@ -1298,8 +1302,10 @@
       "code": "BYDNR",
       "title": "BAYDÖNER RESTORANLARI A.Ş.",
       "oid": "8acae2c586d22c510189de64baa92725",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Baydöner"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
@@ -3453,8 +3459,10 @@
       "code": "KCHOL",
       "title": "KOÇ HOLDİNG A.Ş.",
       "oid": "4028e4a140f2ed710140f2f4d6c70039",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Koç Holding"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
@@ -4389,8 +4397,10 @@
       "code": "NETAS",
       "title": "NETAŞ TELEKOMÜNİKASYON A.Ş.",
       "oid": "4028e4a240f2ef47014111d7df220232",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Netaş"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
@@ -5685,8 +5695,10 @@
       "code": "THYAO",
       "title": "TÜRK HAVA YOLLARI A.O.",
       "oid": "4028e4a140f2ed720140f376bebb01a7",
-      "aliases": [],
-      "alias_basis": "KAP yasal unvanındaki ayırt edici kısa ad; ilk kelimeden otomatik üretilmedi",
+      "aliases": [
+        "Türk Hava Yolları"
+      ],
+      "alias_basis": "Exact distinctive name in the sourced KAP legal title; manually scoped alias, not parent/brand inference",
       "source_url": "https://www.kap.org.tr/tr/bist-sirketler",
       "excluded_contexts": []
     },
