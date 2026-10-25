@@ -1,3 +1,5 @@
+import {COMPANY_CATALOG_VERSION} from './news-company-catalog';
+import {sha256} from './utils/text';
 import {detailedInterestReport} from './news-interest-report';
 import {newsMenuCallback,refreshNewsMenu,interestSummary} from './news-menu';
 import {digestDeliveryStatus,newsReadiness} from './news-readiness';
@@ -20,7 +22,7 @@ ${JSON.stringify(counts)}
  if(text==='/secki'){await sendSelection(env);return true;}return false;
 }
 export const DIGEST_CATCHUP_MS=2*60*60*1000;
-export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now()){
+export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now(),limit=10){
  // Freshness is checked at selection time, not inherited from a stale eligible flag.
  return (await env.DB.prepare(`WITH eligible_rows AS (
  SELECT n.id,n.title,n.event_group,n.first_seen FROM news_candidates n
@@ -29,16 +31,17 @@ export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now()
  AND (? IS NULL OR n.id IN (SELECT value FROM json_each(?)))
  AND (? IS NOT NULL OR NOT EXISTS(SELECT 1 FROM news_digest_runs r,json_each(r.items) i
  JOIN news_candidates delivered ON delivered.id=i.value
- WHERE delivered.event_group=n.event_group AND r.state IN ('sending','sent','uncertain')))
+ WHERE delivered.event_group=n.event_group AND r.state IN ('sending','sent','uncertain') AND NOT EXISTS(SELECT 1 FROM news_digest_pages p WHERE p.slot_id=r.id)))
+ AND (? IS NOT NULL OR NOT EXISTS(SELECT 1 FROM news_digest_pages p,json_each(CASE WHEN p.state='sent' THEN p.actual_items ELSE p.items END) i JOIN news_candidates delivered ON delivered.id=i.value WHERE delivered.event_group=n.event_group AND p.state IN ('pending','retry','sending','sent','uncertain')))
  ), ranked AS (SELECT *,ROW_NUMBER() OVER(PARTITION BY event_group ORDER BY first_seen,id) position FROM eligible_rows)
- SELECT id,title FROM ranked WHERE position=1 ORDER BY first_seen,id LIMIT 10`).bind(now,since,since,(now-86400000)/1000,(now+300000)/1000,ids?JSON.stringify(ids):null,JSON.stringify(ids??[]),ids?1:null).all<{id:string;title:string}>()).results;
+ SELECT id,title FROM ranked WHERE position=1 ORDER BY first_seen,id LIMIT ?`).bind(now,since,since,(now-86400000)/1000,(now+300000)/1000,ids?JSON.stringify(ids):null,JSON.stringify(ids??[]),ids?1:null,ids?1:null,limit).all<{id:string;title:string}>()).results;
 }
 
-export async function sendSelection(env:Env,since=0,ids?:string[]){
+export async function sendSelection(env:Env,since=0,ids?:string[],pageInfo?:{page:number;total:number}){
  const rows=await selectionRows(env,since,ids);
  if(ids&&!rows.length)return [];
- await send(env,rows.length?'Toplu seçki · Hazırlanmasını istediğin habere dokun.':'Seçkide güncel aday yok.',{reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:r.title.slice(0,85),callback_data:'pick:'+r.id}])})});
- return rows.map(r=>r.id);
+ const sent=await send(env,rows.length?`Toplu seçki${pageInfo?' · '+pageInfo.page+'/'+pageInfo.total:''} · Hazırlanmasını istediğin habere dokun.`:'Seçkide güncel aday yok.',{reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:Array.from(r.title).slice(0,85).join(''),callback_data:'pick:'+r.id}])})});
+ return {ids:rows.map(r=>r.id),message_id:Number(sent.message_id)};
 }
 export async function newsroomCallback(env:Env,data:string,messageId:number,update:number):Promise<string|null>{
  const menu=await newsMenuCallback(env,data,messageId,update);if(menu!==null)return menu;
@@ -61,17 +64,52 @@ export async function newsroomCallback(env:Env,data:string,messageId:number,upda
  env.DB.prepare("INSERT OR IGNORE INTO news_cards(id,article_id,state,message_id,created_at,requested_at) VALUES(?,?,'requested',?,?,?)").bind(id,row.article_id,Number(status.message_id),time,time)
  ]);return 'Açık isteğin alındı; mevcut tam metin ve denetim akışıyla hazırlanacak.';
 }
-export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,since:number,ids?:string[])=>Promise<void|string[]>=sendSelection){
- await env.DB.prepare("UPDATE news_digest_runs SET state='uncertain',error='interrupted_send' WHERE state='sending' AND created_at<?").bind(now-120000).run();
+export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,since:number,ids?:string[],pageInfo?:{page:number;total:number})=>Promise<void|string[]|{ids:string[];message_id:number}>=sendSelection){
  const prefs=await newsPreferences(env);if(!digestDeliveryStatus(prefs))return;
+ // Each uncertain page is quarantined independently; successful pages never repeat.
+ await env.DB.prepare("UPDATE news_digest_pages SET state='uncertain',error='interrupted_send' WHERE state='sending' AND updated_at<?").bind(now-120000).run();
+ await env.DB.prepare("UPDATE news_digest_pages SET state='deferred' WHERE state IN ('pending','retry') AND expires_at<=?").bind(now).run();
+ await env.DB.prepare("UPDATE news_digest_runs SET state='uncertain',error='interrupted_send' WHERE state='sending' AND created_at<? AND NOT EXISTS(SELECT 1 FROM news_digest_pages p WHERE p.slot_id=news_digest_runs.id)").bind(now-120000).run();
  const day=new Date(now+10800000).toISOString().slice(0,10),slot=prefs.digest_times.map(clock=>({clock,at:Date.parse(day+'T'+clock+':00+03:00')})).filter(s=>s.at<=now&&s.at>=prefs.activated_at&&now-s.at<DIGEST_CATCHUP_MS).sort((a,b)=>a.at-b.at).at(-1);if(!slot)return;
  const key=day+':'+slot.clock;
- const claim=await env.DB.prepare("INSERT INTO news_digest_runs(id,state,created_at,attempts) VALUES(?,'sending',?,1) ON CONFLICT(id) DO UPDATE SET state='sending',created_at=excluded.created_at,attempts=attempts+1 WHERE news_digest_runs.state='retry' AND news_digest_runs.next_try<=? AND news_digest_runs.attempts<3").bind(key,now,now).run();if(!claim.meta.changes)return;
- const previous=await env.DB.prepare('SELECT items FROM news_digest_runs WHERE id=?').bind(key).first<{items:string}>();
- let ids=JSON.parse(previous?.items??'[]') as string[];
- if(!ids.length){ids=(await selectionRows(env,prefs.activated_at,undefined,now)).map(r=>r.id);await env.DB.prepare('UPDATE news_digest_runs SET items=? WHERE id=?').bind(JSON.stringify(ids),key).run();}
- if(ids.length){ids=(await selectionRows(env,prefs.activated_at,ids,now)).map(r=>r.id);await env.DB.prepare('UPDATE news_digest_runs SET items=? WHERE id=?').bind(JSON.stringify(ids),key).run();}
- if(!ids.length){await env.DB.prepare("UPDATE news_digest_runs SET state='empty' WHERE id=?").bind(key).run();return;}
- try{const delivered=await sender(env,prefs.activated_at,ids);const actual=Array.isArray(delivered)?delivered:ids;await env.DB.prepare('UPDATE news_digest_runs SET state=?,items=? WHERE id=?').bind(actual.length?'sent':'empty',JSON.stringify(actual),key).run();}
- catch(e){const retry=e instanceof TelegramError&&e.code===429;await env.DB.prepare('UPDATE news_digest_runs SET state=?,error=?,next_try=? WHERE id=?').bind(retry?'retry':e instanceof TelegramError&&e.failure==='permanent'?'failed':'uncertain','selection_delivery_failed',now+(e instanceof TelegramError?e.retryAfter:60)*1000,key).run();}
+ const planHash=await sha256(JSON.stringify({version:1,rule:NEWS_RULE_VERSION,catalog:COMPANY_CATALOG_VERSION,scope:{entities:prefs.entities,watchlist:prefs.watchlist,times:prefs.digest_times,activated_at:prefs.activated_at}}));
+ let receipt=await env.DB.prepare('SELECT state,items,error FROM news_digest_runs WHERE id=?').bind(key).first<{state:string;items:string;error:string|null}>();
+ if(!receipt){
+  const ids=(await selectionRows(env,prefs.activated_at,undefined,now,-1)).map(r=>r.id);
+  // Freeze the winning slot snapshot first; page planning resumes idempotently after a crash.
+  const snapshot=JSON.stringify(ids),hash=await sha256(snapshot);
+  await env.DB.prepare("INSERT OR IGNORE INTO news_digest_runs(id,state,created_at,items,error) VALUES(?,'planning',?,?,?)").bind(key,now,snapshot,JSON.stringify({snapshot_sha256:hash,plan_hash:planHash})).run();
+  receipt=await env.DB.prepare('SELECT state,items,error FROM news_digest_runs WHERE id=?').bind(key).first<{state:string;items:string;error:string|null}>();
+ }
+ if(!receipt||!['planning','paged'].includes(receipt.state))return;
+ let savedPlan='';try{savedPlan=JSON.parse(receipt.error??'{}').plan_hash;}catch{}
+ if(savedPlan!==planHash){await env.DB.batch([env.DB.prepare("UPDATE news_digest_runs SET state='blocked' WHERE id=?").bind(key),env.DB.prepare("UPDATE news_digest_pages SET state='deferred' WHERE slot_id=? AND state IN ('pending','retry')").bind(key)]);return;}
+ if(receipt.state==='planning'){
+  const frozen=JSON.parse(receipt.items) as string[],statements=[];
+  for(let i=0;i<frozen.length;i+=10)statements.push(env.DB.prepare("INSERT OR IGNORE INTO news_digest_pages(slot_id,page,items,updated_at,expires_at) VALUES(?,?,?,?,?)").bind(key,i/10,JSON.stringify(frozen.slice(i,i+10)),now,slot.at+DIGEST_CATCHUP_MS));
+  statements.push(env.DB.prepare("UPDATE news_digest_runs SET state=? WHERE id=? AND state='planning'").bind(frozen.length?'paged':'empty',key));
+  await env.DB.batch(statements);if(!frozen.length)return;
+ }
+ // One bounded page per tick; a global per-slot pacing timestamp also respects 429.
+ const paced=await env.DB.prepare("UPDATE news_digest_runs SET next_try=? WHERE id=? AND next_try<=? AND state='paged'").bind(now+1000,key,now).run();if(!paced.meta.changes)return;
+ const page=await env.DB.prepare("SELECT page,items FROM news_digest_pages WHERE slot_id=? AND state IN ('pending','retry') AND next_try<=? AND attempts<3 ORDER BY page LIMIT 1").bind(key,now).first<{page:number;items:string}>();
+ if(page){
+  const claimed=await env.DB.prepare("UPDATE news_digest_pages SET state='sending',attempts=attempts+1,updated_at=? WHERE slot_id=? AND page=? AND state IN ('pending','retry')").bind(now,key,page.page).run();if(!claimed.meta.changes)return;
+  await env.DB.prepare('UPDATE news_digest_runs SET next_try=? WHERE id=?').bind(now+1000,key).run();
+  const planned=JSON.parse(page.items) as string[],ids=(await selectionRows(env,prefs.activated_at,planned,now)).map(r=>r.id);
+  try{
+   const result=ids.length?await sender(env,prefs.activated_at,ids,{page:page.page+1,total:Math.ceil(JSON.parse(receipt.items).length/10)}):[];
+   const actual=Array.isArray(result)?result:result?.ids??ids;
+   const messageId=result&&!Array.isArray(result)?result.message_id:null;
+   if(actual.some(id=>!ids.includes(id))||new Set(actual).size!==actual.length)throw Error('invalid_delivery_receipt');
+   await env.DB.prepare('UPDATE news_digest_pages SET state=?,actual_items=?,expired_count=?,updated_at=?,message_id=? WHERE slot_id=? AND page=?').bind(actual.length?'sent':'empty',JSON.stringify(actual),planned.length-actual.length,now,messageId,key,page.page).run();
+  }catch(e){
+   const retry=e instanceof TelegramError&&e.code===429,until=now+(e instanceof TelegramError?Math.max(1,e.retryAfter):60)*1000;
+   await env.DB.prepare('UPDATE news_digest_pages SET state=?,error=?,next_try=?,updated_at=? WHERE slot_id=? AND page=?').bind(retry?'retry':e instanceof TelegramError&&e.failure==='permanent'?'failed':'uncertain','selection_delivery_failed',until,now,key,page.page).run();
+   if(retry)await env.DB.prepare('UPDATE news_digest_runs SET next_try=? WHERE id=?').bind(until,key).run();
+  }
+ }
+ await env.DB.prepare("UPDATE news_digest_pages SET state='failed',error='retry_budget_exhausted' WHERE slot_id=? AND state='retry' AND attempts>=3").bind(key).run();
+ const states=(await env.DB.prepare('SELECT state FROM news_digest_pages WHERE slot_id=?').bind(key).all<{state:string}>()).results.map(r=>r.state);
+ if(!states.some(s=>['pending','retry','sending'].includes(s)))await env.DB.prepare('UPDATE news_digest_runs SET state=? WHERE id=?').bind(states.includes('uncertain')?'uncertain':states.includes('failed')?'failed':states.includes('sent')?'sent':'empty',key).run();
 }

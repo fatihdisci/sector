@@ -22,5 +22,5 @@ test('429 retry retains bounded receipt and uncertain transport never repeats',a
 test('retry drops stale frozen IDs without sending; receipts record only actual rendered IDs',async()=>{mock.timers.enable({apis:['Date'],now:t});try{
  const env=await setup();let n=0;const sender=async()=>{n++;throw new TelegramError(429,1,'retryable');};await scheduledSelection(env,t+3600000,sender);
  await env.DB.prepare("UPDATE news_candidates SET expires_at=?").bind(t).run();await scheduledSelection(env,t+3602000,sender);assert.equal(n,1);assert.equal((await env.DB.prepare('SELECT state FROM news_digest_runs').first<any>()).state,'empty');
- const second=await setup();let sent:string[]=[];await scheduledSelection(second,t,async(_e,_s,ids)=>{sent=ids!.slice(0,1);return sent;});assert.deepEqual(JSON.parse((await second.DB.prepare('SELECT items FROM news_digest_runs').first<any>()).items),sent);
+ const second=await setup();let sent:string[]=[];await scheduledSelection(second,t,async(_e,_s,ids)=>{sent=ids!.slice(0,1);return sent;});assert.deepEqual(JSON.parse((await second.DB.prepare('SELECT actual_items AS items FROM news_digest_pages').first<any>()).items),sent);
  }finally{mock.timers.reset();}});
