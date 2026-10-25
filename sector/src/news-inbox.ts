@@ -17,10 +17,12 @@ export function previewDuplicate(a:string,b:string):boolean {
  return subject(a)===subject(b)&&numbers(a)===numbers(b)&&titleSimilarity(a,b)>=.9;
 }
 
-type ProgressCard={id:string;message_id:number;title:string;summary:string;url:string;config:string;status:string;job_state:string|null;delivery_state:string|null};
-export function newsProgressNote(row:Pick<ProgressCard,'status'|'job_state'|'delivery_state'>,paused=false):string {
+type ProgressCard={id:string;message_id:number;title:string;summary:string;url:string;config:string;status:string;error?:string|null;job_state:string|null;delivery_state:string|null};
+export function newsProgressNote(row:Pick<ProgressCard,'status'|'job_state'|'delivery_state'|'error'>,paused=false):string {
  if(row.delivery_state==='sent')return 'Tweet ve görsel hazırlandı.';
  if(row.delivery_state==='waiting'||row.delivery_state==='sending')return 'Tweet ve görsel hazır, Telegram’a iletiliyor.';
+ if(row.status==='needs_review')return 'Kaynak eksiksiz okunamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi.';
+ if(row.status==='queued'&&row.error)return 'Kaynak okuma hatası oluştu; sınırlı yeniden deneme bekleniyor.';
  if(row.job_state==='leased')return 'Tweet ve görsel hazırlanıyor; kaynak ve sayılar kontrol ediliyor.';
  if(paused||row.job_state==='paused')return 'İsteğin kaydedildi. İçerik hazırlama geçici olarak beklemede; otomatik devam edecek.';
  if(row.job_state==='queued'||row.job_state==='retry_pending')return 'İsteğin sırada. Önce başlayan içerik tamamlanınca hazırlanacak.';
@@ -115,7 +117,7 @@ export async function refreshNewsRequests(env:Env):Promise<void>{
   const changed=await env.DB.prepare("UPDATE news_cards SET state='failed' WHERE id=? AND state IN ('requested','model_queued')").bind(r.id).run();
   const deliveryProblem=['uncertain','failed','suppressed'].includes(r.delivery_state??'');
   const known=r.draft_id?await deliveryTarget(env,r.draft_id,r.draft_message_id):undefined;
-  const note=r.delivery_state==='suppressed'?'Bu içerik güncel gönderim tercihlerine göre kapatıldı.':deliveryProblem?(r.delivery_state==='uncertain'&&!known?'Tweet ve görsel hazır, ancak teslimat doğrulanamadı. Mesaj gelmiş olabilir. Aynı düğme güvenli yeniden gönderim seçeneğini açar.':'Tweet ve görsel hazır. Teslimatı aynı düğmeyle yeniden deneyebilirsin; AI tekrar çalışmaz.'):'Taslak doğrulanamadı. Aynı düğmeyle yeniden deneyebilirsin.';
+  const note=r.delivery_state==='suppressed'?'Bu içerik güncel gönderim tercihlerine göre kapatıldı.':deliveryProblem?(r.delivery_state==='uncertain'&&!known?'Tweet ve görsel hazır, ancak teslimat doğrulanamadı. Mesaj gelmiş olabilir. Aynı düğme güvenli yeniden gönderim seçeneğini açar.':'Tweet ve görsel hazır. Teslimatı aynı düğmeyle yeniden deneyebilirsin; AI tekrar çalışmaz.'):r.error?.startsWith('gallery_')?'Galerinin sayfa ve tablo bütünlüğü doğrulanamadı. Eksik veriden içerik üretilmedi. Kaynak düzeltildikten sonra yeniden deneyebilirsin.':'Taslak doğrulanamadı. Aynı düğmeyle yeniden deneyebilirsin.';
   if(changed.meta.changes&&env.MODE==='telegram_review')await telegram(env,'editMessageText',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(r.message_id),text:previewText(JSON.parse(r.config).name,r.title,r.summary)+'\n\n'+note,link_preview_options:JSON.stringify({is_disabled:true}),reply_markup:JSON.stringify(await previewMarkup(env,r.id,r.url))})).catch(()=>{});
  }
 }

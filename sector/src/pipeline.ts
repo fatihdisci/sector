@@ -1,3 +1,4 @@
+import {saveGallery} from './gallery-save';
 import {readMedia} from './media-set';
 import {scheduledSelection} from './newsroom';
 import {recordNewsCandidate,newsPreferences} from './news-routing';
@@ -75,6 +76,7 @@ export async function prepare(env:Env):Promise<void> {
    if(!documents.length)throw Error('x_evidence_empty');
    for(const d of documents)d.family=evidenceFamily(d);const doc=documents[0];
    if(['spk-x','fintables-x'].includes(source.id)){article.document=JSON.stringify({...JSON.parse(article.document!),cached_documents:documents});await env.DB.prepare('UPDATE articles SET document=?,document_expires=? WHERE id=?').bind(article.document,time+7*86400,article.id).run();}
+   if(doc.gallery_range){await saveGallery(env,article,doc,time);continue;}
    const kap=(registry as Source[]).find(s=>s.id==='kap');
    for(const url of doc.primary_urls??[])if(kap)try{documents.push(await readDocument({title:doc.title,url,summary:'',published_at:doc.published_at},kap));}catch{/* Missing primary document leaves attribution intact, never an invented official confirmation. */}
    // Merge closely matching reports before generating. Unrelated companies,
@@ -97,8 +99,8 @@ export async function prepare(env:Env):Promise<void> {
     env.DB.prepare("UPDATE news_cards SET state='model_queued' WHERE article_id=? AND state='requested'").bind(article.id)
    ]);
   } catch(e) {
-   const count=article.attempts+1;
-   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(count>=3?'needs_review':'queued',count,time+Math.min(3600,120*2**count),errorCode(e),article.id).run();
+   const count=article.attempts+1,permanent=/^gallery_/.test(errorCode(e));
+   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(permanent||count>=3?'needs_review':'queued',count,time+Math.min(3600,120*2**count),errorCode(e),article.id).run();
   }
  }
 }

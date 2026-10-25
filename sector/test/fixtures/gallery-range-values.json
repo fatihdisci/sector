@@ -1,0 +1,217 @@
+{
+  "note": "Real source numeric values only; HTML test pages are synthetic and not production approvals.",
+  "source_url": "https://www.cnbce.com/borsa/bist-30da-zirveden-yuzde-60a-varan-uzaklik-iste-100-gunluk-dip-zirve-tablosu-g40249",
+  "source_sha256": "330f4b489d8edd46a283097c62ad0bf59b8465c2431e142991e80961739da18e",
+  "rows": [
+    {
+      "ticker": "ASTOR",
+      "low": "139,70",
+      "high": "353,69",
+      "fromLow": "2,08",
+      "fromHigh": "59,68"
+    },
+    {
+      "ticker": "SASA",
+      "low": "1,48",
+      "high": "3,06",
+      "fromLow": "8,11",
+      "fromHigh": "47,71"
+    },
+    {
+      "ticker": "GUBRF",
+      "low": "298,50",
+      "high": "527,60",
+      "fromLow": "0,00",
+      "fromHigh": "43,42"
+    },
+    {
+      "ticker": "MGROS",
+      "low": "421,00",
+      "high": "712,50",
+      "fromLow": "2,49",
+      "fromHigh": "39,44"
+    },
+    {
+      "ticker": "TOASO",
+      "low": "213,30",
+      "high": "358,25",
+      "fromLow": "4,36",
+      "fromHigh": "37,86"
+    },
+    {
+      "ticker": "TRALT",
+      "low": "34,38",
+      "high": "56,80",
+      "fromLow": "4,54",
+      "fromHigh": "36,72"
+    },
+    {
+      "ticker": "PGSUS",
+      "low": "120,00",
+      "high": "187,20",
+      "fromLow": "3,92",
+      "fromHigh": "33,39"
+    },
+    {
+      "ticker": "PETKM",
+      "low": "17,30",
+      "high": "26,80",
+      "fromLow": "4,39",
+      "fromHigh": "32,61"
+    },
+    {
+      "ticker": "TRMET",
+      "low": "100,00",
+      "high": "150,10",
+      "fromLow": "3,10",
+      "fromHigh": "31,31"
+    },
+    {
+      "ticker": "TTKOM",
+      "low": "43,98",
+      "high": "66,20",
+      "fromLow": "4,68",
+      "fromHigh": "30,45"
+    },
+    {
+      "ticker": "EREGL",
+      "low": "31,60",
+      "high": "45,10",
+      "fromLow": "0,00",
+      "fromHigh": "29,93"
+    },
+    {
+      "ticker": "SISE",
+      "low": "32,44",
+      "high": "48,28",
+      "fromLow": "4,44",
+      "fromHigh": "29,83"
+    },
+    {
+      "ticker": "FROTO",
+      "low": "62,30",
+      "high": "92,30",
+      "fromLow": "4,41",
+      "fromHigh": "29,52"
+    },
+    {
+      "ticker": "THYAO",
+      "low": "247,80",
+      "high": "355,50",
+      "fromLow": "4,12",
+      "fromHigh": "27,43"
+    },
+    {
+      "ticker": "AEFES",
+      "low": "15,35",
+      "high": "22,31",
+      "fromLow": "5,67",
+      "fromHigh": "27,29"
+    },
+    {
+      "ticker": "EKGYO",
+      "low": "16,48",
+      "high": "22,48",
+      "fromLow": "3,28",
+      "fromHigh": "24,29"
+    },
+    {
+      "ticker": "ENKAI",
+      "low": "71,05",
+      "high": "97,80",
+      "fromLow": "4,86",
+      "fromHigh": "23,82"
+    },
+    {
+      "ticker": "AKBNK",
+      "low": "60,40",
+      "high": "83,00",
+      "fromLow": "4,88",
+      "fromHigh": "23,67"
+    },
+    {
+      "ticker": "TCELL",
+      "low": "84,85",
+      "high": "116,30",
+      "fromLow": "6,19",
+      "fromHigh": "22,53"
+    },
+    {
+      "ticker": "ISCTR",
+      "low": "11,64",
+      "high": "15,54",
+      "fromLow": "4,55",
+      "fromHigh": "21,69"
+    },
+    {
+      "ticker": "YKBNK",
+      "low": "30,80",
+      "high": "44,20",
+      "fromLow": "12,60",
+      "fromHigh": "21,54"
+    },
+    {
+      "ticker": "VAKBN",
+      "low": "28,52",
+      "high": "38,08",
+      "fromLow": "5,40",
+      "fromHigh": "21,06"
+    },
+    {
+      "ticker": "KRDMD",
+      "low": "35,74",
+      "high": "48,44",
+      "fromLow": "8,00",
+      "fromHigh": "20,31"
+    },
+    {
+      "ticker": "ASELS",
+      "low": "318,50",
+      "high": "412,75",
+      "fromLow": "6,12",
+      "fromHigh": "18,11"
+    },
+    {
+      "ticker": "BIMAS",
+      "low": "351,13",
+      "high": "443,25",
+      "fromLow": "6,23",
+      "fromHigh": "15,85"
+    },
+    {
+      "ticker": "SAHOL",
+      "low": "82,10",
+      "high": "103,30",
+      "fromLow": "5,97",
+      "fromHigh": "15,78"
+    },
+    {
+      "ticker": "KCHOL",
+      "low": "180,20",
+      "high": "232,50",
+      "fromLow": "9,60",
+      "fromHigh": "15,05"
+    },
+    {
+      "ticker": "TAVHL",
+      "low": "241,63",
+      "high": "306,20",
+      "fromLow": "9,67",
+      "fromHigh": "13,46"
+    },
+    {
+      "ticker": "TUPRS",
+      "low": "211,31",
+      "high": "416,78",
+      "fromLow": "70,72",
+      "fromHigh": "13,44"
+    },
+    {
+      "ticker": "GARAN",
+      "low": "117,80",
+      "high": "145,10",
+      "fromLow": "7,39",
+      "fromHigh": "12,82"
+    }
+  ]
+}
