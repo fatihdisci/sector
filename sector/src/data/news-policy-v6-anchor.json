@@ -8,7 +8,7 @@
   "scope_hash": "d41f0f4095111e033bf3fd717f92173f6b0d51929a47ef3a5d52929cbd10b24e",
   "entity_hash": "38d5608f5f23f6e1fd29d62b09befad6247ee144ce99cd8ba7a8d6323afb9be0",
   "code_files": {
-    "src/news-routing.ts": "5cf86c506799f41fe951becc1260201b746d056bcdf3796c31506d262c30e16f",
+    "src/news-routing.ts": "523d0e4d256de93dac945da1cd38c4a5a678c3ebecbfdee3fec26a341a33800e",
     "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
     "src/newsroom.ts": "726b712d8d65b1f425aca60b44eb51bea9fab4cf6162d1d4d506db1f76229a2c",
     "src/news-event-matching.ts": "78008cc7ab87cfac839b815523babc60d8f24c2fbeb0bd8d535263aae7bc5381"

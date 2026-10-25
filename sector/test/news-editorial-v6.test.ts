@@ -35,3 +35,9 @@ test('real cross-source detention copies use one persisted group without merging
  assert.equal(new Set(groups).size,1);
  const a=await recordNewsCandidate(env,fresh('094978f17d2a70784b44685e829ae70b'),source,true,now,DEFAULT_NEWS_PREFERENCES),b=await recordNewsCandidate(env,fresh('fc54798992a2272ddcde122175569b4d'),source,true,now,DEFAULT_NEWS_PREFERENCES);assert.notEqual(a.group,b.group);
 });
+test('an existing version decision and timestamp are never rewritten by a repeated scan',async()=>{
+ const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8')),env={DB}as any,a=fresh('921f7126e761ce5ad9a3d9239ed144a2'),b={...a,title:a.title.replace('500','600')};
+ await recordNewsCandidate(env,a,source,true,now,DEFAULT_NEWS_PREFERENCES);const v=await recordNewsCandidate(env,b,source,true,now,DEFAULT_NEWS_PREFERENCES);
+ await DB.prepare("update news_candidates set route='digest',rule_version='historical',evaluated_at=123 where id=?").bind(v.id).run();
+ const repeated=await recordNewsCandidate(env,b,source,true,now+1,DEFAULT_NEWS_PREFERENCES);assert.equal(repeated.decision.route,'digest');const row=await DB.prepare('select rule_version,evaluated_at from news_candidates where id=?').bind(v.id).first<any>();assert.equal(row.rule_version,'historical');assert.equal(row.evaluated_at,123);
+});
