@@ -18,7 +18,7 @@ Gerçek inceleme için:
 
 `system_state.news_filter_readiness` JSON'u `NewsReadinessRecord` tipindedir (`src/news-readiness.ts`). Gerekli alanlar:
 
-- `version`: `NEWS_READINESS_VERSION` (şu anda 1), `rule_version`: rapordaki güncel kural sürümü.
+- `version`: `NEWS_READINESS_VERSION` (şu anda 2), `rule_version`: rapordaki güncel kural sürümü.
 - `entity_review`: `hash` rapordaki şirket hash'i; `reviewer` sahip Telegram kimliği; `reviewed_at` gerçek inceleme zamanı (epoch milisaniye); `sources` her kod için `{code,url,checked_at}`. Resmî bağlantı yalnız referanstır; gerçek insan kaynak kontrolünün yerine geçmez.
 - `scope_review`: aynı reviewer/zaman alanları, `hash` rapordaki kapsam hash'i.
 - `evaluation_review`: aynı reviewer/zaman alanları, `hash` rapordaki etiketli örneklem hash'i ve gerçek insan kabulünden sonra `accepted=true`.
@@ -28,3 +28,15 @@ Gelecek tarihli inceleme, başka inceleyici, eski sürüm, değişmiş sözlük/
 Seçki kapalıysa belirsiz fakat önemli şirket haberleri yalnız seçkiye düşüp görünmez kalabilir. Bu sürüm seçki kapalı veya saatsizken aktif moda geçişi engeller; haberleri sessizce arşive atmaz. Geçerli `activated_at` olmadan da geçiş olmaz. Hazırlık yoksa etkili mod gölgedir; eski bildirim filtresi sürer. Seçkiyi açmadan aktif filtre kullanmak için ileride açıkça tasarlanıp incelenmiş başka bir görünür teslim yolu gerekir.
 
 Onaylı geçişte önizleme başlangıcı ve `activated_at` gerçek geçiş anına ayarlanmalı; eski arşiv Telegram'a boşaltılmamalıdır. Geri dönüş `mode=shadow`, ayrı seçki kapalı ve önizleme başlangıcı dönüş anına alınarak yapılır; kaynaklar, teslim makbuzları ve uncertain kayıtları silinmez veya tekrar oynatılmaz. Bunlar bu çalışma sırasında uygulanmadı.
+
+## Sürüm 2: gerçek taze yayın bağlamı onayları
+
+`fresh_publication_owner_review` ayrı bir inceleme kaynağıdır. Onay kaynağı/soru/yanıt referansları ve orijinal örnek/kod/katalog/kapsam hash'leri `news-owner-review-anchor.json` içindeki doğrulanmış referansla eşleşmelidir. Bu dosya yeni onay üretmez; mevcut sahibin belirli paketini tanımlar. Asıl özel paket `system_state.news_owner_review_binding` içinde tutulur; haber metinleri veya kullanıcı seçimleri Git'e eklenmez.
+
+Yeni adapter, onaylanmış sınıflandırma ve teslim dosyalarının birebir aynı kalmasını şart koşar. Eski `news-readiness.ts` hash'i yeni kodun hash'i gibi gösterilmez: orijinal kod hash'i korunur, hazırlık adapter sürümü ve çalışan kaynak dosyalarının yeni parmak izi ayrıca raporlanır. Kural/katalog/kapsam değişikliği bu onayı otomatik taşımaz. Kayıtlar sahibin gerçek kimliğiyle, tam ve tekil örnek kümesiyle, değişmez kaynak görüntüsüyle ve her satırdaki kaynak/bağlam kanıtıyla eşleşmelidir. Sahte/kayıp kaynak, eksik/tekrarlı örnek, stale hash, üç rota veya eski filtre tarafı eksikliği reddedilir.
+
+Geçerli pakette `metrics` taze bağlamı ölçer, `metric_basis` bunu açıklar; `historical_metrics` ve eski labels ayrı kalır. Her örnek yayın + 1 dakika simülasyonuyla yeniden değerlendirilir; bu geçmişte verilmiş gerçek karar veya tarihsel doğruluk oranı değildir. Kabul edilen etiketler çıktıyı zorla değiştirmez; ölçülen kritik hatalar aktivasyonu yine engeller. Beğeniler kullanılmaz.
+
+Mevcut onaylı 12 örnek 2 anlık / 8 seçki / 2 arşiv olarak doğrulanmıştır. Bu, 710 şirketin tüm resmî unvan/alias eşleştirmesinin insan tarafından tek tek incelendiği anlamına gelmez. `entity_review` ve `scope_review` kapıları korunur; eksik kodlar `missing_evidence.company_codes` içinde ayrı raporlanır. Aynı 12 örnek için yeniden onay istenmez.
+
+Yerel `scripts/bind_owner_review.ts <database> <private-binding.json>` varsayılan salt okunur doğrulama yapar; açık `--apply` yalnız doğrulanan bağlam paketini, eski kayıt üzerine yazmadan ekler. `TELEGRAM_USER_ID` güvenli ortamdan alınır. Güncel DB yedeği ve kontrollü kurulum olmadan üretimde çalıştırılmaz. Tercih, oy, tarihsel etiket, TEST veya yayın makbuzu değiştirmez.

@@ -1,0 +1,19 @@
+{
+  "context": "fresh_publication_owner_review",
+  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; question:Sentinel_fa4f5e1442888191960ea833fbd582cb; owner_answer:Sentinel_22ec5289383c8191be6646295d350e78",
+  "rule_version": "investor-v3",
+  "catalog_version": "kap-companies-2026-10-23-v2-9349306c1bc7",
+  "code_hash": "0c5d15dd7ef8ffb03873ab71e9767ea0dd6d13b53e411938b28e0bc3ede24d80",
+  "catalog_hash": "cffbff22a41205bc088e2485e279deae52c49ee3b4f328c6cfd24585bfd11958",
+  "scope_hash": "ceb1494cdb0951f21b8ac6d58a7692e579d578b7fc2af64402864cc6eb83a0f9",
+  "sample_hash": "5f271abb3a76b70ea132e6d92ce8bc54e448df88c31e92e745ddc975489e92ea",
+  "code_files": {
+    "src/newsroom.ts": "726b712d8d65b1f425aca60b44eb51bea9fab4cf6162d1d4d506db1f76229a2c",
+    "src/news-routing.ts": "416cd6713d05802f18b99fe876442f00d036ec2a718d98966120027e8336488b",
+    "src/news-company-catalog.ts": "f3b54beb7c9d0c985fa9a315112999ef3cc7e9e6e7c7047925229b7c0845fd58",
+    "src/news-readiness.ts": "405d7ed4acd4bac361643fa58179938518478675b024cb43cbcd5d9187dc18be"
+  },
+  "snapshot_hash": "5e630206f0fdd55e89b3e239bde18b52384063864a5a992334993b266649022d",
+  "basis": "Owner approved fresh-publication editorial route; no historical first-decision assertion; source snapshot 2026-10-25 08:30 TRT",
+  "adapter_version": 1
+}
