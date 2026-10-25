@@ -76,7 +76,7 @@ export function parseDisclosure(html:string,id:number):Disclosure {
 }
 export interface Listing {id:number;publishedAt:string;}
 export function parseListing(value:unknown,now=Date.now()):Listing[] {
- if(!Array.isArray(value)||!value.length||value.length>10000)throw new Error('kap_listing_shape');
+ if(!Array.isArray(value)||value.length>10000)throw new Error('kap_listing_shape');
  const result=value.map(x=>{const row=object(x);if(!Number.isSafeInteger(row.disclosureIndex)||Number(row.disclosureIndex)<=0)throw new Error('kap_listing_id');string(row.subject,'subject',true);return {id:Number(row.disclosureIndex),publishedAt:kapDate(row.publishDate,true)};});
  if(new Set(result.map(x=>x.id)).size!==result.length||result.some(x=>Date.parse(x.publishedAt)>now+300_000))throw new Error('kap_listing_invalid');
  return result.sort((a,b)=>a.id-b.id);
