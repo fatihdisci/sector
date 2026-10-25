@@ -1,0 +1,9 @@
+# investor-v5 owner-review successor
+
+The original investor-v3 package, twelve immutable rows, source snapshot and pinned hashes remain unchanged. A versioned successor explicitly binds the original sample hash to the real new scope acceptance (question Sentinel_45941e200f688191b75264d21865e08c, owner answer Sentinel_14ca8d520d6c81918343c94275ea103c). The recorded timestamp is the actual receipt recording time, not an invented user message timestamp.
+
+The successor anchor pins the new rule/catalog/scope, exact classifier/delivery file hashes and the baseline semantic hash for all twelve source examples. Runtime binding additionally pins the actual runtime artifact hash. The original checks still validate every original approval row and source snapshot. A successor cannot change the original package or labels. The fresh-publication rerun must match route/reasons/equity codes/event/stage for every example; changed or incomplete examples reject the whole transition. Historical feedback and measured production performance are not manufactured.
+
+Negative tests cover forged/missing acceptance source, version/parent/owner/time/artifact hash mismatch, changed rule/catalog/scope, absent or duplicate samples and changed semantics. An isolated read-only preflight against the actual twelve rows yields ready=true with 2 instant / 8 digest / 2 archive after the real scope record is supplied virtually. No live write is implied by preflight. Live installation and activation require the exact new release CI, consistent current backup, verified news-only stage, runtime artifact equality and actual gate/health checks.
+
+The TEST 3189 receipt remains one successful attempt with three examples, not a real multipage scheduled-delivery test. No new real TEST or X post is authorized by this code.
