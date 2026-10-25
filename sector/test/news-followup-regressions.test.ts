@@ -1,7 +1,7 @@
 import test from'node:test';import assert from'node:assert/strict';import rows from'./fixtures/news-followup-real.json';import{sameNewsEvent}from'../src/news-event-matching';import{evaluateNews,DEFAULT_NEWS_PREFERENCES}from'../src/news-routing';
 const find=(id:string)=>rows.find(r=>r.id===id)!,fresh=(r:any)=>evaluateNews(r,{id:r.source_id}as any,DEFAULT_NEWS_PREFERENCES,Date.parse(r.published_at)+60000);
 test('same canonical Fed article survives a rewritten headline; real decisions/amounts/periods remain separate',()=>{
- const a=find('9f80f2beb977cba38af2737f4f91bf94'),b=find('9542c853217f395546f5dc8802c8703f');assert(sameNewsEvent(a,b));assert(!sameNewsEvent(a,{...b,title:'Fed politika faizini indirdi'}));assert(!sameNewsEvent(a,{...b,summary:b.summary.replace('100','101')}));assert(!sameNewsEvent({...a,title:'Fed ilk yarı beklentileri'},{...a,title:'Fed ikinci yarı beklentileri'}));
+ const a=find('9f80f2beb977cba38af2737f4f91bf94'),b=find('9542c853217f395546f5dc8802c8703f');assert(sameNewsEvent(a,b));assert(!sameNewsEvent(a,{...b,title:'Fed Ocak kararında faiz artırımında birleşti'}));assert(!sameNewsEvent(a,{...b,title:'Fed politika faizini indirdi'}));assert(!sameNewsEvent(a,{...b,summary:b.summary.replace('100','101')}));assert(!sameNewsEvent({...a,title:'Fed ilk yarı beklentileri'},{...a,title:'Fed ikinci yarı beklentileri'}));
 });
 test('concrete Chinese FDI figures outrank a technology keyword without opening generic technology',()=>{
  assert.equal(fresh(find('1d0b25950c112f661812c2f8190c9787')).route,'digest');assert(fresh(find('1d0b25950c112f661812c2f8190c9787')).reasons.includes('concrete_economic_data'));

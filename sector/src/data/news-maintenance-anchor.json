@@ -1,7 +1,7 @@
 {
   "version": 1,
   "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; editorial_owner_answer:Sentinel_0941a660cdbc8191afa5b9a072958d0d; gallery_question:Sentinel_3608e79da98c8191902b7239ff7b971d; gallery_owner_answer:Sentinel_090bca9498708191bf47088975b0c717",
-  "recorded_at": 1792957980722,
+  "recorded_at": 1792959098178,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -27,7 +27,7 @@
     "src/newsroom.ts": "41a8164c8da1baff8831b5ce419f9388039f0223d7440b4e3d34b524c45029fe",
     "src/news-readiness.ts": "16e5c25089018de533f7cb1168330ee27655348f3eff7b4383f7b198e305f86a",
     "src/news-owner-review.ts": "bd907f83423a5b92343797769c4d23512ed9a9c818efb0844d4617fe4c81233d",
-    "src/news-event-matching.ts": "ca54095f96fd8a4294f748ddb33c3de222aef0ac6b31e3a0bbc0aa75960e1cdb",
+    "src/news-event-matching.ts": "ca0bbd112f5d92368734323dd88a81225e12fba8480b3670b7f0af80c870de5c",
     "src/news-schedule-review.ts": "74788f3d3636cbc748580a39d34b2828cd77a46179f42f7dedffa7c6ab5b3f0f",
     "src/news-maintenance-review.ts": "5095188de5a6ee6ccc3c3aff9ef8796c7c501ae03fa0b821cd6ef3f888a08e4e",
     "src/article.ts": "997687f537f7a1864065a04219eeb078bd8994e3b0ed8ed508045a22e267b3db",
