@@ -13,7 +13,7 @@ export function sameNewsEvent(a:Story,b:Story){
  const aa=eventFold(a.title+' '+(a.summary??'')),bb=eventFold(b.title+' '+(b.summary??''));
  const quantities=(r:Story)=>[...new Set(((r.title+' '+(r.summary??'')).replace(/−/g,'-').match(/[+-]?\d+(?:[.,]\d+)*/g)??[]).map(n=>n.replace(/^\+/,'')))].sort().join('|');
  if(quantities(a)!==quantities(b))return false;
- const periods=(t:string)=>[...new Set(eventFold(t).match(/\b(?:ilk|ikinci|ucuncu|dorduncu|son) (?:ceyrek|yari|ay|yil)\b/g)??[])].sort().join('|');
+ const periods=(t:string)=>[...new Set(eventFold(t).match(/\b(?:(?:ilk|ikinci|ucuncu|dorduncu|son) (?:ceyrek|yari|ay|yil)|ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)\b/g)??[])].sort().join('|');
  if(periods(a.title+' '+(a.summary??''))!==periods(b.title+' '+(b.summary??'')))return false;
  const actions=(t:string)=>[...new Set(eventFold(t).match(/\b(?:artirdi|indirdi|sabit tuttu|imzaladi|iptal etti|onayladi|yururluge girdi|tutuklandi|gozaltina alindi|yakalama karari)\b/g)??[])].sort().join('|');
  if(actions(a.title)!==actions(b.title))return false;
