@@ -6,7 +6,7 @@ import {articleURL,sameNewsEvent,legalStage,eventFold} from './news-event-matchi
 import {titleSimilarity} from './dedupe';
 export const NEWS_RULE_VERSION='investor-v6';
 export type NewsRoute='instant'|'digest'|'archive';
-export type NewsPreferences={mode:'shadow'|'active';approved_by_owner:boolean;digest_enabled:boolean;digest_times:string[];activated_at:number;watchlist:string[];entities:{name:string;code:string;verified:boolean;issuer_oid?:string;index?:30|100;excluded_contexts?:string[]}[];requested_mode?:'shadow'|'active';readiness_reasons?:string[]};
+export type NewsPreferences={mode:'shadow'|'active';approved_by_owner:boolean;digest_enabled:boolean;digest_times:string[];activated_at:number;schedule_since?:number;watchlist:string[];entities:{name:string;code:string;verified:boolean;issuer_oid?:string;index?:30|100;excluded_contexts?:string[]}[];requested_mode?:'shadow'|'active';readiness_reasons?:string[]};
 export const DEFAULT_NEWS_PREFERENCES:NewsPreferences={mode:'shadow',approved_by_owner:false,digest_enabled:false,digest_times:['12:30','18:30'],activated_at:0,watchlist:[],entities:catalogEntities};
 export const foldNews=(s:string)=>s.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').replace(/[^a-z0-9%]+/g,' ').trim();
 export async function newsPreferences(env:Env):Promise<NewsPreferences>{

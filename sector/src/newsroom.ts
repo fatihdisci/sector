@@ -70,7 +70,7 @@ export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,
  await env.DB.prepare("UPDATE news_digest_pages SET state='uncertain',error='interrupted_send' WHERE state='sending' AND updated_at<?").bind(now-120000).run();
  await env.DB.prepare("UPDATE news_digest_pages SET state='deferred' WHERE state IN ('pending','retry') AND expires_at<=?").bind(now).run();
  await env.DB.prepare("UPDATE news_digest_runs SET state='uncertain',error='interrupted_send' WHERE state='sending' AND created_at<? AND NOT EXISTS(SELECT 1 FROM news_digest_pages p WHERE p.slot_id=news_digest_runs.id)").bind(now-120000).run();
- const day=new Date(now+10800000).toISOString().slice(0,10),slot=prefs.digest_times.map(clock=>({clock,at:Date.parse(day+'T'+clock+':00+03:00')})).filter(s=>s.at<=now&&s.at>=prefs.activated_at&&now-s.at<DIGEST_CATCHUP_MS).sort((a,b)=>a.at-b.at).at(-1);if(!slot)return;
+ const day=new Date(now+10800000).toISOString().slice(0,10),slot=prefs.digest_times.map(clock=>({clock,at:Date.parse(day+'T'+clock+':00+03:00')})).filter(s=>s.at<=now&&s.at>=Math.max(prefs.activated_at,prefs.schedule_since??0)&&now-s.at<DIGEST_CATCHUP_MS).sort((a,b)=>a.at-b.at).at(-1);if(!slot)return;
  const key=day+':'+slot.clock;
  const planHash=await sha256(JSON.stringify({version:1,rule:NEWS_RULE_VERSION,catalog:COMPANY_CATALOG_VERSION,scope:{entities:prefs.entities,watchlist:prefs.watchlist,times:prefs.digest_times,activated_at:prefs.activated_at}}));
  let receipt=await env.DB.prepare('SELECT state,items,error FROM news_digest_runs WHERE id=?').bind(key).first<{state:string;items:string;error:string|null}>();
