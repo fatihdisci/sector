@@ -93,3 +93,15 @@ Main commit/CI, canlı release ile aynı şey değildir. Sonraki yetkili kurulum
 ## Yerel doğrulama
 
 Node 22 TypeScript kontrolü, 415 test (ZIP manifest/kaynak/runtime ve 26 PNG dahil), dry-run build geçti. Proje PDF venv ile 68 Python testi geçti, iki koşullu OCR atlandı; ayrıca macOS Vision için 1 OCR ve 3 gerçek geri alım görsel testi geçti. Beş yeni katalog regresyonu kaynak yeniden üretimi, OID/pay ayrımı, eski eksik önemli kodlar, çoklu sınıf, çakışma ve negatif bağlamı kapsıyor. ZIP değişmedi: `7916100962f698d8482645e053ebda8636c5454bff5de2c52b1c488b7548aec5`.
+
+## Kuruluş kimliğinin yönlendirmeye bağlanması — investor-v5
+
+155 kuruluşun pay türü doğrulanmamış olması, resmî kuruluş kimliğinin kaybolması anlamına gelmez. Kaynak listesindeki OID/unvan/kod ilişkisi artık ayrı `unresolved_issuers` alanında taşınır. Tam resmî unvan veya büyük harfle yazılmış, tek kuruluşla ilişkili 4–5 karakterli kaynak kodu ve şirket olayı bağlamı gerekir. Yeni kısa ad/marka tahmini eklenmedi. Bu kodlar `confidence.codes` doğrulanmış pay listesine girmez. Kuruluş kanıtı tek başına instant veya watchlist önceliği sağlamaz; somut haber güvenli digest rotasına gider. Tazelik, promosyon ve tüketici kataloğu kontrolleri önce uygulanır. KAP kapsamı değişmez.
+
+Sentetik KONTR/KORTS/ISYAT/KENT teknoloji yatırımı+sözleşme ve yalnız sözleşme örneklerinin sekizi de digest, `official_issuer_instrument_unresolved`, equity codes=[], priority=0 sonucu verir. Bunlar gerçek haber veya üretim başarısı ölçümü değildir. Negatif testler: ilgisiz teknoloji, promosyon, perakende katalog, eski tarih, sıradan küçük harfli kent, KOCHL, QNB Yatırım, Borusan ve yabancı Carrefour. Önceki testlerde çoklu pay sınıfı, çakışan alias ve iştirak/negatif bağlam korumaları korunur.
+
+Önceki gerçek 12 etiket yerinde durur. Canlıdaki önceki saf değerlendiriciyle sabit yayın+1 dakika bağlamında rota/gerekçe/kod/olay/aşama karşılaştırmasında 12/12 aynı sonuç vardır. Bu, yeni semantik kapsam için insan kabulü yerine geçmez; hash kapısı gevşetilmedi. Katalog kaynağı/sürümü/hash'i yukarıdaki gibidir; değişen sınıflandırıcı sürümü investor-v5'tir. Yeni kabul kaydı oluşturulmadı.
+
+`src/news-company-catalog.ts` SHA256: `ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa`.
+
+`src/news-routing.ts` SHA256: `62d70b8861a2b1be62370caaa41e54390f79a0350abb7c8eee61f4ea36de8de1`.

@@ -24,3 +24,12 @@ export function explicitEquityCodes(raw:string,fold:(s:string)=>string):string[]
  const known=new Set(catalog.companies.map(c=>c.code));
  return [...new Set([...raw.matchAll(/(?:^|[^A-Za-z0-9])([A-Z][A-Z0-9]{3,4})(?![A-Za-z0-9])/g)].map(m=>m[1]).filter(c=>known.has(c)))];
 }
+
+// Official issuer identity is weaker than instrument-type evidence. Never put these codes in equity output.
+export function unresolvedIssuerMatches(raw:string,fold:(s:string)=>string){
+ const folded=fold(raw),business=/\b(sozlesme\w*|yatirim\w*|bilanco\w*|finansal\w*|ihale\w*|temerrut\w*|sirket\w*|pay\w*|hisse\w*)\b/.test(folded);
+ const names=catalog.issuers.filter(i=>i.unresolved_codes.length).map(i=>({name:i.title,code:i.oid,verified:true}));
+ const titleMatches=new Set(matchingIssuerMentions(folded,names,fold).map(i=>i.code));
+ const tokens=new Set([...raw.matchAll(/(?:^|[^A-Za-z0-9])([A-Z][A-Z0-9]{3,4})(?![A-Za-z0-9])/g)].map(m=>m[1]));
+ return catalog.issuers.filter(i=>i.unresolved_codes.length&&(titleMatches.has(i.oid)||(business&&i.unresolved_codes.some(c=>tokens.has(c)&&catalog.issuers.filter(other=>other.source_codes.includes(c)).length===1)))).map(i=>({oid:i.oid,title:i.title,source_codes:i.unresolved_codes.filter(c=>tokens.has(c)),instrument_status:'unresolved' as const}));
+}
