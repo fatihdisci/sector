@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; question:Sentinel_45941e200f688191b75264d21865e08c; owner_answer:Sentinel_14ca8d520d6c81918343c94275ea103c",
+  "accepted_recorded_at": 1792913056835,
+  "rule_version": "investor-v5",
+  "catalog_version": "kap-equities-2026-10-25-v3-d35b3b466e3b",
+  "catalog_hash": "0cfd919e2e164f84d801eb6d693d20bd0bf4af75b79d95d0dc71a058293f327c",
+  "scope_hash": "d41f0f4095111e033bf3fd717f92173f6b0d51929a47ef3a5d52929cbd10b24e",
+  "entity_hash": "38d5608f5f23f6e1fd29d62b09befad6247ee144ce99cd8ba7a8d6323afb9be0",
+  "code_files": {
+    "src/news-routing.ts": "62d70b8861a2b1be62370caaa41e54390f79a0350abb7c8eee61f4ea36de8de1",
+    "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
+    "src/newsroom.ts": "726b712d8d65b1f425aca60b44eb51bea9fab4cf6162d1d4d506db1f76229a2c"
+  },
+  "semantic_hash": "4d47d69383efbd91568db423afc053158439624014c8c61adde84d18258f6d20",
+  "previous_sample_hash": "5f271abb3a76b70ea132e6d92ce8bc54e448df88c31e92e745ddc975489e92ea"
+}

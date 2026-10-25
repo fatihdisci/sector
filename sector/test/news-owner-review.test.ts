@@ -28,3 +28,18 @@ test('cryptographically complete but unbalanced sample cannot pass coverage floo
 test('fresh rerun errors remain measurable, approvals cannot force expected output',async()=>{
  const {trusted,input}=await fixture();input.evaluate=()=>({route:'archive',reasons:['regression']});const r=await validateOwnerReview(input,trusted);assert.equal(r.valid,true);assert.equal(r.metrics.critical_misses,2);assert.equal(r.metrics.important_archived,10);
 });
+async function successorFixture(){
+ const f=await fixture(),i=f.input as any;i.rule='successor-rule';i.catalog='successor-catalog';i.scope='b'.repeat(64);
+ i.evaluate=(r:any)=>({route:i.binding.package.rows.find((x:any)=>x.candidate_id===r.id).label,reasons:['fixture'],confidence:{codes:[],event:'other',stage:'unresolved'}});
+ i.artifact.catalog_hash='b'.repeat(64);for(const k of ['src/news-routing.ts','src/news-company-catalog.ts','src/newsroom.ts'])i.artifact.files[k]='b'.repeat(64);
+ i.artifact.hash=await sha256(canonical({files:i.artifact.files,catalog_hash:i.artifact.catalog_hash}));
+ const t={version:1,approval_source:'explicit-new-question-and-owner-answer',accepted_recorded_at:now,previous_sample_hash:f.trusted.sample_hash,rule_version:i.rule,catalog_version:i.catalog,scope_hash:i.scope,catalog_hash:i.artifact.catalog_hash,entity_hash:hash,code_files:{...i.artifact.files},semantic_hash:await sha256(canonical(i.binding.snapshot.map((s:any)=>{const d=i.evaluate(s);return{id:s.id,route:d.route,reasons:d.reasons,codes:d.confidence.codes,event:d.confidence.event,stage:d.confidence.stage}})))};
+ i.binding.successor={version:1,previous_sample_hash:t.previous_sample_hash,approval_source:t.approval_source,actor:'owner',recorded_at:now,rule_version:t.rule_version,catalog_version:t.catalog_version,scope_hash:t.scope_hash,catalog_hash:t.catalog_hash,artifact_hash:i.artifact.hash};return{...f,t};
+}
+test('explicit successor preserves original package while computing all twelve fresh-context results',async()=>{
+ const f=await successorFixture(),before=canonical(f.input.binding.package);const r=await validateOwnerReview(f.input,f.trusted,f.t);assert(r.valid);assert.equal(r.reviewed,12);assert.deepEqual(r.distribution,{instant:2,digest:8,archive:2});assert.equal(canonical(f.input.binding.package),before);
+});
+test('successor rejects wrong hashes, versions, forged approval, missing samples and semantic changes',async()=>{
+ const mutations=[(i:any)=>i.binding.successor.approval_source='forged',(i:any)=>delete i.binding.successor.approval_source,(i:any)=>i.binding.successor.previous_sample_hash='x',(i:any)=>i.binding.successor.version=2,(i:any)=>i.binding.successor.actor='intruder',(i:any)=>i.binding.successor.recorded_at=now-1,(i:any)=>i.binding.successor.artifact_hash='x',(i:any)=>i.rule='wrong',(i:any)=>i.catalog='wrong',(i:any)=>i.scope='wrong',(i:any)=>i.artifact.catalog_hash='x',(i:any)=>i.rows.pop(),(i:any)=>i.rows[1]=i.rows[0],(i:any)=>i.binding.snapshot.pop(),(i:any)=>i.evaluate=()=>({route:'digest',reasons:['changed'],confidence:{codes:[],event:'other',stage:'unresolved'}})];
+ for(const mutate of mutations){const f=await successorFixture();mutate(f.input);const r=await validateOwnerReview(f.input,f.trusted,f.t);assert.equal(r.valid,false);assert.equal(r.reviewed,0);}
+});
