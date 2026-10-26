@@ -19,6 +19,10 @@ def message_value(m):
  kind='image'if m.photo else 'pdf'if m.file and m.file.mime_type=='application/pdf'else 'image'if m.file and m.file.mime_type in('image/png','image/jpeg','image/webp')else 'unsupported'if m.media and type(m.media).__name__!='MessageMediaWebPage'else None
  value={'id':m.id,'at':m.date.isoformat(),'edited_at':m.edit_date.isoformat()if m.edit_date else None,'text':text,'links':links,'group':str(m.grouped_id)if m.grouped_id else None,'media':kind,'size':m.file.size if kind and m.file else 0}
  value['fingerprint']=hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+ # Add provenance AFTER the legacy fingerprint: do not replay old posts when
+ # adding metadata. This is a transport observation, never a market data date.
+ fwd=getattr(m,'fwd_from',None)
+ value['provenance']={'forwarded':bool(fwd),'forwarded_at':fwd.date.isoformat()if fwd and getattr(fwd,'date',None)else None}
  return value
 
 async def peer_for(client,value):

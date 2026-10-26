@@ -1,0 +1,58 @@
+{
+  "version": "bist-equity-2026-reviewed-2026-10-26",
+  "year": 2026,
+  "timezone": "Europe/Istanbul",
+  "checked_at": "2026-10-26T12:25:43.396161+00:00",
+  "sources": [
+    {
+      "url": "https://www.borsaistanbul.com/files/pay-piyasasi-2026-yili-tatil-tablosu.pdf",
+      "sha256": "e45fa97e2f67d85b3571ce9e6c4758292a57379c2216fc88183f32504584e680"
+    },
+    {
+      "url": "https://www.borsaistanbul.com/files/pay-piyasasi-proseduru.pdf",
+      "sha256": "a065530d88acbb4d1548a218dc351077b02003b127588b8b30942d4c26c49c15",
+      "pages": [
+        154,
+        155
+      ]
+    }
+  ],
+  "closed": [
+    "2026-01-01",
+    "2026-03-20",
+    "2026-03-21",
+    "2026-03-22",
+    "2026-04-23",
+    "2026-05-01",
+    "2026-05-19",
+    "2026-05-27",
+    "2026-05-28",
+    "2026-05-29",
+    "2026-05-30",
+    "2026-07-15",
+    "2026-08-30",
+    "2026-10-29"
+  ],
+  "half": [
+    "2026-03-19",
+    "2026-05-26",
+    "2026-10-28"
+  ],
+  "full": {
+    "start": 580,
+    "continuous_start": 600,
+    "closing_start": 1080,
+    "end": 1090
+  },
+  "half_session": {
+    "start": 580,
+    "continuous_start": 600,
+    "closing_start": 750,
+    "end": 760
+  },
+  "editorial": {
+    "opening_until": 660,
+    "midday_until": 900
+  },
+  "note": "Session boundaries are official. 11:00/15:00 are owner-authorized editorial divisions, not separate official trading sessions. Unknown years or dates use a neutral title; publication time is not a verified market measurement time."
+}

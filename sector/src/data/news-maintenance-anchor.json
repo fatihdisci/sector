@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "direct owner approval 2026-10-26 Sentinel_0a6a8f91e7ec8191b21ae2fcd767d7a8: Onaylıyorum — deploy only the reviewed 14:00 BIST100 production/status fix after CI and consistent backup, preserve existing filter/digest/KAP settings; one controlled retry, no X publication",
-  "recorded_at": 1793014367395,
+  "approval_source": "direct owner approval 2026-10-26 Sentinel_9907ec1eed2c81918991141b42b24ae0: original channel publication time selects the editorial day-part header; deploy reviewed date fix after CI/consistent backup and run one new controlled 14:00 BIST100 retry; preserve filter/digest/KAP and photo work, no X publication",
+  "recorded_at": 1793018239285,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -37,6 +37,16 @@
     "src/pipeline.ts": "9259d5358b48ea5d66aca96b89fd35a2eee64912307ef24957f9006cfc3caa42",
     "src/news-inbox.ts": "0c9c64c3a185ca75ea3d4fbb57a7225b6fceb2dc7bf41ced1ea03180a6a7600f",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
-    "src/types.ts": "bab16f222b7e61e83cfbecfa7a82732be4f1af3491ba9f4b94b24452a9386f4c"
+    "src/types.ts": "8affb100f07cf752ad844f774834adf25a7c88e7f69c39891f3c89046e92136e",
+    "src/market-time.ts": "e640db4246e01ce579fda64473931a9d2a8d65826c8bfebbf15dcc105f059aea",
+    "src/market-session.ts": "fc93e9e1c0e28434d73752f18e601c9e645ebae03d83ccb5d25e4671629b1f9a",
+    "src/channel-publication.ts": "4f74523bb2b17a3b607ca2d188aa025cafeb1b47dbdb8e7fa715c86434b4e3e6",
+    "src/style.ts": "f835051c692145962a18ad0827a14b5000e14fc48723357ef9b1c0bb22788d85",
+    "src/editorial.ts": "6523dfff9ce15e6c6f8a953a857e9b023daca44fc4ecddf26da698ac9127b873",
+    "src/ai.ts": "543b98a9cbb8778f96e5f983b299855d095d49b59e5ac0d658538f47421ca893",
+    "src/bridge.ts": "b2226cce64617662b5266b0b878558761ca6773b1c345661747991cf81b04466",
+    "src/telegram-channel.ts": "f9d39d5e039bddf3677e1ac4fefc61f8c41d56c0c65cc7be051d090b324cbcaf",
+    "scripts/telegram_channel.py": "5f99b1cc66a638429fbcf6234263ffac7df2b7d5ad2d4e806a73233e0ab88f62",
+    "src/data/bist-equity-session-2026.json": "7b513388a0bf8448995d81ea47a17a1594981cd7e5ccfade04c3c47426d86c37"
   }
 }

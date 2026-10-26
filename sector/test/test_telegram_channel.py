@@ -28,4 +28,13 @@ class ChannelRead(unittest.IsolatedAsyncioTestCase):
   class MessageEntityUrl:
    offset=3;length=19
   r=c.message_value(self.message(raw_text='📊 https://example.com',entities=[MessageEntityUrl()]));self.assertEqual(r['links'],['https://example.com'])
+
+class ForwardProvenance(unittest.TestCase):
+ def test_forward_metadata_is_preserved_without_changing_legacy_fingerprint(self):
+  helper=ChannelRead();plain=helper.message();forward=helper.message(fwd_from=N(date=datetime.datetime(2026,10,23,tzinfo=datetime.timezone.utc)))
+  a=c.message_value(plain);b=c.message_value(forward)
+  self.assertEqual(a['fingerprint'],b['fingerprint'])
+  self.assertEqual(a['provenance'],{'forwarded':False,'forwarded_at':None})
+  self.assertEqual(b['provenance'],{'forwarded':True,'forwarded_at':'2026-10-23T00:00:00+00:00'})
+
 if __name__=='__main__':unittest.main()

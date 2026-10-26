@@ -21,9 +21,11 @@ try{
   for(const m of text.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)){let dep=join(dirname(abs),m[1]);if(!extname(dep))dep+='.ts';await source(relative(join(root,'src'),dep));}
  }
  await source('card-pages.ts');
+ await source('market-session.ts');
  for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','OFL.txt','profile.svg','profile.png','banner.svg','banner.png'])await copyFile(join(root,'assets',file),join(stage,'assets',file));
  for(const file of ['index.mjs','index_bg.wasm','package.json'])await copyFile(join(root,'node_modules/@resvg/resvg-wasm',file),join(stage,'runtime',file));
  execFileSync(join(root,'node_modules/.bin/esbuild'),['src/card-pages.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/cards.mjs')}`],{cwd:root});
+ execFileSync(join(root,'node_modules/.bin/esbuild'),['src/market-session.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/market-session.mjs')}`],{cwd:root});
  await writeFile(join(stage,'render.mjs'),String.raw`import {readFile,writeFile} from 'node:fs/promises';import {cardSvgs} from './runtime/cards.mjs';import {initWasm,Resvg} from './runtime/index.mjs';
 const base=new URL('./',import.meta.url),input=process.argv[2],output=process.argv[3]??'kart.png';if(!input)throw Error('Usage: node render.mjs content.json kart.png');const d=JSON.parse(await readFile(input,'utf8'));const svgs=cardSvgs(d,d.theme??'navy',d.layout??'editorial');await initWasm(await readFile(new URL('runtime/index_bg.wasm',base)));const fonts=await Promise.all(['Regular','Bold'].map(n=>readFile(new URL('assets/NotoSans-'+n+'.ttf',base))));for(let i=0;i<svgs.length;i++){const svg=svgs[i],name=svgs.length===1?output:output.replace(/\.png$/i,'')+'-'+(i+1)+'.png',r=new Resvg(svg,{font:{fontBuffers:fonts,defaultFontFamily:'Noto Sans'}});try{const image=r.render();try{await writeFile(name,image.asPng());await writeFile(name.replace(/\.png$/i,'')+'.svg',svg);}finally{image.free();}}finally{r.free();}}
 `);

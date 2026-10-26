@@ -1,3 +1,4 @@
+import {bindChannelPublication} from './channel-publication';
 import {outputPreferences} from './output-preferences';
 import {chooseLayout,savedLayout} from './card-layout';
 import {previousModelIssues} from './model-recovery';
@@ -39,7 +40,9 @@ export async function leaseJob(env:Env) {
  const job=await env.DB.prepare("SELECT * FROM model_jobs WHERE state IN ('queued','retry_pending') AND created_at>? AND (kind NOT IN ('initial','news') OR EXISTS (SELECT 1 FROM news_cards c WHERE c.article_id=model_jobs.article_id AND c.state='model_queued')) ORDER BY CASE WHEN state='retry_pending' THEN 1 ELSE 0 END,CASE WHEN kind IN ('news','edit','manual') THEN 0 ELSE 1 END,created_at LIMIT 1").bind(now()-24*3600).first<Job>();if(!job)return null;
  const token=crypto.randomUUID();
  const lock=await env.DB.prepare("UPDATE model_jobs SET state='leased',lease_token=?,lease_until=? WHERE id=? AND state IN ('queued','retry_pending')").bind(token,now()+600,job.id).run();if(!lock.meta.changes)return null;
- const normalized=JSON.stringify(withKapUnitEvidence(JSON.parse(job.documents)));
+ const article=job.kind==='news'?await env.DB.prepare("SELECT source_id,document FROM articles WHERE id=?").bind(job.article_id).first<{source_id:string;document:string|null}>():null;
+ const evidence=withKapUnitEvidence(JSON.parse(job.documents));
+ const normalized=JSON.stringify(article?.source_id==='sermaye-telegram'&&article.document?await bindChannelPublication(evidence,article.document):evidence);
  if(normalized!==job.documents){job.documents=normalized;job.input_hash=await sha256(normalized);await env.DB.prepare('UPDATE model_jobs SET documents=?,input_hash=? WHERE id=? AND lease_token=?').bind(normalized,job.input_hash,job.id,token).run();}
  const editing=job.kind==='edit'?await env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(job.draft_id).first<{content:string}>():null;
  const theme=editing?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(editing.content) as Draft).template)):await chooseTheme(env,job.article_id);

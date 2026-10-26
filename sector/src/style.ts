@@ -1,3 +1,4 @@
+import {marketTimeContext,marketTimeIssues,applyMarketEditorialHeader} from './market-time';
 import {outputView} from './output-preferences';
 import {kapIndexHashtags} from './kap/index-tags';
 import {cardDataFields} from './card-data';
@@ -8,6 +9,7 @@ import type {Document,Draft} from './types';
 const fold=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/ı/g,'i');
 export function editorialPolicy(documents:Document[]){
  const text=documents.map(d=>d.title+'\n'+d.body).join('\n');
+ const market_time=marketTimeContext(documents);
  const allCodes=verifiedEquityCodes(documents),preference=documents.find(d=>d.output_preferences)?.output_preferences;
  let codes=allCodes;
  const institution=documents.find(d=>d.market_data?.kind==='institutional')?.market_data;
@@ -27,7 +29,7 @@ export function editorialPolicy(documents:Document[]){
  const bist=codes.length>0||/\bbist\b|borsa istanbul/i.test(fold(text));
  const indexTags=fund?[]:kapIndexHashtags(documents);
  const ipo=!!kap?.official&&!fund&&codes.some(isRecentIpoTicker),ipoTag=ipo?['#HalkaArz']:[];
- return {output_preferences:preference,excluded_equity_codes:excluded,required_hashtags:circuit?['#Borsa','#BIST',...(codes.length?codes.map(c=>'#'+c):['#DevreKesici']),...ipoTag,...indexTags]:fund?['#Fon','#PBLK','#Tasfiye']:bist?['#Borsa','#BIST',...(documents.some(d=>d.market_data?.kind==='institutional'||d.source_layout)?[]:codes.map(c=>'#'+c)),...ipoTag,...indexTags]:[],verified_equity_codes:codes,
+ return {...(market_time.length?{market_time}:{}),output_preferences:preference,excluded_equity_codes:excluded,required_hashtags:circuit?['#Borsa','#BIST',...(codes.length?codes.map(c=>'#'+c):['#DevreKesici']),...ipoTag,...indexTags]:fund?['#Fon','#PBLK','#Tasfiye']:bist?['#Borsa','#BIST',...(documents.some(d=>d.market_data?.kind==='institutional'||d.source_layout)?[]:codes.map(c=>'#'+c)),...ipoTag,...indexTags]:[],verified_equity_codes:codes,
   publisher_names:[...new Set(documents.filter(d=>!d.official).map(d=>d.source_name))],
   instruction:(documents.some(d=>d.circuit_scope?.kind==='pay')?'Bu yalnız BIST30 kapsamındaki pay devre kesici bildirimlerinin seçkisidir, tüm piyasa toplamı değildir. Dışlanan kodları çıktıya ekleme. ':documents.some(d=>d.circuit_scope?.kind==='market')?'Bu kodsuz piyasa geneli/endekse bağlı devre kesicidir; tek bir pay bildirimi değildir. Hisse kodu veya piyasa toplamı tahmin etme. ':'')+'Etiketleri yalnız hashtags dizisinde ver; başlık, gövde ve kart alanlarına hashtag satırı ekleme. Devre kesici gruplarında #Borsa #BIST ve gruptaki bütün doğrulanmış asıl hisse kodlarını kullan; yalnız kod yoksa #DevreKesici kullan. Bu gruplarda zorunlu kodlar 3 etiket sınırından önceliklidir; ek konu etiketi ekleme. Yayıncıya göre/haberine göre veya Kaynak satırı yazma. Kaynak düğmede bulunur. İddia, koşul ve açıklamanın gerçek sahibini koru. Çok hisseli haberlerde kodları gruplandırıp her grubun ilk beşini tweet gövdesinde göster; doğrulanmış kod etiketleri 3 etiket sınırından önceliklidir. Görselde tam listeyi koru. Diğer içeriklerde konu etiketleri 2–3 adet; required_hashtags zorunludur. KAP endeks etiketlerinde yalnız required_hashtags içindeki doğrulanmış #BIST30 ve #BIST100 etiketlerini kullan; index_tier veya metinden üyelik tahmin etme. Fon içeriklerinde yalnız #Fon #PBLK #Tasfiye kullan; bu üç etiket hisse etiketlerinden önceliklidir. Diğer içeriklerde doğrulanmış tek şirket kodu varsa kullan. BIST dışındaki haberleri BIST diye etiketleme.'};
 }
@@ -40,7 +42,7 @@ export function hasPublisherAttribution(text:string,names:string[]):boolean {
  });
 }
 export function styleIssues(draft:Draft,documents:Document[]):string[]{
- const p=editorialPolicy(documents),issues:string[]=[];
+ const p=editorialPolicy(documents),issues:string[]=marketTimeIssues(draft,documents);
  const display=normalizeEquityDisplay(draft,documents);
  if(['headline','body','card_headline','card_body'].some(k=>display[k as keyof Draft]!==draft[k as keyof Draft])||JSON.stringify(display.card_data)!==JSON.stringify(draft.card_data))issues.push('market_suffix_in_display');
  if(p.excluded_equity_codes.length&&new RegExp('(?<![\\p{L}\\p{N}_])('+p.excluded_equity_codes.join('|')+')(?![\\p{L}\\p{N}_])','u').test([draft.headline,draft.body,draft.card_headline,draft.card_body,JSON.stringify(draft.card_data??{}),draft.hashtags.join(' ')].join(' ')))issues.push('output_scope_mismatch');
@@ -108,7 +110,7 @@ export function repairDraftStyle(value:Draft,documents:Document[]):Draft {
  if(!value||typeof value!=='object')return value;
  const preference=documents.find(d=>d.output_preferences)?.output_preferences;
  const {output_preferences:_ignored,...plain}=value;value={...plain,...(preference?{output_preferences:preference}:{})};
- value=normalizeEquityDisplay(normalizeHashtagPlacement(value),documents);
+ value=applyMarketEditorialHeader(normalizeEquityDisplay(normalizeHashtagPlacement(value),documents),documents);
  const policy=editorialPolicy(documents),required=policy.required_hashtags;
  const tags=Array.isArray(value.hashtags)?[...new Set(value.hashtags.filter((t):t is string=>typeof t==='string').map(t=>'#'+t.trim().replace(/^#+/,'').replace(/[^\p{L}\p{N}_]/gu,'')))]:[];
  const valid=tags.filter(t=>!(policy.excluded_equity_codes.some(c=>t.toUpperCase()==='#'+c))&&!(/^#BIST(?:30|100)$/i.test(t)&&!required.includes(t.toUpperCase()))&&/^#[\p{L}\p{N}_]{2,40}$/u.test(t)&&!/^#(?:haber|gündem|keşfet|viral)$/iu.test(t));

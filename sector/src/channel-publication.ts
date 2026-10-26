@@ -1,0 +1,8 @@
+import{withMarketEditorialContext}from'./market-time';
+import{sha256}from'./utils/text';import type{Document}from'./types';
+// Called only for the dedicated, pinned-channel source. Never infer a data day.
+export async function bindChannelPublication(documents:Document[],raw:string):Promise<Document[]>{
+ const m=JSON.parse(raw);if(m.version!==1||m.channel!=='SermayeBorsasi'||m.peer_id!==2426639373||!Array.isArray(m.messages)||!m.messages.length||m.messages.length>10||m.url!==`https://t.me/SermayeBorsasi/${m.messages[0].id}`||m.hash!==await sha256(m.messages.map((r:any)=>r.fingerprint).join('|')))throw Error('channel_publication_invalid');
+ for(const r of m.messages)if(!Number.isSafeInteger(r.id)||r.id<=0||typeof r.at!=='string'||!/(?:Z|[+-]\d{2}:\d{2})$/i.test(r.at)||!Number.isFinite(Date.parse(r.at))||!/^[a-f0-9]{64}$/.test(r.fingerprint))throw Error('channel_publication_invalid');
+ return withMarketEditorialContext(documents.map(d=>{if(d.source_id!=='sermaye-telegram')return d;const r=m.messages.find((r:any)=>d.url===`https://t.me/SermayeBorsasi/${r.id}`);if(!r)throw Error('channel_publication_source_mismatch');return{...d,channel_publication:{channel:'SermayeBorsasi',peer_id:2426639373,message_id:r.id,posted_at:r.at,edited_at:r.edited_at??null,version:m.hash,forwarded:r.provenance?.forwarded===true?true:r.provenance?.forwarded===false?false:d.channel_publication?.version===m.hash&&d.channel_publication?.message_id===r.id&&d.channel_publication?.forwarded===true?true:null,forwarded_at:typeof r.provenance?.forwarded_at==='string'?r.provenance.forwarded_at:d.channel_publication?.version===m.hash&&d.channel_publication?.forwarded===true?d.channel_publication.forwarded_at:null}};}));
+}
