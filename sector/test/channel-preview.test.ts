@@ -21,3 +21,22 @@ test('late edit does not send a second preview; explicit unprepared request bind
  }finally{globalThis.fetch=old;}
 });
 test('late edit cannot bypass uncertain preview delivery',async()=>{const env=await fixture(),old=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('network_unknown');};try{await add(env,'u1','Teorik Eşleşme — 09:52','901',Date.now()-1000);await announceNews(env);await add(env,'u2','Teorik Eşleşme — 09:52','901');await announceNews(env);assert.equal(calls,1);assert.equal((await env.DB.prepare('select state from news_cards').first<any>()).state,'uncertain');}finally{globalThis.fetch=old;}});
+
+test('fast channel lane excludes RSS and serializes simultaneous discovery/RSS callers across edited versions',async()=>{
+ const env=await fixture(),old=globalThis.fetch;let calls=0,release!:()=>void,entered!:()=>void;
+ const started=new Promise<void>(r=>entered=r),held=new Promise<void>(r=>release=r);
+ await add(env,'fast1','Teorik Eşleşme — 09:40','990',Date.now()-1000);
+ await env.DB.prepare('insert into sources(id,config,enabled)values(?,?,1)').bind('rss',JSON.stringify({id:'rss',name:'RSS',official:true,minimum_score:0})).run();
+ await env.DB.prepare('insert into articles(id,source_id,url,title,summary,published_at,first_seen)values(?,?,?,?,?,?,?)').bind('rss-1','rss','https://example.com/news','TCMB faiz kararını açıkladı','TCMB faiz kararını açıkladı',new Date().toISOString(),Math.floor(Date.now()/1000)).run();
+ globalThis.fetch=async(url)=>{assert.match(String(url),/sendMessage$/);calls++;if(calls===1){entered();await held;}return Response.json({ok:true,result:{message_id:200+calls}});};
+ try{
+  const first=announceNews(env,true);await started;
+  assert.equal((await env.DB.prepare("select count(*) n from news_cards where article_id='rss-1'").first<any>()).n,0);
+  await add(env,'fast2','Teorik Eşleşme — 09:40','990');
+  const concurrent=announceNews(env);release();await Promise.all([first,concurrent]);
+  assert.equal((await env.DB.prepare("select count(*) n from news_cards c join articles a on a.id=c.article_id where a.source_id='sermaye-telegram' and c.state='sent'").first<any>()).n,1);
+  assert.equal((await env.DB.prepare("select state from news_cards where article_id='rss-1'").first<any>()).state,'sent');
+  assert.equal(calls,2);await announceNews(env,true);assert.equal(calls,2);
+  for(const t of ['model_jobs','x_posts'])assert.equal((await env.DB.prepare('select count(*) n from '+t).first<any>()).n,0);
+ }finally{release();globalThis.fetch=old;}
+});

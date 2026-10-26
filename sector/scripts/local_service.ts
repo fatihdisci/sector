@@ -1,6 +1,6 @@
 import {modelFailureCode,type ModelStage} from './model_failure';
 import {withModelHeartbeat} from './model_heartbeat';
-import{pollChannel,channelDocuments}from'../src/telegram-channel';
+import{pollChannel,channelDocuments,CHANNEL_POLL_MS}from'../src/telegram-channel';
 import{channelTransport}from'./channel_reader';
 import {newsReviewArtifact} from './news_review_artifact';
 import {COMPANY_CATALOG_VERSION,COMPANY_CATALOG_PROVENANCE,catalogEntities} from '../src/news-company-catalog';
@@ -23,7 +23,7 @@ import {spawn} from 'node:child_process';
 import {homedir} from 'node:os';
 import {localDatabase,localMedia} from '../src/local-adapters';
 import {prepare} from '../src/pipeline';
-import {refreshNewsRequests} from '../src/news-inbox';
+import {announceNews,refreshNewsRequests} from '../src/news-inbox';
 import {tick,seed,deliver,errorCode} from '../src/pipeline';
 import {leaseJob,submitJob,ingestOfficial} from '../src/bridge';
 import {telegram} from '../src/telegram';
@@ -95,7 +95,7 @@ async function buybackLoop(){while(!stopping()){try{
  const result=await pollBuybacks(env,{readImage:readBuybackImage,indices:async()=>{let db:DatabaseSync|undefined;try{db=new DatabaseSync(directory+'/kap/kap.sqlite',{readOnly:true});if(Number(db.prepare('PRAGMA application_id').get()!.application_id)!==0x534B4150)return null;const row=db.prepare("SELECT value FROM settings WHERE key='indices'").get();return row?JSON.parse(String(row.value)):null;}catch{return null;}finally{db?.close();}}});
  await status('buyback_report_health',{ok:!['needs_review','blocked_existing'].includes(result.state),at:new Date().toISOString(),...result});
  }catch(e){await status('buyback_report_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10*60_000);}}
-async function channelLoop(){while(!stopping()){try{const result=await pollChannel(env,channelTransport);await status('telegram_channel_health',{ok:true,at:new Date().toISOString(),...result});}catch(e){await status('telegram_channel_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(60_000);}}
+async function channelLoop(){while(!stopping()){let delay=CHANNEL_POLL_MS;try{const result=await pollChannel(env,channelTransport);if(result.state==='ok')await announceNews(env,true);await status('telegram_channel_health',{ok:true,at:new Date().toISOString(),...result});}catch(e){delay=60_000;await status('telegram_channel_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(delay);}}
 async function fintablesXLoop(){while(!stopping()){try{await pollFintablesX(env);}catch(e){await status('fintables_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function spkXLoop(){while(!stopping()){try{await pollSpkX(env);}catch(e){await status('spk_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function xAccountReportLoop(){let nextPoll=0;while(!stopping()){

@@ -73,7 +73,17 @@ export async function requestNews(env:Env,id:string,messageId:number,confirmedRe
  await env.DB.prepare("UPDATE articles SET status='queued',attempts=0,next_try=0,lease_until=0,error=NULL WHERE id=? AND status NOT IN ('prepared','duplicate')").bind(row.article_id).run();
  return 'Tam haber okunup tweet ve görsel hazırlanacak.';
 }
-export async function announceNews(env:Env):Promise<void> {
+// Channel discovery must not wait for RSS network reads. Serialize the two local
+// callers so different revisions of the same post cannot race into two previews.
+const previewRuns=new WeakMap<Env,Promise<void>>();
+export function announceNews(env:Env,channelOnly=false):Promise<void>{
+ const previous=previewRuns.get(env)??Promise.resolve();
+ const run=previous.catch(()=>{}).then(()=>announceNewsNow(env,channelOnly));
+ previewRuns.set(env,run);
+ void run.finally(()=>{if(previewRuns.get(env)===run)previewRuns.delete(env);}).catch(()=>{});
+ return run;
+}
+async function announceNewsNow(env:Env,channelOnly:boolean):Promise<void> {
  if(env.MODE!=='telegram_review')return;
  const time=Math.floor(Date.now()/1000);
  await env.DB.prepare("UPDATE news_cards SET state='uncertain' WHERE state='sending' AND next_try<?").bind(time).run();
@@ -91,7 +101,7 @@ export async function announceNews(env:Env):Promise<void> {
  ${prefs.mode==='active'?"CASE WHEN json_extract(n.confidence,'$.event') IN ('rate','macro_data','regulation','halt') OR json_extract(n.confidence,'$.stage')='denied' THEN 100 ELSE 0 END + COALESCE(json_extract(n.confidence,'$.priority'),0)":'0'} AS priority,
  COALESCE(json_extract(s.config,'$.editorial_priority'),50) AS source_priority
  FROM articles a JOIN sources s ON s.id=a.source_id LEFT JOIN news_cards c ON c.article_id=a.id LEFT JOIN news_candidates n ON n.article_id=a.id
- WHERE ((${channelMarketPreviewSQL()} AND ${latestChannelVersionSQL()} AND ${channelPreviewUnseenSQL()}) OR (NOT ${channelMarketPreviewSQL()} AND (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})))) AND s.enabled=1 AND a.status='queued' AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
+ WHERE ((${channelMarketPreviewSQL()} AND ${latestChannelVersionSQL()} AND ${channelPreviewUnseenSQL()}) OR (NOT ${channelMarketPreviewSQL()} AND (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})))) AND s.enabled=1 AND a.status='queued' AND ${channelOnly?"a.source_id='sermaye-telegram'":'1=1'} AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
  ), oldest AS (SELECT id FROM eligible WHERE queue_at<=? ORDER BY queue_at ASC,id LIMIT 1),
  priority_slots AS (SELECT id FROM eligible WHERE id NOT IN (SELECT id FROM oldest) ORDER BY priority DESC,(julianday(published_at)*1440+source_priority/10) DESC,id LIMIT (SELECT CASE WHEN EXISTS(SELECT 1 FROM oldest) THEN 2 ELSE 3 END))
  SELECT * FROM eligible WHERE id IN (SELECT id FROM oldest) OR id IN (SELECT id FROM priority_slots)

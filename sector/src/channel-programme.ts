@@ -9,11 +9,11 @@ export function channelProgramme(at:string,caption:string,layout?:string,forward
  if(forwarded===true||!/(?:Z|[+-]\d{2}:\d{2})$/i.test(at)||!Number.isFinite(Date.parse(at)))return null;
  const session=equitySessionLabel(at);if(session.kind==='closed'||session.kind==='unknown')return null;
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(at)),part=(k:string)=>parts.find(p=>p.type===k)!.value;
- const day=part('year')+'-'+part('month')+'-'+part('day'),minute=Number(part('hour'))*60+Number(part('minute')),text=fold(caption);
- const result=(kind:ChannelProgrammeKind,label:string,release?:string):ChannelProgramme=>({version:1,kind,label,basis:'owner_channel_programme',original_at:at,preview_after:release?Date.parse(day+'T'+release+':00+03:00'):null});
+ const minute=Number(part('hour'))*60+Number(part('minute')),text=fold(caption);
+ const result=(kind:ChannelProgrammeKind,label:string):ChannelProgramme=>({version:1,kind,label,basis:'owner_channel_programme',original_at:at,preview_after:null});
  if(layout==='theoretical'||/teorik eslesme/.test(text)){
-  if(minute>=580&&minute<595)return result('theoretical_open','Açılış öncesi teorik eşleşme','09:53');
-  if(session.kind==='full'&&minute>=1080&&minute<1090)return result('theoretical_close','Kapanış öncesi teorik eşleşme','18:05');
+  if(minute>=580&&minute<595)return result('theoretical_open','Açılış öncesi teorik eşleşme');
+  if(session.kind==='full'&&minute>=1080&&minute<1090)return result('theoretical_close','Kapanış öncesi teorik eşleşme');
   return result('theoretical','Teorik eşleşme');
  }
  if(layout==='institution_summary'||/kurum akd ozeti/.test(text))return result('institution_summary','Kurum AKD özeti');

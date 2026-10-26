@@ -1,4 +1,3 @@
-import{channelProgramme}from'./channel-programme';
 import{bindChannelPublication}from'./channel-publication';
 import{sha256}from'./utils/text';import type{Env,Source,Document}from'./types';import{readDocument}from'./article';import registry from'../sources.json';
 export const CHANNEL='SermayeBorsasi',CHANNEL_ID=2426639373,CHANNEL_SOURCE='sermaye-telegram';
@@ -7,7 +6,8 @@ export interface ChannelBatch{channel:string;peer_id:number;baseline:boolean;lat
 export interface ChannelManifest{version:1;channel:typeof CHANNEL;peer_id:typeof CHANNEL_ID;url:string;messages:ChannelMessage[];hash:string;captured_at:number;}
 export type ChannelTransport=(mode:'channel-scan'|'channel-read',value:unknown)=>Promise<any>;
 interface State{baseline_id:number;cursor:number;next:number;pending:ChannelMessage[];seen:Record<string,{hash:string;ids:number[];at:number}>;last_ok:number;}
-const MAX_PENDING=200,SETTLE=60_000;
+export const CHANNEL_POLL_MS=15_000;
+const MAX_PENDING=200,ALBUM_SETTLE_MS=60_000;
 function validate(m:ChannelMessage,now:number){if(!Number.isSafeInteger(m.id)||m.id<=0||!Number.isFinite(Date.parse(m.at))||Date.parse(m.at)>now+300000||m.edited_at!==null&&(!Number.isFinite(Date.parse(m.edited_at))||Date.parse(m.edited_at)>now+300000)||typeof m.text!=='string'||m.text.length>100000||!Array.isArray(m.links)||m.links.length>8||m.links.some(u=>typeof u!=='string'||!/^https?:\/\//.test(u))||!['image','pdf','unsupported',null].includes(m.media)||!Number.isSafeInteger(m.size)||m.size<0||!/^[a-f0-9]{64}$/.test(m.fingerprint)||m.group!==null&&!/^\d+$/.test(m.group))throw Error('channel_manifest_invalid');if(m.provenance&&(typeof m.provenance.forwarded!=='boolean'||m.provenance.forwarded_at!==null&&(typeof m.provenance.forwarded_at!=='string'||!Number.isFinite(Date.parse(m.provenance.forwarded_at)))||!m.provenance.forwarded&&m.provenance.forwarded_at!==null))throw Error('channel_manifest_invalid');}
 export async function pollChannel(env:Env,transport:ChannelTransport,now=Date.now()){
  const source=await env.DB.prepare('SELECT enabled FROM sources WHERE id=?').bind(CHANNEL_SOURCE).first<{enabled:number}>();if(!source?.enabled)return{state:'disabled'};
@@ -28,16 +28,16 @@ export async function pollChannel(env:Env,transport:ChannelTransport,now=Date.no
   const inserts=[];let fresh=0,corrections=0;
   for(const[g,members]of groups){members.sort((a,b)=>a.id-b.id);const old=next.seen[g],hash=await sha256(members.map(m=>m.fingerprint).join('|'));
    if(old?.hash===hash){for(const m of members)pending.delete(m.id);continue;}
-   const programme=channelProgramme(members[0].at,members.map(m=>m.text).join('\n'),undefined,members[0].provenance?.forwarded);
-   if(programme?.preview_after&&now<programme.preview_after)continue;
-   if(now-Math.max(...members.map(m=>m.group?m.observed_at??now:Date.parse(m.edited_at??m.at)))<SETTLE)continue;
+   // Single messages are atomic snapshots: publish discovery immediately, including edits.
+   // Albums still need a quiet interval so a partial group cannot become evidence.
+   if(members.some(m=>m.group)&&now-Math.max(...members.map(m=>m.observed_at??now))<ALBUM_SETTLE_MS)continue;
    if(members.length>10||old&&old.ids.some(id=>!members.some(m=>m.id===id)))throw Error('channel_album_incomplete');
    const url=`https://t.me/${CHANNEL}/${members[0].id}`,manifest:ChannelManifest={version:1,channel:CHANNEL,peer_id:CHANNEL_ID,url,messages:members,hash,captured_at:now};
    const text=members.map(m=>m.text).filter(Boolean).join('\n\n'),media=members.some(m=>m.media),summary=(text||'Görsel tablo içeriği; değerler içerik oluşturma isteğinde okunacak.')+(media&&/teorik eşleşme|piyasa raporu|kurum akd|bist ?100/i.test(text)?'\n\nBorsa İstanbul piyasa tablosu. Tür, kanal başlığından alındı; değerler henüz okunmadı.':''),title=(old?'Düzeltme: ':'')+(text.split('\n').find(s=>s.trim())?.slice(0,200)||'Piyasa / kurum verileri — görsel'),articleUrl=url+'?endeks_revision='+hash.slice(0,16),at=old?members.map(m=>m.edited_at??m.at).sort().at(-1)!:members[0].at;
    inserts.push(env.DB.prepare('INSERT OR IGNORE INTO articles(id,source_id,url,title,summary,published_at,first_seen,document,document_expires) VALUES(?,?,?,?,?,?,?,?,?)').bind(await sha256(articleUrl),CHANNEL_SOURCE,articleUrl,title,summary.slice(0,8000),at,Math.floor(now/1000),JSON.stringify(manifest),Math.floor(now/1000)+86400));
    next.seen[g]={hash,ids:members.map(m=>m.id),at:now};for(const m of members)pending.delete(m.id);fresh++;if(old)corrections++;
   }
-  next.pending=[...pending.values()];next.cursor=batch.latest_id;next.last_ok=now;next.next=now+60000;
+  next.pending=[...pending.values()];next.cursor=batch.latest_id;next.last_ok=now;next.next=now+CHANNEL_POLL_MS;
   next.seen=Object.fromEntries(Object.entries(next.seen).sort((a,b)=>b[1].at-a[1].at).slice(0,2000));
   await env.DB.batch([...inserts,env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key,JSON.stringify(next)),env.DB.prepare('UPDATE sources SET last_ok=?,last_error=NULL,failures=0,last_count=? WHERE id=?').bind(Math.floor(now/1000),fresh,CHANNEL_SOURCE)]);
   return{state:state?'ok':'baseline',new_count:fresh,corrections,pending:next.pending.length,cursor:next.cursor,baseline:next.baseline_id};

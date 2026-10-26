@@ -21,12 +21,25 @@ test('source evidence preserves all album texts/media, exact versions, unofficia
  const link={...m,messages:[msg(101,{links:['http://127.0.0.1/secret']})]};link.hash=await sha256(link.messages[0].fingerprint);await assert.rejects(channelDocuments(JSON.stringify(link),async()=>({channel:CHANNEL,peer_id:CHANNEL_ID,messages:link.messages}),extract,extract,NOW),/link_unsupported/);
 });
 
-test('theoretical edits settle after channel window once, without replay on next poll',async()=>{
- const env=await setup(),start=Date.parse('2026-10-26T09:40:00+03:00');await pollChannel(env,async()=>batch([],100,true),start-60000);
+test('theoretical first snapshot and continuous edits arrive within each 15-second poll without a window hold or replay',async()=>{
+ const env=await setup(),start=Date.parse('2026-10-26T09:40:00+03:00');await pollChannel(env,async()=>batch([],100,true),start-15000);
  const a=msg(101,{at:new Date(start).toISOString(),text:'Teorik Eşleşme — 09:40',media:'image'});
- await pollChannel(env,async()=>batch([a],101),start+120000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,0);
- const latest={...a,text:'Teorik Eşleşme — 09:52',edited_at:'2026-10-26T09:52:00+03:00',fingerprint:'b'.repeat(64)};
- await pollChannel(env,async()=>batch([latest],101),start+12*60000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,0);
- await pollChannel(env,async()=>batch([],101),start+14*60000);const rows=(await env.DB.prepare('select document from articles').all<any>()).results;assert.equal(rows.length,1);assert.equal(JSON.parse(rows[0].document).messages[0].fingerprint,latest.fingerprint);
- await pollChannel(env,async()=>batch([latest],101),start+15*60000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,1);assert.equal((await env.DB.prepare('select count(*) n from x_posts').first<any>()).n,0);
+ await pollChannel(env,async()=>batch([a],101),start);
+ assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,1);
+ assert.equal((await pollChannel(env,async()=>{throw Error('too_soon')},start+14999)).state,'waiting');
+ for(let i=1;i<=3;i++){
+  const latest={...a,edited_at:new Date(start+i*15000).toISOString(),fingerprint:String(i).repeat(64)};
+  const result=await pollChannel(env,async()=>batch([latest],101),start+i*15000);
+  assert.equal(result.corrections,1);assert.equal(result.pending,0);
+ }
+ await pollChannel(env,async()=>batch([{...a,edited_at:new Date(start+45000).toISOString(),fingerprint:'3'.repeat(64)}],101),start+60000);
+ assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,4);
+ assert.equal((await env.DB.prepare('select count(*) n from x_posts').first<any>()).n,0);
+});
+test('ordinary channel news and closing theory do not wait one minute',async()=>{
+ for(const text of ['Yeni iş sözleşmesi imzalandı.','Teorik Eşleşme — 18:02']){
+  const env=await setup(),now=Date.parse('2026-10-26T18:02:00+03:00');
+  await pollChannel(env,async()=>batch([],100,true),now-15000);
+  assert.equal((await pollChannel(env,async()=>batch([msg(101,{at:new Date(now).toISOString(),text})],101),now)).new_count,1);
+ }
 });
