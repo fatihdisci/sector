@@ -2,7 +2,7 @@ import {kapIndexMembership} from './kap/index-tags';
 // KAP -> complete evidence -> shared audited model -> existing single-photo sender.
 // No metadata-only messages. Collector and external delivery remain independent.
 import {KapStore} from './kap/store';
-import {decide} from './kap/rules';
+import {decide,circuitOptOut} from './kap/rules';
 import type {Disclosure,Indices} from './kap/parser';
 import {focusedDisclosureTickers} from './kap/ticker-scope';
 import {enqueueEvidence} from './ingest';
@@ -14,7 +14,7 @@ export class KapDelivery {
   store.db.exec(`CREATE TABLE IF NOT EXISTS kap_model_jobs(queue_id TEXT PRIMARY KEY REFERENCES queue(id),job_id TEXT,attempts INTEGER NOT NULL DEFAULT 0,lease_until INTEGER NOT NULL DEFAULT 0,last_error TEXT,message_id INTEGER);`);
  }
  reviewSummary(){return this.store.rows<{error:string;n:number}>("SELECT COALESCE(m.last_error,'unspecified_review') error,COUNT(*) n FROM queue q LEFT JOIN kap_model_jobs m ON m.queue_id=q.id WHERE q.state='needs_review' GROUP BY COALESCE(m.last_error,'unspecified_review')");}
- private allowed(d:Disclosure,kind='instant'){const scope=this.store.circuit(d,this.clock());if(kind==='circuit'&&scope)return this.store.prefs().circuitNotifications&&(scope.kind==='market'||scope.kind==='pay'&&scope.codes.length>0);return decide(d,this.store.prefs(),this.store.get<Indices>('indices')).action===(kind==='circuit'?'circuit':'instant');}
+ private allowed(d:Disclosure,kind='instant'){const scope=this.store.circuit(d,this.clock());if(kind==='circuit'&&scope)return !circuitOptOut(d,this.store.prefs())&&(scope.kind==='market'||scope.kind==='pay'&&scope.codes.length>0);return decide(d,this.store.prefs(),this.store.get<Indices>('indices')).action===(kind==='circuit'?'circuit':'instant');}
  private members(id:string){return this.store.rows<{metadata:string}>('SELECT d.metadata FROM queue_members m JOIN disclosures d ON d.id=m.disclosure_id WHERE m.queue_id=? ORDER BY d.id',id).map(r=>JSON.parse(r.metadata) as Disclosure);}
  private queueEligibility(id:string,kind:string):'allow'|'suppress'|'hold'{const members=this.members(id);if(!members.length)return'hold';if(kind==='circuit'&&this.store.circuitPolicy()){const review=members.map(d=>this.store.circuit(d,this.clock())).find(s=>s?.kind==='review');if(review){this.store.set('circuit_delivery_review',{at:this.clock(),id,reason:review.reason});return'hold';}return members.some(d=>this.allowed(d,kind))?'allow':'suppress';}return members.every(d=>this.allowed(d,kind))?'allow':'suppress';}
  private gate(id:string,kind:string){const result=this.queueEligibility(id,kind);if(result!=='allow')this.store.run("UPDATE queue SET state=? WHERE id=? AND sent_at IS NULL AND state!='uncertain'",result==='hold'?'needs_review':'suppressed',id);return result;}

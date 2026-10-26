@@ -69,3 +69,12 @@ test('code-free market event reaches existing evidence/model queue even while sh
  const c=new KapDelivery(s,{DB,MODE:'telegram_review',AI_DAILY_DRAFT_LIMIT:'240'}as any,async()=>{reads++;return[{source_id:'kap',source_name:'KAP',family:'kap',official:true,url:'https://www.kap.org.tr/tr/Bildirim/101',title:real[0].title,body:real[0].summary!,passages:[{id:'p1',text:real[0].summary!}],published_at:new Date(NOW).toISOString(),equity_codes:[]}]},()=>NOW);assert.equal((await c.run()).state,'model_queued');assert.equal(reads,1);const doc=JSON.parse((await DB.prepare('select documents from model_jobs').first<any>()).documents)[0];assert.equal(doc.circuit_scope.kind,'market');assert.deepEqual(doc.equity_codes,[]);assert.equal(c.deliveryDecision([doc]),'allow');
  }finally{s.close();}
 });
+
+test('explicit circuit title opt-out survives scoped producer and final consumer checks',async()=>{
+ const s=setup(),DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));try{
+ const l=s.claim('live',NOW)!;s.save(d(101),l,NOW,true);const end=NOW+CIRCUIT_WINDOW_MS;s.freeze(s.claim('groups',end)!,end);
+ s.configure({...s.prefs(),excludedTitles:['Pay Bazında Devre Kesici']},end);
+ const next=s.claim('reconcile',end)!;s.save(d(102),next,end,false);assert.equal(s.row<{n:number}>('select count(*) n from circuit_pending')!.n,0);
+ let reads=0;const c=new KapDelivery(s,{DB,MODE:'telegram_review'}as any,async()=>{reads++;throw Error('must_not_read')},()=>end);await c.run();assert.equal(reads,0);assert.equal(s.row<{state:string}>('select state from queue')!.state,'suppressed');
+ }finally{s.close();}
+});

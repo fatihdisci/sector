@@ -2,7 +2,7 @@ import{CIRCUIT_POLICY,CIRCUIT_LIGHT_TTL,CIRCUIT_LIGHT_MAX,circuitSnapshot,circui
 import {DatabaseSync,type SQLInputValue} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
 import type {Disclosure,Indices,Listing} from './parser';
-import {decide,digestAt,preferences,DEFAULTS,type Preferences} from './rules';
+import {decide,circuitOptOut,digestAt,preferences,DEFAULTS,type Preferences} from './rules';
 import {focusedDisclosureTickers} from './ticker-scope';
 export type Job='live'|'backfill'|'reconcile'|'discovery'|'indices'|'groups';
 export const CIRCUIT_WINDOW_MS=180_000;
@@ -104,7 +104,7 @@ export class KapStore {
    const policy=this.circuitPolicy(),scope=this.circuit(d,now);
    if(policy&&Date.parse(d.publishedAt)>=policy.activated_at&&scope&&(scope.kind==='review'||scope.kind==='pay'&&!scope.codes.length)){this.light(d.id,d.publishedAt,scope.reason,scope.version,now,scope.kind==='review');if(advance)this.advance(lease,d.id);return;}
    const p=this.prefs(),decision=decide(d,p,this.get<Indices>('indices'));
-   if(scope&&(scope.kind==='market'||scope.kind==='pay'&&scope.codes.length)){decision.store=true;decision.action=p.circuitNotifications?'circuit':'off';decision.reason=scope.reason;}
+   if(scope&&(scope.kind==='market'||scope.kind==='pay'&&scope.codes.length)){decision.store=true;decision.action=circuitOptOut(d,p)?'off':'circuit';decision.reason=scope.reason;}
    const cutoff=this.get<number>('notification_start');if(cutoff===null)throw new Error('kap_not_bootstrapped');
    const firstSeen=this.row<{first_seen:number}>('SELECT first_seen FROM discovered WHERE id=?',d.id)?.first_seen??now;
    const silent=lease.job==='backfill'||d.id<=(this.get<{latest:number}>('bootstrap')?.latest??0)||Date.parse(d.publishedAt)<cutoff;
@@ -155,7 +155,7 @@ export class KapStore {
   return {at:new Date(now).toISOString(),bootstrap:this.get('bootstrap'),notificationStart:this.get('notification_start'),jobs:this.rows('SELECT name,cursor,ceiling,next_at,lease_until,failures,last_ok,last_error FROM jobs'),
    cursorLagIds:Math.max(0,latest-live),unresolvedGaps:counts('gaps'),oldestGap:this.row('SELECT id,first_seen,attempts,last_error FROM gaps ORDER BY first_seen LIMIT 1')??null,
    sources:counts('disclosures'),feed:counts('feed'),queue:counts('queue'),circuitPending:counts('circuit_pending'),queueByState:this.rows('SELECT kind,state,COUNT(*) AS count,MIN(created_at) AS oldest FROM queue GROUP BY kind,state'),
-   circuitScope:this.circuitPolicy()?{policy:this.circuitPolicy(),snapshot:this.get('circuit_snapshot'),problem:snapshotProblem(this.get('circuit_snapshot'),this.get('circuit_index_block'),now),lightRows:counts('circuit_light'),lightBytes:this.row<{n:number}>('SELECT COALESCE(SUM(32+length(published_at)+length(disposition)+length(reason)+COALESCE(length(list_version),0)),0) n FROM circuit_light')!.n,review:this.rows("SELECT id,reason,created_at,expires_at FROM circuit_light WHERE disposition='review' AND expires_at>? ORDER BY created_at DESC LIMIT 10",now),ttlMs:CIRCUIT_LIGHT_TTL,maxRows:CIRCUIT_LIGHT_MAX}:null,
+   circuitScope:this.circuitPolicy()?{policy:this.circuitPolicy(),snapshot:this.get('circuit_snapshot'),problem:snapshotProblem(this.get('circuit_snapshot'),this.get('circuit_index_block'),now),deliveryReview:this.rows("SELECT id FROM queue WHERE kind='circuit' AND state='needs_review' AND sent_at IS NULL"),lightRows:counts('circuit_light'),lightBytes:this.row<{n:number}>('SELECT COALESCE(SUM(32+length(published_at)+length(disposition)+length(reason)+COALESCE(length(list_version),0)),0) n FROM circuit_light')!.n,review:this.rows("SELECT id,reason,created_at,expires_at FROM circuit_light WHERE disposition='review' AND expires_at>? ORDER BY created_at DESC LIMIT 10",now),ttlMs:CIRCUIT_LIGHT_TTL,maxRows:CIRCUIT_LIGHT_MAX}:null,
    indexCheckedAt:indexes?.checkedAt??null,indexAgeMs:indexes?now-Date.parse(indexes.checkedAt):null,discovery:this.get('last_listing'),deliveryEnabled:(this.get<{heartbeatAt:number}>('telegram_delivery')?.heartbeatAt??0)>now-60_000};
  }
  close(){this.db.close();}
