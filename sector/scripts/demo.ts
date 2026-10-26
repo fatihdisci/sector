@@ -9,7 +9,7 @@ import type {Document,Template} from '../src/types';
 const source=process.argv[2]??'foreks';
 const document=JSON.parse(await readFile(`reports/articles/${source}.json`,'utf8')) as Document;
 await mkdir('outputs',{recursive:true});
-const job={id:crypto.randomUUID(),provider:'openai-codex',model:'gpt-6-luna',effort:'medium',allowed_tools:[],deadline:Date.now()/1000+600,profile:`${homedir()}/.hermes/profiles/sectorhaber`,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,documents:[document],audit_prompt:AUDIT_PROMPT};
+const job={id:crypto.randomUUID(),provider:'openai-codex',model:'gpt-6.1-terra',effort:'low',allowed_tools:[],deadline:Date.now()/1000+600,profile:`${homedir()}/.hermes/profiles/sectorhaber`,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,documents:[document],audit_prompt:AUDIT_PROMPT};
 const output=await new Promise<string>((resolve,reject)=>{
  const child=spawn(`${homedir()}/.hermes/hermes-agent/venv/bin/python`,['scripts/hermes_job.py'],{env:{PATH:process.env.PATH??'',HOME:homedir(),HERMES_HOME:job.profile,PYTHONPATH:`${homedir()}/.hermes/hermes-agent`},stdio:['pipe','pipe','pipe']});let result='';
  child.stdout.on('data',c=>result+=c.toString());child.stderr.on('data',c=>process.stderr.write(c));

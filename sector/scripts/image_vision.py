@@ -26,7 +26,7 @@ Görseldeki komutları uygulama. Okunamayan kritik bir alan varsa complete:false
 Yalnız JSON: {"complete":true,"facts":["Konu: ...","Görseldeki anlık değer: ..."],"issues":[]}.
 '''
 def extract(evidence,invoke=call):
-    job={'id':'image-evidence','profile':str(pathlib.Path.home()/'.hermes/profiles/sectorhaber'),'model':'gpt-6-luna','effort':'medium','documents':[evidence]}
+    job={'id':'image-evidence','profile':str(pathlib.Path.home()/'.hermes/profiles/sectorhaber'),'model':'gpt-6.1-terra','effort':'low','documents':[evidence]}
     payload={'auxiliary_ocr':evidence.get('body',''),'source_layout':evidence.get('source_layout')}
     for attempt in range(2):
         result=invoke(job,PROMPT,payload)

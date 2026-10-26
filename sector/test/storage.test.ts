@@ -20,7 +20,7 @@ async function environment(){
  }
  const db={prepare:(text:string)=>new Statement(text),batch:async(statements:Statement[])=>{sql.exec('BEGIN');try{const result=[];for(const s of statements)result.push(await s.run());sql.exec('COMMIT');return result;}catch(e){sql.exec('ROLLBACK');throw e;}}};
  const objects=new Map<string,Uint8Array>();
- const env={DB:db,MEDIA:{put:async(k:string,b:Uint8Array)=>objects.set(k,b),delete:async(k:string)=>objects.delete(k)},MODE:'dry_run',TARGET_X_USERNAME:'sectorhaber',AI_MODEL:'gpt-6-luna',AI_EFFORT:'medium',AI_DAILY_DRAFT_LIMIT:'30',ADMIN_TOKEN:'admin',BRIDGE_TOKEN:'bridge'} as unknown as Env;
+ const env={DB:db,MEDIA:{put:async(k:string,b:Uint8Array)=>objects.set(k,b),delete:async(k:string)=>objects.delete(k)},MODE:'dry_run',TARGET_X_USERNAME:'sectorhaber',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'30',ADMIN_TOKEN:'admin',BRIDGE_TOKEN:'bridge'} as unknown as Env;
  return {env,sql,objects};
 }
 const document:Document={source_id:'test',source_name:'Resmî Test',family:'official-test',official:true,title:'Test Teknoloji yeni tesis planını açıkladı',url:'https://test.example.org/a',published_at:'2026-10-21T12:00:00Z',body:'Test Teknoloji, yeni üretim tesisi yatırımını planladığını açıkladı. Proje için izin başvuruları sürüyor.',passages:[{id:'p1',text:'Test Teknoloji, yeni üretim tesisi yatırımını planladığını açıkladı.'}]};
@@ -41,7 +41,7 @@ test('job lease is exclusive, result is idempotent, publication remains absent',
  sql.prepare("INSERT INTO news_cards(id,article_id,state,created_at) VALUES('card','a','model_queued',?)").run(Date.now()/1000);
  const job=await leaseJob(env);assert(job);assert.equal(await leaseJob(env),null);
  const date='21.10.2026',svg=draftCard(draft,[document.source_name],date,true,job.card_theme,job.card_layout);
- const payload={id:'job',lease_token:job.lease_token,input_hash:hash,draft,audit:{supported:true,issues:[]},runtime:{model:'gpt-6-luna',effort:'medium',provider:'openai-codex',tool_count:0,fallback_count:0},card_date:date,svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')};
+ const payload={id:'job',lease_token:job.lease_token,input_hash:hash,draft,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},card_date:date,svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')};
  await assert.rejects(()=>submitJob(env,{...payload,input_hash:'changed'}),/invalid_job_lease/);
  await assert.rejects(()=>submitJob(env,{...payload,svg_hash:'wrong'}),/card_content_mismatch/);
  sql.prepare("UPDATE model_jobs SET error='previous_validation_failure' WHERE id='job'").run();
@@ -109,7 +109,7 @@ test('same-day channel close submits beside legacy overview key and repeated res
   sql.prepare("INSERT INTO articles(id,source_id,url,title,summary,published_at,first_seen)VALUES(?,'sermaye-telegram',?,'close','',?,?)").run(id,source.url+'/'+id,source.published_at!,time);
   sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state,lease_token,lease_until)VALUES(?,?,?,?,?,'news','leased','token',?)").run(id,id,input,hash,time,time+600);
   for(const [key,value]of [['card_theme:','paper'],['card_layout:','editorial']])sql.prepare('INSERT INTO system_state(key,value)VALUES(?,?)').run(key+id,value);
-  const payload:Record<string,unknown>={id,lease_token:'token',input_hash:hash,draft:out,audit:{supported:true,issues:[]},runtime:{model:'gpt-6-luna',effort:'medium',provider:'openai-codex',tool_count:0,fallback_count:0},cards};
+  const payload:Record<string,unknown>={id,lease_token:'token',input_hash:hash,draft:out,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},cards};
   const r=await submitJob(env,payload);if(!first){first=r.id;assert(!r.duplicate)}else{assert(r.duplicate);assert.equal(r.id,first)};
   assert.equal((await submitJob(env,payload)).id,first);
  }

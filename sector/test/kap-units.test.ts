@@ -164,7 +164,7 @@ test('nominal-share PDF support does not expand unrelated financial-report table
 });
 test('the real job lease persists PDF conversion evidence before the model receives the payload',async()=>{
  const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));
- const env={DB,AI_MODEL:'gpt-6-luna',AI_EFFORT:'medium'} as Env;
+ const env={DB,AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low'} as Env;
  const parent={...mkk,body:mkk.body.repeat(4),passages:[{id:'metadata',text:mkk.title+'\n'+mkk.body.repeat(4)}]};
  const id=await enqueueEvidence(env,[parent,pdf],'kap');
  const before=await DB.prepare('SELECT input_hash FROM model_jobs WHERE id=?').bind(id).first<{input_hash:string}>();

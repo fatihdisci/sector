@@ -6,8 +6,8 @@ preview_urls = false
 
 [vars]
 MODE = "dry_run"
-AI_MODEL = "gpt-6-luna"
-AI_EFFORT = "medium"
+AI_MODEL = "gpt-6.1-terra"
+AI_EFFORT = "low"
 AI_DAILY_DRAFT_LIMIT = "240"
 
 [[d1_databases]]

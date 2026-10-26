@@ -164,7 +164,7 @@ import {png} from '../scripts/render_local';
 import {sha256} from '../src/utils/text';
 import type {Draft} from '../src/types';
 test('frozen circuit group reads all official members and delivers one branded photo with source button',async()=>{
- const {s,env}=await setup();const images=new Map<string,Uint8Array>();Object.assign(env,{AI_MODEL:'gpt-6-luna',AI_EFFORT:'medium',TELEGRAM_BOT_TOKEN:'123:test',TELEGRAM_VERIFIED_BOT_ID:'123',MEDIA:{put:async(k:string,b:Uint8Array)=>images.set(k,b),get:async(k:string)=>images.has(k)?{arrayBuffer:async()=>images.get(k)!.buffer}:null}});
+ const {s,env}=await setup();const images=new Map<string,Uint8Array>();Object.assign(env,{AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',TELEGRAM_BOT_TOKEN:'123:test',TELEGRAM_VERIFIED_BOT_ID:'123',MEDIA:{put:async(k:string,b:Uint8Array)=>images.set(k,b),get:async(k:string)=>images.has(k)?{arrayBuffer:async()=>images.get(k)!.buffer}:null}});
  const previous=globalThis.fetch;let photos=0;const reads:number[]=[];
  globalThis.fetch=async(url,options)=>{assert.match(String(url),/^https:\/\/api\.telegram\.org\//);if(String(url).endsWith('/sendPhoto')){photos++;const form=options!.body as FormData;assert.match(String(form.get('caption')),/KTLEV.*ASTOR/);const buttons=JSON.parse(String(form.get('reply_markup')));assert(buttons.inline_keyboard.flat().some((b:any)=>b.text==='Diğer'));}return Response.json({ok:true,result:{message_id:99}});};
  try{
@@ -178,7 +178,7 @@ test('frozen circuit group reads all official members and delivers one branded p
   const job=(await leaseJob(env))!,documents=job.documents as Document[];assert.equal(documents.length,2);
   const draft:Draft={card_data:{tickers:['KTLEV','ASTOR']},headline:'📢 KTLEV ve ASTOR paylarında devre kesici uygulandı',body:'Her iki payda tek fiyat emir toplama işlemi başladı.',card_headline:'KTLEV ve ASTOR paylarında devre kesici',card_body:'Tek fiyat emir toplama işlemi başladı.',hashtags:['#Borsa','#BIST','#DevreKesici'],category:'bist',importance:94,template:'circuit',entities:['KTLEV','ASTOR'],event_key:'circuit-ktlev-astor',uncertainties:[],claims:documents.map((d,i)=>({text:d.body,evidence:[{document:i,passage:'p1',quote:d.body}]}))};
   const svg=draftCard(draft,[],'',false,job.card_theme,job.card_layout);assert.match(svg,/ENDEKS HABER/);assert.match(svg,/DEVRE KESİCİ/);
-  await submitJob(env,{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,draft,audit:{supported:true,issues:[]},runtime:{model:'gpt-6-luna',effort:'medium',provider:'openai-codex',tool_count:0,fallback_count:0},card_date:'',svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
+  await submitJob(env,{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,draft,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},card_date:'',svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
   await deliver(env);await deliver(env);assert.equal(photos,1);
   await consumer.run();assert.equal(s.row<{state:string}>("SELECT state FROM queue WHERE kind='circuit'")!.state,'sent');
  }finally{globalThis.fetch=previous;s.close();}

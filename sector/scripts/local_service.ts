@@ -46,7 +46,7 @@ import worker from '../src/worker';
 import type {Env,Document,Draft} from '../src/types';
 const directory=`${homedir()}/Library/Application Support/sector-haber`;
 const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
-const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',await readFile('migrations/0001_sector.sql','utf8')),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6-luna',AI_EFFORT:'medium',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
+const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',await readFile('migrations/0001_sector.sql','utf8')),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
 try{const keys=JSON.parse(await readFile(directory+'/x-credentials.json','utf8'));if(validXKeys(keys))env.X_PUBLISH_ENABLED='true';}catch{/* X stays disabled until credentials are saved locally. */}
 env.RENDER_REPORT=png;
 env.READ_SPK_X=async manifest=>{const post=JSON.parse(manifest);return post.cached_documents??(post.url?.startsWith('https://x.com/fintables/status/')?fintablesPostDocuments(post,readPdf,readImage):spkPostDocuments(post,readPdf,readImage));};
