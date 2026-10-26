@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; editorial_owner_answer:Sentinel_0941a660cdbc8191afa5b9a072958d0d; gallery_question:Sentinel_3608e79da98c8191902b7239ff7b971d; gallery_owner_answer:Sentinel_090bca9498708191bf47088975b0c717",
-  "recorded_at": 1792959726128,
+  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; fintables_equity_question:Sentinel_9db7320760148191a07441d6e0d437f5; fintables_equity_owner_answer:Sentinel_6a7f5956352c8191a0cea10695b452e2",
+  "recorded_at": 1792988692905,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -22,8 +22,8 @@
   },
   "parent_state_hash": "2ac447bef85fd05ac6500c74c393419a985a63dce2f8d69c5531f457f1a6288c",
   "runtime_files": {
-    "src/news-routing.ts": "a9bc5b9efd1bcfe234c9ddeba6141d006685f7ae0fe103ac365859332ae68000",
-    "src/news-company-catalog.ts": "ef5b4eaa745c0cdd9b92f4f46182015c91685ba03d1cde2cac66250fb9b717fa",
+    "src/news-routing.ts": "8789adfc4c1ddca4b784b7d68e155c7ae3aca6eec294f176aa394f974a802361",
+    "src/news-company-catalog.ts": "55f8d6545506ad75af30f1d04a6efdedb1d89d75b54ad38410e3f2aab7a832f2",
     "src/newsroom.ts": "41a8164c8da1baff8831b5ce419f9388039f0223d7440b4e3d34b524c45029fe",
     "src/news-readiness.ts": "16e5c25089018de533f7cb1168330ee27655348f3eff7b4383f7b198e305f86a",
     "src/news-owner-review.ts": "bd907f83423a5b92343797769c4d23512ed9a9c818efb0844d4617fe4c81233d",

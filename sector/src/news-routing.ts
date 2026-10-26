@@ -1,4 +1,4 @@
-import {catalogEntities,matchingCompanies,matchingIssuerMentions,unresolvedIssuerMatches,explicitEquityCodes,COMPANY_CATALOG_VERSION} from './news-company-catalog';
+import {catalogEntities,matchingCompanies,matchingIssuerMentions,unresolvedIssuerMatches,explicitEquityCodes,financialStatementMention,COMPANY_CATALOG_VERSION} from './news-company-catalog';
 import {newsReadiness} from './news-readiness';
 import type {Env,Item,Source} from './types';
 import {sha256} from './utils/text';
@@ -27,10 +27,10 @@ export function evaluateNews(item:Item,source:Source,p=DEFAULT_NEWS_PREFERENCES,
  const sector=/\b(petrol|dogal gaz|enerji|bankacilik|otomotiv|celik|havacilik|yari iletken|tarife|yaptirim)\b/.test(text);
  // Event semantics precede routing. Technology words in a market opinion do not define its topic.
  const denied=/\b(yalanla\w*|reddet\w*|gercegi yansitmiyor|durmadi|durdurulmadi)\b/.test(text);
- const outlook=/\b(bekleniyor|bekliyor|beklenti\w*|imzalayacak|tahmin\w*|ongoru\w*|surebilir|olabilir|ihtimal\w*|planliyor|iddia\w*|soylenti\w*)\b/.test(text);
- const results=/\b(bilanco\w*|finansal (?:tablo|sonuc)\w*|net kar\w*|net zarar\w*)\b/.test(text);
+ const outlook=/\b(bekleniyor|bekliyor|beklenti\w*|acikla(?:yacak|nacak|yacag|nacag)\w*|imzalayacak|tahmin\w*|ongoru\w*|surebilir|olabilir|ihtimal\w*|planliyor|iddia\w*|soylenti\w*)\b/.test(text);
+ const results=financialStatementMention(text);
  const forecastTitle=/\b(beklenti\w*|tahmin\w*|ongoru\w*|hedef fiyat|teknik analiz)\b/.test(title)&&!/\bbeklenti\w* (?:uzerinde|altinda|asti|asarak)\b/.test(title);
- const realizedResults=!forecastTitle&&results&&/\b(acikla\w*|gerceklesti|oldu|artti|geriledi|azaldi|yukseldi|asti)\b/.test(text)&&!/\b(bekleniyor|tahmin\w*|ongoru\w*|olabilir)\b/.test(title);
+ const realizedResults=!forecastTitle&&results&&/\b(acikladi\w*|aciklandi\w*|aciklanan|aciklanmis\w*|gerceklesti|oldu|artti|geriledi|azaldi|yukseldi|asti)\b/.test(text)&&!/\b(bekleniyor|tahmin\w*|ongoru\w*|olabilir)\b/.test(title);
  const economicData=!codes.length&&!issuerMentions.length&&!unresolvedIssuers.length&&/dogrudan yabanci yatirim|yabanci (?:yatirim|sermaye)|dis ticaret|ithalat|ihracat/.test(text)&&/\d/.test(text)&&/yuzde|milyar|milyon|dolar|euro/.test(text)&&/azal|gerile|artti|yuksel|dustu/.test(text);
  const market=/\b(piyasa\w*|hisse senet\w*|dolar|borsa\w*|tahvil\w*|riskten kacis)\b/.test(text);
  const opinion=/\b(stratejist\w*|analist\w*|piyasa gorusu|teknik analiz|hedef fiyat|beklenti\w*)\b/.test(text)&&!realizedResults;
