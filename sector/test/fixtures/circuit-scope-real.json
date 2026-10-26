@@ -1,0 +1,79 @@
+[
+  {
+    "id": 1664072,
+    "sourceRef": "kap:1664072",
+    "url": "https://www.kap.org.tr/tr/Bildirim/1664072",
+    "title": "EBDK (Endekse Bağlı Devre Kesici) Seans Durdurma Bildirimi",
+    "summary": "Endekse Bağlı Devre Kesici (EBDK) Sistemi devreye girmiştir",
+    "company": "BORSA İSTANBUL BISTECH DEVRE KESİCİ UYGULAMASI",
+    "issuerRaw": null,
+    "issuerCode": null,
+    "relatedCodes": [],
+    "subjectCodes": [],
+    "disclosureClass": "DUY",
+    "disclosureType": "DUY",
+    "category": "ODA",
+    "fundType": null,
+    "isFund": false,
+    "oid": "4028328ca09bee8f01a0aa51a5c47e93",
+    "relatedOid": null,
+    "changeStatus": null,
+    "isCorrection": false,
+    "publishedAt": "2026-09-16T13:04:33.000Z",
+    "attachmentCount": 0
+  },
+  {
+    "id": 1686624,
+    "sourceRef": "kap:1686624",
+    "url": "https://www.kap.org.tr/tr/Bildirim/1686624",
+    "title": "Pay Bazında Devre Kesici Bildirimi",
+    "summary": "ISCTR.E işlem sırasında Pay Bazında Devre Kesici Uygulaması devreye girmiştir",
+    "company": "BORSA İSTANBUL BISTECH DEVRE KESİCİ UYGULAMASI",
+    "issuerRaw": null,
+    "issuerCode": null,
+    "relatedCodes": [
+      "ISCTR"
+    ],
+    "subjectCodes": [
+      "ISCTR"
+    ],
+    "disclosureClass": "DUY",
+    "disclosureType": "DUY",
+    "category": "ODA",
+    "fundType": null,
+    "isFund": false,
+    "oid": "4028328da0b8438601a168a088c11bef",
+    "relatedOid": null,
+    "changeStatus": null,
+    "isCorrection": false,
+    "publishedAt": "2026-10-23T11:58:33.000Z",
+    "attachmentCount": 0
+  },
+  {
+    "id": 1685154,
+    "sourceRef": "kap:1685154",
+    "url": "https://www.kap.org.tr/tr/Bildirim/1685154",
+    "title": "Pay Bazında Devre Kesici Bildirimi",
+    "summary": "MEPET.E işlem sırasında Pay Bazında Devre Kesici Uygulaması devreye girmiştir",
+    "company": "BORSA İSTANBUL BISTECH DEVRE KESİCİ UYGULAMASI",
+    "issuerRaw": null,
+    "issuerCode": null,
+    "relatedCodes": [
+      "MEPET"
+    ],
+    "subjectCodes": [
+      "MEPET"
+    ],
+    "disclosureClass": "DUY",
+    "disclosureType": "DUY",
+    "category": "ODA",
+    "fundType": null,
+    "isFund": false,
+    "oid": "4028328ca0b8418501a15e9ea6232284",
+    "relatedOid": null,
+    "changeStatus": null,
+    "isCorrection": false,
+    "publishedAt": "2026-10-21T13:20:18.000Z",
+    "attachmentCount": 0
+  }
+]
