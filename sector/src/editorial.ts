@@ -113,6 +113,8 @@ export function topicScore(title:string,body='',official=false):{category:Catego
 }
 const norm=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/\s+/g,' ').trim();
 export function numericTokens(text:string):string[] {
+ // Financial scale aliases only after a complete number; do not consume ticker prefixes.
+ text=text.replace(/([-+]?\d+(?:[.,]\d+)*)\s*(Mn|Mr)(?![\p{L}\p{N}_])/giu,(_m,n,scale)=>n+' '+(scale.toLowerCase()==='mn'?'milyon':'milyar'));
  // Positive price ranges share a trailing unit; their separator is not a
  // negative sign. Preserve explicit negative quantities outside such ranges.
  text=text.replace(/(?<![\d.,-])(\d+(?:[.,]\d+)*)\s*[-–—]\s*(\d+(?:[.,]\d+)*)\s*(TL|TRY|USD|EUR|dolar|lira|avro|%)(?![a-z])/giu,'$1 $3; $2 $3');
