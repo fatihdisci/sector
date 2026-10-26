@@ -3,6 +3,7 @@ import hashlib,json,pathlib,re,subprocess,sys
 from decimal import Decimal
 from PIL import Image,ImageOps,ImageChops,ImageStat
 from read_pdf import ocr_text
+from sermaye_layout import source_layout
 
 def rows(blocks):
     out=[]
@@ -210,6 +211,7 @@ def read_image(path,root,ocr):
     except (subprocess.SubprocessError, OSError, ValueError):
         blocks=[] # Pixel analysis can still read an image when OCR is unavailable.
     raw_text=ocr_text(blocks)
+    layout=source_layout(blocks)
     blocks=recover_labels(blocks,image,ocr)
     blocks=recover_numeric_cells(blocks,image,ocr)
     text=ocr_text(blocks)
@@ -218,7 +220,20 @@ def read_image(path,root,ocr):
     original={'id':'image_ocr_raw','text':'Yardımcı OCR metni; görseldeki konum ve etiket ilişkileri doğrudan görüntüden doğrulanmalıdır:\n'+raw_text}
     market,passages=parsed if parsed else (None,[original])
     body='\n\n'.join(p['text'] for p in passages)
-    return {'body':body,'passages':[original,*passages] if parsed else passages,'images':[str(image)],
+    images=[str(image)]
+    if layout and layout['kind']=='theoretical':
+        # Keep the original plus readable evidence crops. Never infer missing
+        # cells; every crop retains that panel's real header pixels.
+        with Image.open(image) as original:
+            w,h=original.size
+            for side in range(2):
+                for part,(top,bottom) in enumerate(((.155,.55),(.545,.95))):
+                    x0=int(w*side/2);x1=int(w*(side+1)/2)
+                    header=original.crop((x0,0,x1,int(h*.155)))
+                    body_crop=original.crop((x0,int(h*top),x1,int(h*bottom)))
+                    tile=Image.new('RGB',(x1-x0,header.height+body_crop.height));tile.paste(header,(0,0));tile.paste(body_crop,(0,header.height))
+                    path=folder/f'theoretical-{side}-{part}.png';tile.save(path);path.chmod(0o600);images.append(str(path))
+    return {**({'source_layout':layout}if layout else {}),'body':body,'passages':[original,*passages] if parsed else passages,'images':images,
       **({'market_data':market} if market else {}),'coverage':{'complete':True,'page_count':1,'pages':[{'page':1,'mode':'image_ocr_visual','characters':len(text),'tables':len({r['side'] for r in market['rows']}) if market and market['kind']=='institutional' else 2 if parsed else 0}]}}
 
 if __name__=='__main__':

@@ -68,21 +68,22 @@ export async function prepare(env:Env):Promise<void> {
  const priority=(a:{title:string;summary:string;published_at:string;config:string})=>topicScore(a.title,a.summary,JSON.parse(a.config).official).score-(Date.now()-Date.parse(a.published_at))/3600_000*2;
  const selected=(queue.results??[]).sort((a,b)=>priority(b)-priority(a)).slice(0,2);
  for(const article of selected) {
-  const lock=await env.DB.prepare('UPDATE articles SET lease_until=? WHERE id=? AND lease_until<?').bind(time+(['spk-x','fintables-x'].includes(JSON.parse(article.config).id)?1800:360),article.id,time).run();if(!lock.meta.changes)continue;
+  const lock=await env.DB.prepare('UPDATE articles SET lease_until=? WHERE id=? AND lease_until<?').bind(time+(['spk-x','fintables-x','sermaye-telegram'].includes(JSON.parse(article.config).id)?1800:360),article.id,time).run();if(!lock.meta.changes)continue;
   try {
    const source=JSON.parse(article.config) as Source;
    if(['spk-x','fintables-x'].includes(source.id)&&(!env.READ_SPK_X||!article.document))throw Error('x_reader_unavailable');
-   const documents=['spk-x','fintables-x'].includes(source.id)?await env.READ_SPK_X!(article.document!):[source.method==='bridge_pdf'&&article.document?JSON.parse(article.document) as Document:await readDocument(article,source)];
+   if(source.id==='sermaye-telegram'&&(!env.READ_TELEGRAM_CHANNEL||!article.document))throw Error('channel_reader_unavailable');
+   const documents=source.id==='sermaye-telegram'?await env.READ_TELEGRAM_CHANNEL!(article.document!):['spk-x','fintables-x'].includes(source.id)?await env.READ_SPK_X!(article.document!):[source.method==='bridge_pdf'&&article.document?JSON.parse(article.document) as Document:await readDocument(article,source)];
    if(!documents.length)throw Error('x_evidence_empty');
    for(const d of documents)d.family=evidenceFamily(d);const doc=documents[0];
-   if(['spk-x','fintables-x'].includes(source.id)){article.document=JSON.stringify({...JSON.parse(article.document!),cached_documents:documents});await env.DB.prepare('UPDATE articles SET document=?,document_expires=? WHERE id=?').bind(article.document,time+7*86400,article.id).run();}
+   if(['spk-x','fintables-x','sermaye-telegram'].includes(source.id)){article.document=JSON.stringify({...JSON.parse(article.document!),cached_documents:documents});await env.DB.prepare('UPDATE articles SET document=?,document_expires=? WHERE id=?').bind(article.document,time+(source.id==='sermaye-telegram'?86400:7*86400),article.id).run();}
    if(doc.gallery_range){await saveGallery(env,article,doc,time);continue;}
    const kap=(registry as Source[]).find(s=>s.id==='kap');
    for(const url of doc.primary_urls??[])if(kap)try{documents.push(await readDocument({title:doc.title,url,summary:'',published_at:doc.published_at},kap));}catch{/* Missing primary document leaves attribution intact, never an invented official confirmation. */}
    // Merge closely matching reports before generating. Unrelated companies,
    // later dates and merely similar macro topics are not corroboration.
    const related=await env.DB.prepare("SELECT a.*,s.config FROM articles a JOIN sources s ON s.id=a.source_id WHERE a.id<>? AND a.status='queued' AND s.enabled=1 AND ABS(julianday(a.published_at)-julianday(?))<0.5 LIMIT 80").bind(article.id,article.published_at).all<{id:string;url:string;title:string;summary:string;published_at:string;config:string}>();
-   const matched=(related.results??[]).filter(r=>titleSimilarity(article.title,r.title)>.68).slice(0,2);
+   const matched=(related.results??[]).filter(r=>JSON.parse(r.config).id!=='sermaye-telegram').filter(r=>titleSimilarity(article.title,r.title)>.68).slice(0,2);
    const relatedIds:string[]=[];
    const corroboration=await Promise.allSettled(matched.map(async r=>{
     const extra=await readDocument(r,JSON.parse(r.config));extra.family=evidenceFamily(extra);return {extra,id:r.id};
@@ -92,10 +93,10 @@ export async function prepare(env:Env):Promise<void> {
    const jobs=await env.DB.prepare("SELECT COUNT(*) AS count FROM model_jobs WHERE state IN ('queued','leased')").first<{count:number}>();
    if((jobs?.count??0)>=4||!await quota(env,'news-request-budget')){await env.DB.prepare('UPDATE articles SET lease_until=0,next_try=? WHERE id=?').bind(time+30,article.id).run();break;}
    const jobId=crypto.randomUUID(),input=JSON.stringify(documents);
-   const cachedXSource=['spk-x','fintables-x'].includes(source.id);
+   const cachedXSource=['spk-x','fintables-x','sermaye-telegram'].includes(source.id);
    await env.DB.batch([
     env.DB.prepare("INSERT INTO model_jobs(id,article_id,documents,related_ids,input_hash,created_at,kind) VALUES(?,?,?,?,?,?,'news') ON CONFLICT(article_id,expected_revision) DO UPDATE SET documents=excluded.documents,related_ids=excluded.related_ids,input_hash=excluded.input_hash,created_at=excluded.created_at,kind='news',state='queued',error=NULL,lease_until=0 WHERE model_jobs.state IN ('needs_review','expired','paused')").bind(jobId,article.id,input,JSON.stringify(relatedIds),await sha256(input),time),
-    env.DB.prepare("UPDATE articles SET status='model_queued',document=?,document_expires=?,lease_until=0 WHERE id=?").bind(cachedXSource?article.document:JSON.stringify(doc),time+(cachedXSource?7*86400:24*3600),article.id),
+    env.DB.prepare("UPDATE articles SET status='model_queued',document=?,document_expires=?,lease_until=0 WHERE id=?").bind(cachedXSource?article.document:JSON.stringify(doc),time+(cachedXSource&&source.id!=='sermaye-telegram'?7*86400:24*3600),article.id),
     env.DB.prepare("UPDATE news_cards SET state='model_queued' WHERE article_id=? AND state='requested'").bind(article.id)
    ]);
   } catch(e) {

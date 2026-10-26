@@ -168,9 +168,12 @@ async def main(mode,root=ROOT):
         cfg=load_credentials(config,setup=mode=='setup')
         from telethon import TelegramClient
         from telethon.errors import FloodWaitError
-        client=TelegramClient(str(root/'account'),cfg['api_id'],cfg['api_hash'],**client_options(mode))
+        client=TelegramClient(str(root/'account'),cfg['api_id'],cfg['api_hash'],receive_updates=mode not in ('channel-scan','channel-read'),**client_options(mode))
         db=open_journal(root)
         try:
+            if mode in ('channel-scan','channel-read'):
+                limit=db.execute("SELECT until FROM limits WHERE key='flood'").fetchone()
+                if limit and limit['until']>time.time():raise QueryError('bot_query_rate_limited')
             await client.connect()
             if mode=='setup':
                 await client.start(phone=prompt_phone,code_callback=lambda:getpass.getpass('Telegram giriş kodu: '),password=lambda:getpass.getpass('İki aşamalı doğrulama şifresi: '))
@@ -182,7 +185,11 @@ async def main(mode,root=ROOT):
                 cfg['user_id']=me.id;private_json(config,cfg);print('Hesap bağlandı. Editör botunda /kurum, /akd KTLEV veya /takas THYAO kullanabilirsin.');return
             if not cfg.get('user_id'):raise QueryError('bot_account_not_connected')
             if mode=='status':print(json.dumps({'connected':True}));return
-            value=json.loads(sys.stdin.read(4096));print(json.dumps(await query(client,db,root,value),ensure_ascii=False))
+            value=json.loads(sys.stdin.read(4096))
+            if mode in ('channel-scan','channel-read'):
+                from telegram_channel import scan,read
+                print(json.dumps(await(scan(client,value)if mode=='channel-scan'else read(client,value)),ensure_ascii=False));return
+            print(json.dumps(await query(client,db,root,value),ensure_ascii=False))
         except FloodWaitError as error:
             db.execute("INSERT OR REPLACE INTO limits VALUES('flood',?)",(time.time()+error.seconds,));db.commit();raise QueryError('bot_query_rate_limited')
         except Exception as error:
@@ -195,6 +202,7 @@ async def main(mode,root=ROOT):
             await client.disconnect();db.close()
 
 if __name__=='__main__':
+    sys.modules.setdefault('telegram_account',sys.modules[__name__])
     try:asyncio.run(main(sys.argv[1] if len(sys.argv)>1 else 'query'))
     except Exception as error:
         code=str(error) if isinstance(error,QueryError) else 'bot_account_dependency_missing' if isinstance(error,ModuleNotFoundError) else 'bot_query_failed'

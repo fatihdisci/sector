@@ -1,0 +1,13 @@
+# Sermaye Borsası kanal kaynağı
+
+Yalnız @SermayeBorsasi / kanal kimliği 2426639373 okunur. Hesap bağlantısı mevcut telegram_account.py kilidini ve kimlik doğrulamasını kullanır; diyaloğu/grubu listelemez, kanala katılmaz, mesaj/komut göndermez, okundu işaretlemez. Hesap istemcisi kanal modlarında arka plan güncellemesi almaz; editör botunun ikinci getUpdates tüketicisi oluşturulmaz.
+
+İlk başarılı tarama yalnız son ID'yi başlangıç sınırı kaydeder. Eski haberler getirilmez. Sonraki taramalar 60 saniyede bir, 50 yeni mesajlık kronolojik sayfalarla ilerler. Albüm parçaları bir sonraki taramada en az 60 saniye bekletilir; tek manifest olur. Salt okunur son 20 mesaj bakışı yalnız başlangıçtan sonraki düzeltme/albüm bağlamını kontrol eder. Aynı içerik yeniden eklenmez; düzenlenmiş içerik değişmez yeni sürüm olarak ayrılır. Gönderilmiş/uncertain taslaklar yeniden açılmaz. Kayıp/değişmiş mesaj, desteklenmeyen ek, eksik albüm ve okunamayan hücre açık hata verir.
+
+İzinli kaynak metni/link/görsel metaverisi articles içinde 24 saatlik manifesttir. Görsel/PDF yalnız İçerik oluştur isteğinde indirilir ve mevcut vision/OCR/PDF okuyucusundan geçer. Kanala ait olmayan sohbetler okunmaz. 20 MB tek ek / 40 MB toplam / 10 mesaj sınırı vardır. Dış haber bağlantıları yalnız mevcut izinli kaynak okuyucularına gider; bilinmeyen hedef için eksik içeriği hazır diye sunmaz. Telegram bot/deep linkleri çalıştırılmaz. Ham kaynak temizliği ve kaynak görsel dosyaları mevcut TTL mekanizmasını kullanır; aktif model işlerinin dosyaları korunur.
+
+Yeni kaynak mevcut haber filtresine girer; bu işlem filtre/seçki onayı veya yeni ayar oluşturmaz. Anlık/seçki/arşiv kararı mevcut kurallarla verilir. Kaynak kanal olduğundan resmî/bağımsız doğrulama diye işaretlenmez. Son kontrol ve açık X Paylaş onayı aynı kalır. /durum görünümünde telegram_channel_health ve kaynak son_ok/hata bilgisi bulunur.
+
+Görsel aileleri: teorik eşleşme (teorik fiyat/değişim/kalan; 20+20 satır dört kart), piyasa genel görünümü (seviye/yüzde/puan/hacim ve ayrı tablolar), kurum AKD özeti (farklı alıcı/satıcı kurum adları). OCR panel rollerini belirler; rakamlar orijinal görüntü ve bağımsız vision denetimiyle kontrol edilir. Yoğun teorik tabloda orijinalin yanında gerçek başlıkları koruyan dört okunaklı bölge kullanılır; sayı/başlık üretilmez. Başka bir kurumun şablonu yayımlanmaz; ENDEKS HABER kod tabanlı kartları üretilir. Model ve effort değişmez.
+
+Geri dönüş: kaynak enabled=0 ile yalnız yeni kanal taramasını kapatabilir; ana hizmet uygulama/plist rollback'i veritabanını geri kopyalamaz. İlk ID/cursor/ledger silinmez; yeniden etkinleştirme geçmişi topluca oynatmaz. KAP ve diğer servislerin ayarları bu kaynakla değişmez.

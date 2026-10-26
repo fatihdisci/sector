@@ -1,10 +1,11 @@
+import{catalogEntities}from'../src/news-company-catalog';
 import {spawn} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 import {pdfRoot,type PdfEvidence} from './pdf_reader';
 import type {Document} from '../src/types';
-export type ImageEvidence=PdfEvidence&Pick<Document,'market_data'>;
+export type ImageEvidence=PdfEvidence&Pick<Document,'market_data'|'source_layout'|'equity_codes'>;
 export async function analyzeVisual(evidence:ImageEvidence):Promise<ImageEvidence>{
  return new Promise((resolve,reject)=>{
   const home=homedir(),child=spawn(join(home,'.hermes/hermes-agent/venv/bin/python'),['scripts/image_vision.py'],{env:{PATH:process.env.PATH??'',HOME:home,PYTHONPATH:join(home,'.hermes/hermes-agent')},stdio:['pipe','pipe','pipe']});let output='',error='';
@@ -34,5 +35,8 @@ export async function readImage(bytes:Uint8Array):Promise<ImageEvidence>{
  });
  // Structured AKD tables retain their deterministic reader and existing visual audit.
  // General screenshots need pixel-derived facts before the draft's numeric checks.
- return evidence.market_data?evidence:analyzeVisual(evidence);
+ if(evidence.market_data)return evidence;
+ const result=await analyzeVisual(evidence);
+ if(result.source_layout){const known=new Set(catalogEntities.map(c=>c.code));result.equity_codes=[...new Set(result.source_layout.panels.flatMap(p=>p.symbols).filter(c=>known.has(c)&&result.body.includes(c)))];}
+ return result;
 }

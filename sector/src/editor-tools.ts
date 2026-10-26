@@ -29,7 +29,7 @@ export async function editorCallback(env:Env,data:string,messageId:number):Promi
 export async function editorMessage(env:Env,m:any,update:number){
  if(m.forward_origin)return false;
  if(m.text==='/durum'){
-  const health=(await env.DB.prepare("SELECT key,value FROM system_state WHERE key IN ('collector_health','model_health','delivery_health','telegram_health','spk_x_health','fintables_x_health','nitter_account_health','buyback_report_health','kap_delivery_health','runtime_identity','model_paused_until')").all<{key:string;value:string}>()).results;
+  const health=(await env.DB.prepare("SELECT key,value FROM system_state WHERE key IN ('telegram_channel_health','collector_health','model_health','delivery_health','telegram_health','spk_x_health','fintables_x_health','nitter_account_health','buyback_report_health','kap_delivery_health','runtime_identity','model_paused_until')").all<{key:string;value:string}>()).results;
   const jobs=(await env.DB.prepare('SELECT state,COUNT(*) n,MIN(created_at) oldest FROM model_jobs GROUP BY state').all()).results;
   const sources=(await env.DB.prepare('SELECT s.id,last_ok,failures,last_error,(SELECT MAX(published_at) FROM news_candidates n WHERE n.source_id=s.id) latest_publication FROM sources s WHERE enabled=1').all()).results;
   const deliveries=(await env.DB.prepare('SELECT delivery_state,COUNT(*) n,MIN(created_at) oldest FROM drafts GROUP BY delivery_state').all()).results;
