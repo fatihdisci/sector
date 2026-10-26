@@ -51,11 +51,17 @@ export function selectBuyback(table:BuybackTable,indices:Indices|null,now:number
  return {known:!!membership,rows:[...table.rows].sort((a,b)=>{const t=tier(a)-tier(b);if(t)return t;const x=quantity(a),y=quantity(b);return x===y?a.ticker.localeCompare(b.ticker,'en'):x===null?1:y===null?-1:x>y?-1:1;}).slice(0,10)};
 }
 export function buybackTweet(table:BuybackTable,indices:Indices|null,now:number,correction=false){
- const selection=selectBuyback(table,indices,now),text=`📢 ${correction?'Düzeltme: ':''}${table.day.split('-').reverse().join('.')} pay geri alımları\n\n${selection.rows.map(r=>'#'+r.ticker).join(' ')}`;
+ const selection=selectBuyback(table,indices,now);if(!selection.rows.length)throw Error('buyback_row_coverage');
+ transactionDay(table.day.split('-').reverse().join('.'));
+ const months=['Ocak’ta','Şubat’ta','Mart’ta','Nisan’da','Mayıs’ta','Haziran’da','Temmuz’da','Ağustos’ta','Eylül’de','Ekim’de','Kasım’da','Aralık’ta'];
+ const [,month,day]=table.day.split('-').map(Number),date=`${day} ${months[month-1]}`;
+ const one=table.rows.length===1,intro=one?`${date} paylarını geri alan şirket hangisi?`:`${date} hangi şirketler kendi paylarını geri aldı?`;
+ const closing=one?'Şirketin geri alım işlemlerinin detayları görselde.':'Geri alım yapan şirketlerin tamamı ve işlem detayları görsellerde.';
+ const text=`${correction?'Düzeltme: ':''}${intro}\n\n${selection.rows.map(r=>'#'+r.ticker).join(' ')}\n\n${closing}`;
  const parsed=twitter.parseTweet(text);if(!parsed.valid||parsed.weightedLength>280)throw Error('buyback_tweet_capacity');return {text,...selection,weightedLength:parsed.weightedLength};
 }
 export function buybackDraft(table:BuybackTable,evidence:BuybackEvidence,indices:Indices|null,now:number,correction=false):{draft:Draft;documents:Document[]}{
- const selected=buybackTweet(table,indices,now,correction),[headline,body]=selected.text.split('\n\n');
+ const selected=buybackTweet(table,indices,now,correction),[headline,...paragraphs]=selected.text.split('\n\n'),body=paragraphs.join('\n\n');
  if(evidence.selection&&JSON.stringify(evidence.selection.selected.map(r=>r.ticker))!==JSON.stringify(selected.rows.map(r=>r.ticker)))throw Error('buyback_selection_evidence_mismatch');
  const notes=['Tek kaynak tablo aktarımı; bağımsız KAP doğrulaması değildir.','Kaynak kapsamı: rapordaki satırlar; tüm piyasayı kapsadığı iddia edilmez.',...(selected.known?[]:['Endeks üyeliği doğrulanamadı; miktar sıralaması kullanıldı.']),...(table.rows.some(r=>r.nominal===null||r.price===null||r.amount===null)?['Kaynakta boş hücreler var; null / — korunmuştur. Toplamlar hesaplanmadı.']:[])];
  const raw=JSON.stringify(evidence);

@@ -4,7 +4,12 @@ const outsideUrls=(s:string,fn:(s:string)=>string)=>s.split(/(https?:\/\/[^\s]+)
 export function hashtagTickers(text:string,codes:string[]):string{
  const values=unique(codes);if(!values.length)return text;
  const pattern=new RegExp(`(?<![\\p{L}\\p{N}_#])(${values.join('|')})(?:\\.E)?(?![\\p{L}\\p{N}_])`,'giu');
- return outsideUrls(text,s=>s.replace(pattern,(_match,code:string)=>'#'+code.toUpperCase()));
+ return outsideUrls(text,s=>s.replace(pattern,(match,code:string,offset:number)=>{
+  // EKIM is also an equity code. A day + Ekim + locative suffix is a
+  // calendar expression; bare EKIM and explicit #EKIM remain equity mentions.
+  if(code.toUpperCase()==='EKIM'&&/(?<!\d)(?:0?[1-9]|[12]\d|3[01])\s+$/u.test(s.slice(0,offset))&&/^[’']de\b/iu.test(s.slice(offset+match.length)))return match;
+  return '#'+code.toUpperCase();
+ }));
 }
 export function circuitWithoutRepeatedTickers(text:string,codes:string[]):string{
  const values=unique(codes);if(!values.length)return text;

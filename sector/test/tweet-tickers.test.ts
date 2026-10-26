@@ -22,3 +22,9 @@ test('tweet ticker tagging applies to single stock news, AKD, institutional and 
  const report={...news,template:'info' as const,card_data:{report:{rows:[],footer:''}}};assert.match(postText(report),/#KARCL'nin/);
  const institutional={...news,template:'institutional' as const,card_data:{buy:[{label:'KARCL',value:'10 TL'}]}};assert(!/(?<!#)\bKARCL\b/u.test(postText(institutional)));
 });
+
+test('October calendar dates are not EKIM ticker mentions; actual equity mentions still get hashtags',()=>{
+ assert.equal(hashtagTickers("22 Ekim’de #EKIM ve EKIM hissesi; EKIM’de işlem",['EKIM']),"22 Ekim’de #EKIM ve #EKIM hissesi; #EKIM’de işlem");
+ assert.equal(hashtagTickers("1 Ekim'de EKIM.E ve https://example.org/EKIM",['EKIM']),"1 Ekim'de #EKIM ve https://example.org/EKIM");
+ assert.equal(hashtagTickers("122 EKIM’de",['EKIM']),"122 #EKIM’de");
+});

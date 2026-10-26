@@ -116,3 +116,13 @@ test('first activation and restart do not backfill historical reports; only a su
  assert.equal((await pollBuybacks(env,{...io,fetcher,now:()=>at+2000})).state,'ready');assert.equal(reads,1);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('natural buyback copy uses transaction day, Turkish month suffixes, singular/plural and unchanged selection',()=>{
+ const expected=['1 Ocak’ta','1 Şubat’ta','1 Mart’ta','1 Nisan’da','1 Mayıs’ta','1 Haziran’da','1 Temmuz’da','1 Ağustos’ta','1 Eylül’de','1 Ekim’de','1 Kasım’da','1 Aralık’ta'];
+ for(let m=1;m<=12;m++){const t={...table,day:`2026-${String(m).padStart(2,'0')}-01`},a=buybackTweet(t,indices,at);assert(a.text.startsWith(expected[m-1]));assert(a.text.includes('hangi şirketler kendi paylarını geri aldı?'));assert(a.text.endsWith('Geri alım yapan şirketlerin tamamı ve işlem detayları görsellerde.'));assert(a.weightedLength<=280);}
+ for(const n of [1,3,10,54,200]){const rows=Array.from({length:n},(_,i)=>({...table.rows[i%table.rows.length],ticker:'A'+String(i).padStart(4,'0')})),t={...table,rows,row_count:n};
+ for(const correction of[false,true]){const actual=buybackTweet(t,null,at,correction),selected=selectBuyback(t,null,at);assert.deepEqual(actual.rows,selected.rows);assert.equal((actual.text.match(/#[A-Z0-9]+/g)??[]).length,Math.min(n,10));assert(actual.weightedLength<=280);assert.equal(actual.text.includes('Düzeltme:'),correction);assert(actual.text.includes(n===1?'şirket hangisi?':'hangi şirketler'));}}
+ const t=buybackTweet(table,indices,at);assert(t.text.startsWith('22 Ekim’de'));assert(!t.text.includes('23 Ekim'));assert(!/📢|en çok|fiyat etkisi|lot|adet/.test(t.text));
+ assert.throws(()=>buybackTweet({...table,day:'2026-02-30'},indices,at),/invalid_date/);assert.throws(()=>buybackTweet({...table,rows:[]},indices,at),/row_coverage/);
+ const created=buybackDraft(table,evidence,indices,at);assert.equal(postText(created.draft),t.text,'closing paragraph must survive draft assembly');assert.deepEqual(created.draft.card_data?.report?.buyback,table);assert.equal(created.documents[0].buyback_evidence,evidence);
+});
