@@ -15,7 +15,8 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
  const text=(s:string,x:number,y:number,size:number,color=fg,weight=400,anchor='start')=>`<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}">${esc(s.replace(/−/g,'-'))}</text>`;
  const rule=(y:number)=>`<path d="M${left} ${y} H1004" stroke="${steel}" stroke-width="1"/>`;
  const block=(s:string,x:number,y:number,w:number,h:number,size:number=40,color=fg,min=26,weight=400,align?:'center')=>fit(s.replace(/−/g,'-'),{x,y,width:w,height:h,size,min,weight,color,align});
- const labels:{[key:string]:string}={circuit:'DEVRE KESİCİ',institutional:data?.buy?.length&&!data?.sell?.length?'KURUM / ALIM':data?.sell?.length&&!data?.buy?.length?'KURUM / SATIM':'KURUM ALIM / SATIM',akd:'HİSSE / AKD',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA',theoretical:'TEORİK EŞLEŞME'};
+ const summary=d.template==='institutional'&&!!(data?.buy_broker||data?.sell_broker);
+ const labels:{[key:string]:string}={circuit:'DEVRE KESİCİ',institutional:summary?'KURUM AKD ÖZETİ':data?.buy?.length&&!data?.sell?.length?'KURUM / ALIM':data?.sell?.length&&!data?.buy?.length?'KURUM / SATIM':'KURUM ALIM / SATIM',akd:'HİSSE / AKD',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA',theoretical:'TEORİK EŞLEŞME'};
  const inverse=layout==='brief'||layout==='masthead';
  let art=layout==='frame'?rect(34,34,1012,1282,'none',steel):layout==='rail'?rect(0,0,38,1350,fg)+rect(38,0,6,1350,steel):'';
  if(inverse)art+=rect(0,0,1080,180,fg);
@@ -85,6 +86,20 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
   };
   art+=table(d.template==='broker_flow'?'NET ALICI KURUMLAR':'ALICI KURUMLAR',data.buy,480,layout!=='masthead')+table(d.template==='broker_flow'?'NET SATICI KURUMLAR':'SATICI KURUMLAR',data.sell,836,layout==='masthead');
   art+=block(d.body,left,1190,width,105,30,fg,22);
+ }else if(summary&&(data?.buy?.length||data?.sell?.length)){
+  art+=block(d.headline,left,260,width,130,55,fg,38,700,align);
+  const table=(role:string,broker:string,rows:CardRow[]|undefined,y:number,invert:boolean)=>{
+   if(!rows?.length)return '';if(rows.length>5)throw Error('market_card_capacity_institution_summary');
+   const ink=invert?bg:fg,muted=invert?bg:steel,x=left+28,inner=width-56,bounds=[0,.30,.65,1],height=154+rows.length*46+12;
+   let svg=rect(left,y,width,height,invert?fg:bg,invert?undefined:steel)+text(role,x,y+38,25,muted,700);
+   svg+=block(broker+' üzerinden öne çıkan hisseler',x,y+52,inner,48,28,ink,20,700);
+   ['HİSSE','NET HACİM','MALİYET'].forEach((h,j)=>svg+=text(h,x+bounds[j]*inner,y+125,21,muted,700));
+   svg+=`<path d="M${x} ${y+138} H${left+width-28}" stroke="${muted}" stroke-width="1" opacity=".45"/>`;
+   rows.forEach((row,i)=>{const cells=[row.label,...institutionSummaryCells(row.value)];cells.forEach((v,j)=>svg+=block(v,x+bounds[j]*inner,y+150+i*46,(bounds[j+1]-bounds[j])*inner-16,44,j===0?30:27,ink,22,j===0?700:400));});return svg;
+  };
+  const buyHeight=data?.buy?.length?154+data.buy.length*46+12:0;
+  art+=table('EN ÇOK NET ALIM',data?.buy_broker??data?.broker??'Kurum',data?.buy,420,layout!=='masthead');
+  art+=table('EN ÇOK NET SATIM',data?.sell_broker??data?.broker??'Kurum',data?.sell,buyHeight?420+buyHeight+26:420,layout==='masthead');
  }else if(d.template==='institutional'&&(data?.buy?.length||data?.sell?.length)){
   art+=block(d.headline,left,268,width,192,61,fg,38,700,align);
   const both=!!(data.buy?.length&&data.sell?.length),gap=26,col=both?(width-gap)/2:width;
@@ -164,4 +179,11 @@ function circuitCard(theme:CardTheme,layout:CardLayout,tickers:string[]):string 
  ${grid}
  <path d="M80 1300 H1000" stroke="${steel}" stroke-width="1"/><path d="M80 1300 H${240+CARD_LAYOUTS.indexOf(layout)*28}" stroke="${ink}" stroke-width="6"/>
  </g></svg>`;
+}
+
+export function institutionSummaryCells(value:string):[string,string]{
+ const match=/^(.*?)\s*(?:[·|;]\s*)?maliyet\s*:?\s*(.+)$/iu.exec(value);
+ if(match){const net=match[1].trim().replace(/[·|;]\s*$/u,'').trim();if(!net||!match[2].trim())throw Error('institution_summary_cells_invalid');return[net,match[2].trim()];}
+ if(/[·|;]/u.test(value))throw Error('institution_summary_cells_invalid');
+ return[value.trim()||'—','—'];
 }

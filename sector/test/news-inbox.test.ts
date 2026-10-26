@@ -90,3 +90,17 @@ test('a throttled completion notice retries the same preview without replaying a
   assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<{n:number}>())!.n,0);
  }finally{globalThis.fetch=original;}
 });
+test('renewed owner request survives progress refresh before prepare replaces the previous failed model attempt',async()=>{
+ const env=await fixture(),old=globalThis.fetch;globalThis.fetch=async(url)=>{assert.match(String(url),/editMessageText$/);return Response.json({ok:true,result:{message_id:100}});};
+ try{
+  await env.DB.prepare("insert into news_cards(id,article_id,state,message_id,created_at) values('retry-card','a','failed',100,1)").run();
+  await env.DB.prepare("insert into model_jobs(id,article_id,documents,input_hash,created_at,kind,state,error)values('retry-job','a','[]','x',1,'news','needs_review','unsupported_number_or_unit')").run();
+  await requestNews(env,'retry-card',100);await refreshNewsRequests(env);
+  assert.equal((await env.DB.prepare('select state from news_cards').first<any>()).state,'requested');
+  await prepare(env);await refreshNewsRequests(env);
+  assert.equal((await env.DB.prepare('select state from news_cards').first<any>()).state,'model_queued');
+  assert.equal((await env.DB.prepare('select state from model_jobs').first<any>()).state,'queued');
+  assert.equal((await env.DB.prepare('select count(*)n from model_jobs').first<any>()).n,1);
+  assert.equal((await env.DB.prepare('select count(*)n from x_posts').first<any>()).n,0);
+ }finally{globalThis.fetch=old;}
+});

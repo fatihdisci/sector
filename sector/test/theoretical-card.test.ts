@@ -9,7 +9,7 @@ test('forty theoretical rows use four readable source-preserving cards with expl
 });
 test('two distinct brokers have distinct panel labels; unknown names fail evidence check',async()=>{
  const d={...draft,template:'institutional' as const,card_headline:'Kurumlar üzerinden öne çıkan hisseler',card_data:{buy_broker:'BofA',sell_broker:'QNB',buy:[{label:'YKBNK',value:'1,16 milyar TL'}],sell:[{label:'ASTOR',value:'732,80 milyon TL'}]}};
- validateCardData(d.card_data,[{title:'BofA ve QNB kurum özeti',body:'YKBNK ASTOR'}as any]);const svg=draftCards(d)[0];assert(svg.includes('BofA ÜZERİNDEN ALIM'));assert(svg.includes('QNB ÜZERİNDEN SATIM'));await png(svg);
+ validateCardData(d.card_data,[{title:'BofA ve QNB kurum özeti',body:'YKBNK ASTOR'}as any]);const svg=draftCards(d)[0];assert(svg.includes('EN ÇOK NET ALIM'));assert(svg.includes('BofA üzerinden öne çıkan hisseler'));assert(svg.includes('EN ÇOK NET SATIM'));assert(svg.includes('QNB üzerinden öne çıkan hisseler'));await png(svg);
  assert.throws(()=>validateCardData({...d.card_data,sell_broker:'Uydurma'},[{title:'BofA QNB',body:'YKBNK ASTOR'}as any]),/unsupported_card_broker/);
 });
 
