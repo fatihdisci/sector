@@ -1,0 +1,208 @@
+{
+  "provenance": "Cached public channel reader output, not independent official data or a new model run. Original job 25c4f3c5; local paths excluded.",
+  "document": {
+    "source_id": "sermaye-telegram",
+    "source_name": "Sermaye Borsası (@SermayeBorsasi)",
+    "family": "telegram-sermayeborsasi",
+    "official": false,
+    "language": "tr",
+    "source_layout": {
+      "kind": "market_overview",
+      "panels": [
+        {
+          "name": "ENDEKSI YUKSELTENLER",
+          "symbols": [
+            "ASTOR",
+            "AKBNK",
+            "YKBNK",
+            "TUPRS",
+            "FROTO"
+          ]
+        },
+        {
+          "name": "EN COK YUKSELENLER",
+          "symbols": [
+            "EMPAE",
+            "KARTN",
+            "ANELE",
+            "SUWEN",
+            "KAPLM"
+          ]
+        },
+        {
+          "name": "EN COK DUSENLER",
+          "symbols": [
+            "OZATD",
+            "TRHOL",
+            "BRKVY",
+            "LYDYE",
+            "TMPOL"
+          ]
+        },
+        {
+          "name": "ENDEKSI DUSURENLER",
+          "symbols": [
+            "ASELS",
+            "EREGL",
+            "TURSG",
+            "GUBRF",
+            "KRDMD"
+          ]
+        },
+        {
+          "name": "HACIM LIDERLERI",
+          "symbols": [
+            "ASELS",
+            "AKBNK",
+            "ISCTR",
+            "THYAO",
+            "YKBNK"
+          ]
+        }
+      ],
+      "minimum_rows": 25,
+      "role_note": "OCR panel/satır adaylarıdır; sayı, birim ve tam kapsam piksellerden doğrulanmalıdır."
+    },
+    "body": "BIST 100: 11.151,96 puan. Değişim %0,31 yükseliş; puan farkı işaretli +34,97 puan. Gün içi en düşük 11.003,77, en yüksek 11.215,76 puan; işlem hacmi 104,1 milyar TL. Görselde açık tarih yok. Metin günü tamamladığını söylüyor; grafikte saat etiketleri 09:55–17:55 arasında.\n\nEndeksi yükseltenler (puan etkisi): ASTOR +19.9; AKBNK +14.5; YKBNK +12.5; TUPRS +11.5; FROTO +6.0.\n\nEndeksi düşürenler (puan etkisi): ASELS -11.6; EREGL -8.1; TURSG -6.1; GUBRF -5.8; KRDMD -5.8.\n\nEn çok yükselenler (değişim): EMPAE %10,00; KARTN %10,00; ANELE %10,00; SUWEN %10,00; KAPLM %10.00.\n\nEn çok düşenler (değişim): OZATD %10,00; TRHOL %10,00; BRKVY %10,00; LYDYE %9,99; TMPOL %9.99. Panel düşenleri listeliyor; değerlerde eksi işareti görünmüyor.\n\nHacim liderleri: ASELS 13.4 milyar; AKBNK 8.9 milyar; ISCTR 7.7 milyar; THYAO 7.2 milyar; YKBNK 6.7 milyar. Panelde para birimi belirtilmemiş.\n\nPiyasa genişliği: Yükselen 298; Nötr 25; Düşen 308.\n\nKurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, TOPLAM  TL. İlk 5: %70.9. Ak: 822,88 milyon; %20,76; 23,7 milyar TL. İş: 732,26 milyon; %18,47; 23,3 milyar TL. Gedik: 701,64 milyon; %17,70; 4,0 milyar TL. A1: 325,27 milyon; %8,21; 2,4 milyar TL. Ziraat: 229,63 milyon; %5,79; 6,6 milyar TL. Diğer (27): 1,15 milyar; %29,07; 91,4 milyar TL.\n\nKurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, TOPLAM  TL. İlk 5: %76.1. Yapı Kr.: 1,45 milyar; %36,59; 47,5 milyar TL. Yat. Fin.: 486,07 milyon; %12,26; 9,0 milyar TL. QNB: 387,48 milyon; %9,77; 10,4 milyar TL. İnfo: 375,78 milyon; %9,48; 1,9 milyar TL. Deniz: 316,80 milyon; %7,99; 9,0 milyar TL. Diğer (18): 947,54 milyon; %23,90; 37,3 milyar TL.",
+    "passages": [
+      {
+        "id": "image_visual_1",
+        "text": "BIST 100: 11.151,96 puan. Değişim %0.31 yükseliş; puan farkı işaretli +34,97 puan. Gün içi en düşük 11.003,77, en yüksek 11.215,76 puan; işlem hacmi 104,1 milyar TL. Görselde açık tarih yok. Metin günü tamamladığını söylüyor; grafikte saat etiketleri 09:55–17:55 arasında."
+      },
+      {
+        "id": "image_visual_2",
+        "text": "Endeksi yükseltenler (puan etkisi): ASTOR +19.9; AKBNK +14.5; YKBNK +12.5; TUPRS +11.5; FROTO +6.0."
+      },
+      {
+        "id": "image_visual_3",
+        "text": "Endeksi düşürenler (puan etkisi): ASELS -11.6; EREGL -8.1; TURSG -6.1; GUBRF -5.8; KRDMD -5.8."
+      },
+      {
+        "id": "image_visual_4",
+        "text": "En çok yükselenler (değişim): EMPAE %10.00; KARTN %10.00; ANELE %10.00; SUWEN %10.00; KAPLM %10.00."
+      },
+      {
+        "id": "image_visual_5",
+        "text": "En çok düşenler (değişim): OZATD %10.00; TRHOL %10.00; BRKVY %10.00; LYDYE %9.99; TMPOL %9.99. Panel düşenleri listeliyor; değerlerde eksi işareti görünmüyor."
+      },
+      {
+        "id": "image_visual_6",
+        "text": "Hacim liderleri: ASELS 13.4 Mr; AKBNK 8.9 Mr; ISCTR 7.7 Mr; THYAO 7.2 Mr; YKBNK 6.7 Mr. Panelde para birimi belirtilmemiş."
+      },
+      {
+        "id": "image_visual_7",
+        "text": "Piyasa genişliği: Yükselen 298; Nötr 25; Düşen 308."
+      },
+      {
+        "id": "image_visual_8",
+        "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, TOPLAM ₺. İlk 5: %70.9. Ak: 822,88 Mn; %20.76; 23,7 Mr₺. İş: 732,26 Mn; %18.47; 23,3 Mr₺. Gedik: 701,64 Mn; %17.70; 4,0 Mr₺. A1: 325,27 Mn; %8.21; 2,4 Mr₺. Ziraat: 229,63 Mn; %5.79; 6,6 Mr₺. Diğer (27): 1,15 Mr; %29.07; 91,4 Mr₺."
+      },
+      {
+        "id": "image_visual_9",
+        "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, TOPLAM ₺. İlk 5: %76.1. Yapı Kr.: 1,45 Mr; %36.59; 47,5 Mr₺. Yat. Fin.: 486,07 Mn; %12.26; 9,0 Mr₺. QNB: 387,48 Mn; %9.77; 10,4 Mr₺. İnfo: 375,78 Mn; %9.48; 1,9 Mr₺. Deniz: 316,80 Mn; %7.99; 9,0 Mr₺. Diğer (18): 947,54 Mn; %23.90; 37,3 Mr₺."
+      },
+      {
+        "id": "image_normalized_1",
+        "text": "BIST 100: 11.151,96 puan. Değişim %0,31 yükseliş; puan farkı işaretli +34,97 puan. Gün içi en düşük 11.003,77, en yüksek 11.215,76 puan; işlem hacmi 104,1 milyar TL. Görselde açık tarih yok. Metin günü tamamladığını söylüyor; grafikte saat etiketleri 09:55–17:55 arasında."
+      },
+      {
+        "id": "image_normalized_2",
+        "text": "Endeksi yükseltenler (puan etkisi): ASTOR +19.9; AKBNK +14.5; YKBNK +12.5; TUPRS +11.5; FROTO +6.0."
+      },
+      {
+        "id": "image_normalized_3",
+        "text": "Endeksi düşürenler (puan etkisi): ASELS -11.6; EREGL -8.1; TURSG -6.1; GUBRF -5.8; KRDMD -5.8."
+      },
+      {
+        "id": "image_normalized_4",
+        "text": "En çok yükselenler (değişim): EMPAE %10,00; KARTN %10,00; ANELE %10,00; SUWEN %10,00; KAPLM %10.00."
+      },
+      {
+        "id": "image_normalized_5",
+        "text": "En çok düşenler (değişim): OZATD %10,00; TRHOL %10,00; BRKVY %10,00; LYDYE %9,99; TMPOL %9.99. Panel düşenleri listeliyor; değerlerde eksi işareti görünmüyor."
+      },
+      {
+        "id": "image_normalized_6",
+        "text": "Hacim liderleri: ASELS 13.4 milyar; AKBNK 8.9 milyar; ISCTR 7.7 milyar; THYAO 7.2 milyar; YKBNK 6.7 milyar. Panelde para birimi belirtilmemiş."
+      },
+      {
+        "id": "image_normalized_7",
+        "text": "Piyasa genişliği: Yükselen 298; Nötr 25; Düşen 308."
+      },
+      {
+        "id": "image_normalized_8",
+        "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, TOPLAM  TL. İlk 5: %70.9. Ak: 822,88 milyon; %20,76; 23,7 milyar TL. İş: 732,26 milyon; %18,47; 23,3 milyar TL. Gedik: 701,64 milyon; %17,70; 4,0 milyar TL. A1: 325,27 milyon; %8,21; 2,4 milyar TL. Ziraat: 229,63 milyon; %5,79; 6,6 milyar TL. Diğer (27): 1,15 milyar; %29,07; 91,4 milyar TL."
+      },
+      {
+        "id": "image_normalized_9",
+        "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, TOPLAM  TL. İlk 5: %76.1. Yapı Kr.: 1,45 milyar; %36,59; 47,5 milyar TL. Yat. Fin.: 486,07 milyon; %12,26; 9,0 milyar TL. QNB: 387,48 milyon; %9,77; 10,4 milyar TL. İnfo: 375,78 milyon; %9,48; 1,9 milyar TL. Deniz: 316,80 milyon; %7,99; 9,0 milyar TL. Diğer (18): 947,54 milyon; %23,90; 37,3 milyar TL."
+      },
+      {
+        "id": "image_visual_format",
+        "text": "Yalnız biçim eşdeğerleri: Mr=milyar, Mn=milyon, ₺=TL. Yüzde hücresinde ondalık nokta virgüle normalleştirildi; fiyat/miktar binlik noktaları değiştirilmedi. Eksik para birimi eklenmedi."
+      },
+      {
+        "id": "channel_context",
+        "text": "{\"message_id\":26453,\"posted_at\":\"2026-10-26T15:11:05+00:00\",\"edited_at\":\"2026-10-26T15:11:08+00:00\",\"caption\":\"📈 BIST 100 — 18:11\",\"version\":\"6dd1b4e9c8d0200719b4d72cdc52cb0ccf24f923f578e2d4b9cda85ff026ab9e\",\"note\":\"Kanal yayın zamanı kaynak ölçüm tarihi değildir; görsel/başlık dönem çelişkisi korunmalıdır.\"}"
+      }
+    ],
+    "coverage": {
+      "complete": true,
+      "page_count": 1,
+      "pages": [
+        {
+          "page": 1,
+          "mode": "image_ocr_visual",
+          "characters": 5581,
+          "tables": 0
+        }
+      ]
+    },
+    "equity_codes": [
+      "ASTOR",
+      "AKBNK",
+      "YKBNK",
+      "TUPRS",
+      "FROTO",
+      "EMPAE",
+      "KARTN",
+      "ANELE",
+      "SUWEN",
+      "KAPLM",
+      "OZATD",
+      "TRHOL",
+      "BRKVY",
+      "LYDYE",
+      "TMPOL",
+      "ASELS",
+      "EREGL",
+      "TURSG",
+      "GUBRF",
+      "KRDMD",
+      "ISCTR",
+      "THYAO"
+    ],
+    "url": "https://t.me/SermayeBorsasi/26453",
+    "title": "Sermaye Borsası kaynak görseli",
+    "published_at": "2026-10-26T15:11:05+00:00",
+    "channel_publication": {
+      "channel": "SermayeBorsasi",
+      "peer_id": 2426639373,
+      "message_id": 26453,
+      "posted_at": "2026-10-26T15:11:05+00:00",
+      "edited_at": "2026-10-26T15:11:08+00:00",
+      "version": "6dd1b4e9c8d0200719b4d72cdc52cb0ccf24f923f578e2d4b9cda85ff026ab9e",
+      "forwarded": false,
+      "forwarded_at": null
+    },
+    "market_editorial_context": {
+      "version": 1,
+      "label": "Gün sonu",
+      "basis": "original_channel_publication_time",
+      "calendar_version": "bist-equity-2026-reviewed-2026-10-26",
+      "measurement_time_verified": false,
+      "publication_is_not_data_day": true,
+      "reason": "owner_channel_programme"
+    }
+  }
+}

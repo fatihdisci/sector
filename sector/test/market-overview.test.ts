@@ -96,3 +96,12 @@ test('legacy 17:00 reader format preserves signed percent, combined contribution
  const unknown=structuredClone(fixture.document);unknown.passages=unknown.passages.map((p:any)=>({...p,text:p.text.replace(/toplam  TL/g,'toplam')}));assert.throws(()=>parseMarketOverview(unknown),/broker_coverage/);
  const unsigned=structuredClone(fixture.document);unsigned.passages=unsigned.passages.map((p:any)=>({...p,text:p.text.replace('%-0,51','%0,51')}));assert.throws(()=>parseMarketOverview(unsigned),/index_incomplete/);
 });
+
+ test('18:11 cached close preserves alphanumeric broker names and rejects a missing identity',async()=>{
+ const f=JSON.parse(await readFile('test/fixtures/market-overview-26453.json','utf8')),d=f.document as Document;
+ const ds=withOverviewEvidence([d]),out=repairDraftStyle(raw,ds),o=out.card_data!.overview!;
+ assert.equal(o.view,'close');assert.equal(o.brokers[0].rows[3].name,'A1');assert.equal(o.brokers[0].rows[3].net,'325,27 milyon');
+ assert(o.brokers.flatMap(b=>b.rows).every(r=>r.name.trim()));assert.equal(validateDraft(out,ds).verification,'single_source_attributed');
+ const svg=draftCards(out)[0];assert(svg.includes('>A1</text>'));assert((await png(svg)).length>20000);
+ const broken=structuredClone(d);for(const p of broken.passages)p.text=p.text.replace(/A1:/g,':');assert.throws(()=>parseMarketOverview(broken),/broker_coverage/);
+ });

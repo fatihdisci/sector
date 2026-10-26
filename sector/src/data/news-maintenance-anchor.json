@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery.",
-  "recorded_at": 1793024126918,
+  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery. Follow-up owner report: 18:11 Taslak doğrulanamadı, Yine hata var. Scope: preserve alphanumeric broker identities and safe model failure-stage diagnostics, no forced production retry.",
+  "recorded_at": 1793028789795,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -24,7 +24,7 @@
   "runtime_files": {
     "src/channel-market-preview.ts": "3b6a312363d7c4082e2a28084a182800b08bfed8051acf80ab5db7a50bfdf72f",
     "src/channel-programme.ts": "c3cade8790ebe73dbd5a62d7dfa9b3fd88d9871338998468218456264a7986a8",
-    "src/market-overview.ts": "a88cd1ecc9a4e549196a1562fc27759c7c52fd4e59736afcca8e83f1be981b02",
+    "src/market-overview.ts": "b989f0f0c17f708427c29a64025f90863fee44510adc9b2987099451a90f9ac3",
     "src/market-overview-types.ts": "8f925f6d552c1276f23621d42d127f2deca75b467bd1caad0ef16605624da0af",
     "src/market-overview-card.ts": "a8b3a147d5d81313c068b60fe71a97a28d0aee9f4e4584553ec46d203a475001",
     "src/card.ts": "b1b34bbc73fa6e2862f2d853b3dbf70bb71f5f4daba3888f5a80ec69ce1dcfef",

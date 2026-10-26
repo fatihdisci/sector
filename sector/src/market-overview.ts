@@ -28,7 +28,7 @@ export function parseMarketOverview(d:Document):MarketOverview{
  const breadth=(view==='opening'||view==='first_moves')?'':find(/^piyasa (?:genisligi|geneli)/),count=(re:RegExp)=>{const m=re.exec(breadth);if(!breadth)return '';if(!m)throw Error('market_overview_breadth_missing');return m[1];};
  const brokers:MarketOverview['brokers']=[];
  for(const side of (view==='opening'||view==='first_moves'?[]:['buy','sell'])as ('buy'|'sell')[]){const text=find(side==='buy'?/^kurumsal dagilim.*net alicilar/:/^kurumsal dagilim.*net saticilar/),first=/İlk\s*5:\s*%([\d.,]+)/iu.exec(text);if(!first)throw Error('market_overview_broker_missing');
-  const rx=/([A-Za-zÇĞİÖŞÜçğıöşü. ]+(?:\(\d+\))?)\s*:?\s*([-+−]?\d[\d.,]*)\s*(Mr|Mn|milyar|milyon)(?:\s*(TL|₺))?\s*;\s*%([\d.,]+)\s*;\s*([\d.,]+)\s*(Mr|Mn|milyar|milyon)(?:\s*(TL|₺))?/g;
+  const rx=/(?:^|[.;:])\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-z0-9ÇĞİÖŞÜçğıöşü. ]*?(?:\(\d+\))?)(?:\s*:\s*|\s+)([-+−]?\d[\d.,]*)\s*(Mr|Mn|milyar|milyon)(?:\s*(TL|₺))?\s*;\s*%([\d.,]+)\s*;\s*([\d.,]+)\s*(Mr|Mn|milyar|milyon)(?:\s*(TL|₺))?/g;
   const totalHeaderTL=/toplam\s+TL/iu.test(text);
   const rows=[...text.matchAll(rx)].map(m=>{if(!m[8]&&!totalHeaderTL)throw Error('market_overview_broker_coverage');return{name:m[1].replace(/^[.\s]+/,'').trim(),net:number(m[2])+' '+m[3].replace(/^Mr$/i,'milyar').replace(/^Mn$/i,'milyon')+(m[4]?' TL':''),share:'%'+number(m[5]),total:number(m[6])+' '+m[7].replace(/^Mr$/i,'milyar').replace(/^Mn$/i,'milyon')+' TL'};});
   const named=rows.filter(r=>!/^Diğer\s*\(\d+\)$/u.test(r.name));if(named.length!==5||rows.length>6)throw Error('market_overview_broker_coverage');brokers.push({side,first5:'%'+number(first[1]),rows:named});
