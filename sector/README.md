@@ -230,6 +230,8 @@ Mac mini masaüstündeki `ENDEKS-X-Baglantisi.command`, OAuth 1.0 Consumer Key/S
 
 Paylaş düğmesine yalnız kayıtlı Telegram sahibi özel sohbetten basabilir. Metin ve mevcut PNG birlikte gönderilir; yeniden model çağrısı yoktur. Kalıcı `x_posts` kayıtları İstanbul gününde en fazla 20 gönderim/rezervasyon sınırını atomik uygular. Başarısızlığı kesin olan gönderim kotayı serbest bırakır; sonucu belirsiz gönderim kotada kalır ve otomatik tekrarlanmaz. Gün değişiminde bekleyen eski istekler gönderilmez; yeniden açık tıklama gerekir. Aynı taslak düzenlense de iki kez yayımlanmaz. Bu sınır tweet sayısıdır; X API'nin parasal kredi sınırı değildir. Kimlik doğrulama ve medya yüklemesi ayrıca API kullanımına dahil olabilir.
 
+Paylaşım katmanı uzun metinleri `twitter-text` ağırlıklı sayımıyla en fazla 25.000 karaktere kadar tek POST ve aynı PNG ile iletir; metni kesmez veya otomatik zincir oluşturmaz. Bu yerel sınır, hesabın/API erişiminin uzun gönderi yetkisi olduğunu kanıtlamaz. X'in uygun abonelik/erişim kararı geçerlidir; açık uzunluk reddi ayrı bildirilir. Başarısızlık kesin değilse mevcut belirsiz gönderim koruması ve günlük 20 rezervasyon sınırı korunur. Üretimdeki kısa özet varsayılanları değişmez. Referanslar (26 Ekim 2026): [uzun gönderiler](https://help.x.com/en/using-x/types-of-posts), [Create Posts API](https://docs.x.com/x-api/posts/create-post). Gerçek uzun gönderi kabulü, sahibin açık Paylaş işlemi gerçekleşmeden doğrulanmış sayılmaz.
+
 Bağlantıyı kapatmak için `x-credentials.json` dosyasını güvenli bir yere taşı. Otomatik yayın yoktur; eski Telegram onayları yayın başlatmaz. Her gönderim öncesi X kimliği denetlenir. Anahtar yenilemesinde aynı güvenli kurulum aracı tekrar kullanılır.
 
 

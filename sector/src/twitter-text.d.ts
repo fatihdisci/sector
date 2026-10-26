@@ -1,1 +1,1 @@
-declare module 'twitter-text' {const twitter:{parseTweet(text:string):{valid:boolean;weightedLength:number}};export default twitter;}
+declare module 'twitter-text' {const twitter:{configs:{defaults:Record<string,unknown>};parseTweet(text:string,options?:Record<string,unknown>):{valid:boolean;weightedLength:number}};export default twitter;}

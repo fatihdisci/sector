@@ -18,3 +18,29 @@ test('replayed Telegram update cannot requeue a failed publication',async()=>{co
 test('a redesign during media upload invalidates the pending publication',async()=>{const {env,api}=await setup();let posts=0;api.upload=async()=>{await env.DB.prepare('UPDATE drafts SET revision=2 WHERE id=?').bind(id(0)).run();return '123';};api.post=async()=>{posts++;return '456';};await click(env);await publishX(env,api);assert.equal(posts,0);assert.equal(await xCount(env),0);});
 test('expiry during upload is rechecked immediately before POST',async()=>{const {env,api}=await setup();let posts=0;api.upload=async()=>{await env.DB.prepare('UPDATE drafts SET expires_at=0 WHERE id=?').bind(id(0)).run();return '123';};api.post=async()=>{posts++;return '456';};await click(env);await publishX(env,api);assert.equal(posts,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'failed');});
 test('media removed during upload cannot pass the final pre-POST gate',async()=>{const {env,api}=await setup();let available=true,posts=0;env.MEDIA.get=async()=>available?({arrayBuffer:async()=>new Uint8Array([137,80,78,71]).buffer} as any):null;api.upload=async()=>{available=false;return '123';};api.post=async()=>{posts++;return '456';};await click(env);await publishX(env,api);assert.equal(posts,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'failed');});
+
+test('long owner-approved text is posted whole with image once and reserves one of twenty slots',async()=>{
+ const {env,api}=await setup();const {postText}=await import('../src/editorial');
+ const content={headline:'📊 Gün sonu',body:'Şirketler ve piyasa gelişmeleri. '.repeat(80),hashtags:['#BIST']},expected=postText(content as any);let sends=0;
+ await env.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify(content),id(0)).run();
+ api.post=async(text,media)=>{assert.equal(text,expected);assert.equal(media,'123');sends++;return '456'};
+ await publishX(env,api);assert.equal(sends,0);await click(env);assert.equal(await xCount(env),1);await publishX(env,api);await click(env);await publishX(env,api);assert.equal(sends,1);assert.equal(await xCount(env),1);
+});
+test('long text ceiling retains weighted unicode, URLs and invalid-character checks',async()=>{
+ const {xTextValid}=await import('../src/x-text');assert(xTextValid('a'.repeat(25000)));assert(!xTextValid('a'.repeat(25001)));assert(xTextValid('😀'.repeat(12500)));assert(!xTextValid('😀'.repeat(12501)));
+ assert(xTextValid('a'.repeat(24976)+' https://example.com/long/path'));assert(!xTextValid(''));assert(!xTextValid('abc\uFFFE'));
+ const {env}=await setup();await env.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify({headline:'Başlık',body:'a'.repeat(25001),hashtags:[]}),id(0)).run();await click(env);assert.equal(await xCount(env),0);
+});
+test('long POST rejection does not shorten, split, retry or consume daily slot; uncertain result stays reserved',async()=>{
+ for(const uncertain of [false,true]){const {env,api}=await setup();let calls=0;await env.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify({headline:'Başlık',body:'uzun metin '.repeat(100),hashtags:[]}),id(0)).run();
+ api.post=async()=>{calls++;if(uncertain)throw Error('timeout');throw new XHttpError(403,'long_text_rejected')};await click(env);await publishX(env,api);await publishX(env,api);assert.equal(calls,1);assert.equal(await xCount(env),uncertain?1:0);
+ const row=await env.DB.prepare('SELECT state,error FROM x_posts').first<any>();assert.equal(row.state,uncertain?'uncertain':'failed');if(!uncertain)assert.equal(row.error,'x_long_text_rejected');
+ }
+});
+test('X client uses same text/media endpoint and exposes only explicit sanitized long-post rejections',async()=>{
+ const keys={consumer_key:'aaaaaaaaaaa',consumer_secret:'bbbbbbbbbbb',access_token:'ccccccccccc',access_secret:'ddddddddddd'},text='ö'.repeat(1000);
+ const success=xClient(keys,async(url,init)=>{assert.equal(url,'https://api.x.com/2/tweets');assert.deepEqual(JSON.parse(String(init?.body)),{text,media:{media_ids:['123']}});return Response.json({data:{id:'456'}})});assert.equal(await success.post(text,'123'),'456');
+ for(const [status,body,expected]of [[403,{detail:'This user is not allowed to post longer than 280 characters.'},'x_long_text_rejected'],[400,{detail:'Tweet text is too long'},'x_long_text_rejected'],[403,{detail:'Access denied secret-value'},'x_http_403'],[503,{detail:'Tweet text is too long'},'x_http_503']]as const){
+ const client=xClient(keys,async()=>Response.json(body,{status}));await assert.rejects(()=>client.post(text,'123'),e=>e instanceof XHttpError&&e.status===status&&e.message===expected);
+ }
+});

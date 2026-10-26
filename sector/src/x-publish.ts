@@ -1,5 +1,5 @@
 import {readMedia,bytesHash} from './media-set';
-import twitter from 'twitter-text';
+import {xTextValid} from './x-text';
 import {preparePublication,snapshotStatement} from './publication-snapshot';
 import {refreshPublicationCard,publicationSummary} from './publication-assistant';
 import {postText} from './editorial';
@@ -23,7 +23,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   const match=data.match(/^xpost:([a-f\d-]{36}):(\d{1,6})$/);
   const row=match?await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(match[1]).first<DraftRow&{delivery_state:string}>():null;
   if(!row||row.message_id!==messageId||!xDraftEligible(row,Number(match![2]),row.media_key))text='Kart güncellenmiş, süresi dolmuş veya paylaşılabilir değil. Güncel kartı kullan.';
-  else if(!twitter.parseTweet(postText(JSON.parse(row.content))).valid)text='Tweet metni X sınırını aşıyor. Hiçbir hisse kodu çıkarılmadı. Kısa özet veya daraltılmış kapsam seçerek metni düzenle; otomatik thread oluşturulmaz.';
+  else if(!xTextValid(postText(JSON.parse(row.content))))text='Metin 25.000 karakterlik uzun gönderi sınırını aşıyor veya geçersiz karakter içeriyor. Metin kesilmedi; otomatik zincir oluşturulmaz.';
   else {
    const result=await env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
     SELECT ?,?,?,?,'queued',?,?,?,? WHERE
@@ -41,7 +41,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:callbackId,text,show_alert:'true'})).catch(()=>{});
 }
 export interface XTransport {identity():Promise<{id:string;username:string}>;upload(png:Uint8Array):Promise<string>;post(text:string,mediaId:string|string[]):Promise<string>;}
-export class XHttpError extends Error {constructor(public status:number){super('x_http_'+status);}}
+export class XHttpError extends Error {constructor(public status:number,public reason?:'long_text_rejected'){super(reason?'x_'+reason:'x_http_'+status);}}
 // Must be called by a separate consumer. An interrupted POST is never replayed.
 export async function publishX(env:Env,api:XTransport,clock=Date.now){
  if(!xEnabled(env))return;
@@ -55,7 +55,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const draft=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
   const identity=await api.identity();if(identity.username.toLowerCase()!=='endeks_haber')throw Error('x_wrong_account');
-  if(postText(JSON.parse(draft.content))!==row.content||!twitter.parseTweet(row.content).valid)throw Error('x_text_capacity_or_revision');
+  if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
   const {images}=await readMedia(env,row.media_key,draft.content);
   if(images.some(b=>b.length>5000000||b[0]!==137||b[1]!==80))throw Error('x_image_invalid');
   const hashes=await Promise.all(images.map(bytesHash)),snapshot=await preparePublication(env,row.draft_id,row.revision),mediaIds:string[]=[];
@@ -78,7 +78,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
  const result=await env.DB.prepare('SELECT state,remote_id,error FROM x_posts WHERE id=?').bind(row.id).first<{state:string;remote_id:string;error:string}>();
  if(result?.state==='sent')await refreshPublicationCard(env,row.draft_id).catch(()=>{});
  const count=await xCount(env);
- const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?'X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
+ const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?'X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.':result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
  await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text})).catch(()=>{});
 }
 

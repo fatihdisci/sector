@@ -58,10 +58,10 @@ test('multi-card redesign regenerates the whole revision; a stale rendering job 
 test('switching from an album control to a single photo never edits text as photo media',async()=>{
  const {env}=await setup(),f=fake();try{await env.DB.prepare('INSERT INTO system_state VALUES(?,?)').bind('telegram_control:'+id,'200').run();await sendDraft(env,id,2,base,docs,image(1),'verified',200);assert.equal(f.calls.filter(c=>c.method==='sendPhoto').length,1);assert.equal(f.calls.filter(c=>c.method==='editMessageMedia').length,0);}finally{f.restore();}
 });
-test('X client encodes all media IDs in a single POST payload; a long explicit tweet is refused without reserving quota',async()=>{
+test('X client encodes all media IDs in a single POST payload; a tweet beyond the long-post ceiling is refused without reserving quota',async()=>{
  const keys={consumer_key:'fixture-key-123',consumer_secret:'fixture-secret',access_token:'fixture-token',access_secret:'fixture-access'};let calls=0;
  const client=xClient(keys,async(url,options)=>{calls++;assert.equal(url,'https://api.x.com/2/tweets');assert.deepEqual(JSON.parse(String(options?.body)).media.media_ids,['1','2','3','4']);return Response.json({data:{id:'100'}});});await client.post('Metin',['1','2','3','4']);assert.equal(calls,1);
- const {env}=await setup({...base,body:'Uzun '.repeat(100),output_preferences:{list:'all'}},4),f=fake();try{await requestX(env,`xpost:${id}:1`,90,'cb');assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM x_posts').first<any>()).n,0);assert.match(String(f.calls.at(-1)?.body.get('text')),/Hiçbir hisse kodu çıkarılmadı/);}finally{f.restore();}
+ const {env}=await setup({...base,body:'Uzun '.repeat(5001),output_preferences:{list:'all'}},4),f=fake();try{await requestX(env,`xpost:${id}:1`,90,'cb');assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM x_posts').first<any>()).n,0);assert.match(String(f.calls.at(-1)?.body.get('text')),/Metin kesilmedi/);}finally{f.restore();}
 });
 
 test('legacy manual publication keeps unknown media hash when the original PNG has expired; an incomplete new media set still fails',async()=>{

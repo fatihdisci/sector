@@ -15,7 +15,16 @@ export function xClient(keys:XKeys,fetcher:typeof fetch=fetch):XTransport{
  async function call(path:string,method:string,body?:BodyInit){
   const url='https://api.x.com'+path;
   const response=await fetcher(url,{method,body,redirect:'error',signal:AbortSignal.timeout(30000),headers:{Authorization:oauthHeader(method,url,keys),...(typeof body==='string'?{'Content-Type':'application/json'}:{})}});
-  if(!response.ok)throw new XHttpError(response.status);
+  if(!response.ok){
+   // Classify only an explicit length/long-post rejection; never expose raw API bodies.
+   let reason:'long_text_rejected'|undefined;
+   if(path==='/2/tweets'&&[400,403,422].includes(response.status))try{
+    const raw=await response.text();if(raw.length<=16_384){const v=JSON.parse(raw),parts=[v.detail,v.title,...(Array.isArray(v.errors)?v.errors.flatMap((e:any)=>[e.message,e.detail]):[])].filter(x=>typeof x==='string').join(' ');
+     if(/(?:tweet|post|text).{0,80}(?:too long|longer than|maximum.{0,20}characters|exceeds.{0,30}(?:length|character))|(?:not allowed|not authorized|not eligible).{0,80}(?:long(?:er|form| form)? (?:tweet|post))|(?:long(?:er|form| form)? (?:tweet|post)).{0,80}(?:premium|required|not allowed)/i.test(parts))reason='long_text_rejected';
+    }
+   }catch{/* Status still determines definite rejection versus uncertain outcome. */}
+   throw new XHttpError(response.status,reason);
+  }
   const result=await response.json() as {data?:{id?:string;username?:string}};
   if(!result.data?.id||!/^\d+$/.test(result.data.id))throw Error('x_response_invalid');return result.data;
  }
