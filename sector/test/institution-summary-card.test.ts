@@ -8,3 +8,9 @@ test('summary retains exact units and missing cells; six rows fail explicitly wh
  assert.throws(()=>draftCards({...draft,card_data:{...draft.card_data,buy:[...rows,rows[0]]}}),/capacity_institution_summary/);
  assert.doesNotThrow(()=>draftCards({...draft,card_data:{broker:'BofA',buy:[...rows,...rows].map(r=>({...r,value:'1 milyon TL'}))}}));
 });
+
+test('real regenerated verbose net-volume labels do not overflow any summary layout or lose units',async()=>{
+ const d={...draft,card_data:{...draft.card_data,buy:rows.map(r=>({...r,value:'+132,17 milyon net hacim · maliyet 86,56 TL'})),sell:rows.map(r=>({...r,value:'net hacim: -253,42 milyon · maliyet 257,72 TL'}))}};
+ assert.deepEqual(institutionSummaryCells('+132,17 milyon net hacim · maliyet 86,56 TL'),['+132,17 milyon','86,56 TL']);assert.deepEqual(institutionSummaryCells('net hacim: -253,42 milyon TL · maliyet 257,72 TL'),['-253,42 milyon TL','257,72 TL']);
+ for(const layout of CARD_LAYOUTS)for(const theme of['paper','navy']as const){const svg=draftCards(d,theme,layout)[0];assert(svg.includes('+132,17 milyon'));assert(svg.includes('-253,42 milyon'));assert(svg.includes('257,72 TL'));await png(svg);}
+});

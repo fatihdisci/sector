@@ -183,7 +183,7 @@ function circuitCard(theme:CardTheme,layout:CardLayout,tickers:string[]):string 
 
 export function institutionSummaryCells(value:string):[string,string]{
  const match=/^(.*?)\s*(?:[·|;]\s*)?maliyet\s*:?\s*(.+)$/iu.exec(value);
- if(match){const net=match[1].trim().replace(/[·|;]\s*$/u,'').trim();if(!net||!match[2].trim())throw Error('institution_summary_cells_invalid');return[net,match[2].trim()];}
+ if(match){const net=match[1].trim().replace(/[·|;]\s*$/u,'').trim().replace(/^net hacim\s*[:=]?\s*/iu,'').replace(/\s+net hacim$/iu,'');if(!net||!match[2].trim())throw Error('institution_summary_cells_invalid');return[net,match[2].trim()];}
  if(/[·|;]/u.test(value))throw Error('institution_summary_cells_invalid');
  return[value.trim()||'—','—'];
 }
