@@ -90,6 +90,7 @@ test('summary intentionally omits gainers/losers and aggregate institutions; sou
 
 test('legacy 17:00 reader format preserves signed percent, combined contribution panels and header-scoped total currency',async()=>{
  const fixture=JSON.parse(await readFile('test/fixtures/market-overview-26445-legacy.json','utf8')),ds=withOverviewEvidence([fixture.document]);const o=parseMarketOverview(fixture.document);
+ const {marketTimeContext}=await import('../src/market-time');const ctx=marketTimeContext(ds)[0];assert.equal(ctx.graph_last_label,'16:40');assert.equal(ctx.measurement_time,null);assert.equal(ctx.graph_axis_is_not_measurement_time,true);
  assert.equal(o.direction,'down');assert.equal(o.percent,'%0,51');assert.equal(o.points,'-57,24');assert.equal(o.low,'11.003,77');assert.equal(o.high,'11.204,86');assert.equal(o.panels[0].rows[4].label,'FROTO');assert.equal(o.panels[1].rows[4].label,'KRDMD');assert.equal(o.brokers[0].rows[0].net,'1,33 milyar');assert.equal(o.brokers[0].rows[0].total,'18,3 milyar TL');assert.equal(o.brokers[1].rows[4].name,'QNB');assert(o.brokers.every(b=>b.rows.length===5));
  const out=repairDraftStyle(raw,ds);assert.deepEqual(numericIssues(out,ds),[]);assert.equal(validateDraft(out,ds).verification,'single_source_attributed');assert((await png(draftCards(out)[0])).length>20000);
  const unknown=structuredClone(fixture.document);unknown.passages=unknown.passages.map((p:any)=>({...p,text:p.text.replace(/toplam  TL/g,'toplam')}));assert.throws(()=>parseMarketOverview(unknown),/broker_coverage/);
