@@ -80,7 +80,7 @@ export class KapStore {
    this.run("UPDATE jobs SET cursor=?,ceiling=? WHERE name='backfill'",min-1,max);
   }
   this.pruneCircuitLight(now);
-  for(const r of list)if(Date.parse(r.publishedAt)>=now-86400_000){const p=this.circuitPolicy(),scope=p&&Date.parse(r.publishedAt)>=p.activated_at&&r.circuit?listingCircuit(r.circuit,this.get('circuit_snapshot'),this.get('circuit_index_block'),now):null;if(scope&&(scope.kind==='review'||scope.kind==='pay'&&!scope.codes.length)){this.light(r.id,r.publishedAt,scope.reason,scope.version,now,scope.kind==='review');continue;}this.run('INSERT OR IGNORE INTO discovered VALUES(?,?,?)',r.id,r.publishedAt,now);}
+  for(const r of list)if(Date.parse(r.publishedAt)>=now-86400_000){if(r.excludedTopic==='syndication_title'){this.run('INSERT OR IGNORE INTO checks VALUES(?,?,?)',r.id,now,'syndication_title');continue;}const p=this.circuitPolicy(),scope=p&&Date.parse(r.publishedAt)>=p.activated_at&&r.circuit?listingCircuit(r.circuit,this.get('circuit_snapshot'),this.get('circuit_index_block'),now):null;if(scope&&(scope.kind==='review'||scope.kind==='pay'&&!scope.codes.length)){this.light(r.id,r.publishedAt,scope.reason,scope.version,now,scope.kind==='review');continue;}this.run('INSERT OR IGNORE INTO discovered VALUES(?,?,?)',r.id,r.publishedAt,now);}
   this.set('last_listing',{at:now,max:Math.max(max,this.latest()),count:list.length,oldestPublished:list.reduce((a,b)=>Date.parse(a.publishedAt)<Date.parse(b.publishedAt)?a:b).publishedAt});
  });}
  latest():number{return this.get<{max:number}>('last_listing')?.max??0;}

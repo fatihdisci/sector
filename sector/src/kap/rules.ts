@@ -1,4 +1,4 @@
-import {EQUITY,normalize,type Disclosure,type Indices} from './parser';
+import {EQUITY,normalize,syndicationTitle,type Disclosure,type Indices} from './parser';
 import {focusedDisclosureTickers} from './ticker-scope';
 export const TOPICS=['dividend','buyback','financial','capital','business','share_trade','circuit','other'] as const;
 export type Topic=typeof TOPICS[number];
@@ -46,7 +46,7 @@ export function mkkSettlement(d:Disclosure):boolean {
 }
 // Explicit topic opt-outs still apply when a narrower circuit scope overrides index routing.
 export function circuitOptOut(d:Disclosure,p:Preferences):boolean {
- return !p.circuitNotifications||(d.isFund&&p.funds==='off')||mkkSettlement(d)||muted(d.title)||muted(subject(d))||p.excludedTitles.some(t=>normalize(d.title).includes(normalize(t)));
+ return syndicationTitle(d.title)||!p.circuitNotifications||(d.isFund&&p.funds==='off')||mkkSettlement(d)||muted(d.title)||muted(subject(d))||p.excludedTitles.some(t=>normalize(d.title).includes(normalize(t)));
 }
 export function important(d:Disclosure):boolean {
  if(mkkSettlement(d))return false;
@@ -67,6 +67,7 @@ export function decide(d:Disclosure,p:Preferences,indices:Indices|null):Decision
  const store=significant||explicit||selected||shares||topics.includes('circuit')||(d.isFund&&p.funds!=='off');
  const indexTier=indices&&d.subjectCodes.some(c=>indices.bist30.includes(c))?30:indices&&d.subjectCodes.some(c=>indices.bist100.includes(c))?100:null;
  const result=(action:Decision['action'],reason:string):Decision=>({store,action:store?action:'off',reason,topics,important:significant,critical,indexTier});
+ if(syndicationTitle(d.title))return{...result('off','syndication_title'),store:false};
  // Explicit user opt-out wins over share overrides, watchlists and index priority.
  if(topics.includes('circuit')&&!p.circuitNotifications)return result('off','circuit_disabled');
  if(d.isFund&&p.funds==='off')return result('off','funds_off');

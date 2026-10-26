@@ -9,6 +9,8 @@ export interface Disclosure {
  publishedAt:string; attachmentCount:number;
 }
 export const normalize=(s:string)=>s.toLocaleUpperCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/İ/g,'I').replace(/\s+/g,' ').trim();
+// Exact official topic only; body mentions and longer headings remain eligible.
+export const syndicationTitle=(title:string)=>normalize(title)==='SENDIKASYON KREDISI HAKKINDA';
 export function jsonValue(s:string,start:number):unknown {
  const stack:string[]=[];let quoted=false,escaped=false;
  if(!['{','['].includes(s[start]))throw new Error('kap_json_start');
@@ -74,10 +76,10 @@ export function parseDisclosure(html:string,id:number):Disclosure {
   // Preserve both statuses; do not discard the relation if the page was corrected later.
   isCorrection:changeStatus==='DUZENLENEN'||changeStatus==='DUZELTILEN',publishedAt:kapDate(b.publishDate),attachmentCount:Number(b.attachmentCount??0)};
 }
-export interface Listing {id:number;publishedAt:string;circuit?:{title:string;summary:string;company:string};}
+export interface Listing {id:number;publishedAt:string;excludedTopic?:'syndication_title';circuit?:{title:string;summary:string;company:string};}
 export function parseListing(value:unknown,now=Date.now()):Listing[] {
  if(!Array.isArray(value)||value.length>10000)throw new Error('kap_listing_shape');
- const result=value.map(x=>{const row=object(x);if(!Number.isSafeInteger(row.disclosureIndex)||Number(row.disclosureIndex)<=0)throw new Error('kap_listing_id');string(row.subject,'subject',true);return {id:Number(row.disclosureIndex),publishedAt:kapDate(row.publishDate,true),...(typeof row.summary==='string'&&typeof row.title==='string'&&normalize(String(row.subject)).includes('DEVRE KESICI')&&row.summary.length<=1200&&row.title.length<=300?{circuit:{title:String(row.subject),summary:row.summary,company:row.title}}:{})};});
+ const result=value.map(x=>{const row=object(x);if(!Number.isSafeInteger(row.disclosureIndex)||Number(row.disclosureIndex)<=0)throw new Error('kap_listing_id');string(row.subject,'subject',true);return {id:Number(row.disclosureIndex),publishedAt:kapDate(row.publishDate,true),...(syndicationTitle(String(row.subject))?{excludedTopic:'syndication_title' as const}:{}),...(typeof row.summary==='string'&&typeof row.title==='string'&&normalize(String(row.subject)).includes('DEVRE KESICI')&&row.summary.length<=1200&&row.title.length<=300?{circuit:{title:String(row.subject),summary:row.summary,company:row.title}}:{})};});
  if(new Set(result.map(x=>x.id)).size!==result.length||result.some(x=>Date.parse(x.publishedAt)>now+300_000))throw new Error('kap_listing_invalid');
  return result.sort((a,b)=>a.id-b.id);
 }
