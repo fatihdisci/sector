@@ -88,3 +88,31 @@ test('internal source notes do not enter a tweet and cannot override blocking un
  assert.equal(validateDraft(note,[document]).verification,'official_attributed');
  assert.equal(validateDraft({...note,uncertainties:['Şirketin yatırım yapıp yapmayacağı kaynaklardan doğrulanamıyor.']},[document]).verification,'needs_review');
 });
+
+test('same-day channel close submits beside legacy overview key and repeated result never publishes twice',async()=>{
+ const {repairDraftStyle}=await import('../src/style'),{withOverviewEvidence}=await import('../src/market-overview'),{draftCards}=await import('../src/card-pages'),{eventIdentity,sameEvent}=await import('../src/dedupe');
+ const {env,sql,objects}=await environment();
+ const source=(JSON.parse(await readFile('test/fixtures/market-overview-26453.json','utf8'))).document as Document;
+ const docs=withOverviewEvidence([source]),out=repairDraftStyle({...draft,template:'market',category:'bist',entities:['BIST 100'],event_key:'BIST100-kaynak-gorseli-piyasa-gorunumu',uncertainties:[]},docs);
+ const legacy={...out,headline:'📊 Gün ortası — BIST 100 görünümü',body:'Endeks 11.004,37 puanda.',card_data:undefined};
+ const normalize=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+ const oldKey=await sha256([out.category,out.entities.map(normalize).sort().join('|'),normalize(out.event_key),'2026-10-26'].join('|'));
+ assert.notEqual(await eventIdentity(out,docs),oldKey);assert(!sameEvent(out,legacy));
+ const corrected=structuredClone(out);corrected.card_data!.overview!.brokers[0].rows[0].net='900 milyon';assert(!sameEvent(out,corrected));assert.notEqual(await eventIdentity(out,docs),await eventIdentity(corrected,docs));
+ const time=Math.floor(Date.now()/1000);
+ sql.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,state,created_at,expires_at) VALUES('old',?,'old',?,'[]','single_source_attributed','pending',?,?)").run(oldKey,JSON.stringify(legacy),time,time+86400);
+ sql.prepare("INSERT INTO sources(id,config)VALUES('sermaye-telegram','{}')").run();
+ const cards=[];for(const svg of draftCards(out,'paper','editorial'))cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
+ let first='';
+ for(const id of ['close','same-close']){
+  const input=JSON.stringify(docs),hash=await sha256(input);
+  sql.prepare("INSERT INTO articles(id,source_id,url,title,summary,published_at,first_seen)VALUES(?,'sermaye-telegram',?,'close','',?,?)").run(id,source.url+'/'+id,source.published_at!,time);
+  sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state,lease_token,lease_until)VALUES(?,?,?,?,?,'news','leased','token',?)").run(id,id,input,hash,time,time+600);
+  for(const [key,value]of [['card_theme:','paper'],['card_layout:','editorial']])sql.prepare('INSERT INTO system_state(key,value)VALUES(?,?)').run(key+id,value);
+  const payload:Record<string,unknown>={id,lease_token:'token',input_hash:hash,draft:out,audit:{supported:true,issues:[]},runtime:{model:'gpt-6-luna',effort:'medium',provider:'openai-codex',tool_count:0,fallback_count:0},cards};
+  const r=await submitJob(env,payload);if(!first){first=r.id;assert(!r.duplicate)}else{assert(r.duplicate);assert.equal(r.id,first)};
+  assert.equal((await submitJob(env,payload)).id,first);
+ }
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM drafts').get()!.n,2);assert.equal(objects.size,1);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM publication_log').get()!.n,0);
+ assert.equal(sql.prepare("SELECT content FROM drafts WHERE id='old'").get()!.content,JSON.stringify(legacy));
+});

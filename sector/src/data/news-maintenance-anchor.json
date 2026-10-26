@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery. Follow-up owner report: 18:11 Taslak doğrulanamadı, Yine hata var. Scope: preserve alphanumeric broker identities and safe model failure-stage diagnostics, no forced production retry.",
-  "recorded_at": 1793028789795,
+  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery. Follow-up owner report: 18:11 Taslak doğrulanamadı, Yine hata var. Scope: preserve alphanumeric broker identities and safe model failure-stage diagnostics, no forced production retry. Owner follow-up: Yine olmadı. Verified submit failure UNIQUE drafts.event_key for same-day market snapshots; preserve snapshot identity and existing idempotency. Recover only the owner-requested audited failed close, with no new model call or X publication.",
+  "recorded_at": 1793030297156,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -57,6 +57,7 @@
     "src/bridge.ts": "231afadd176eb5efda6e98956890e366d40f9f4c677b70449d4fc29d7bc6cfd3",
     "src/telegram-channel.ts": "1ec906c4638606b4e1c432ce90b2e23daa7b7b1b56bb01e2a61eee91cd38ad87",
     "scripts/telegram_channel.py": "5f99b1cc66a638429fbcf6234263ffac7df2b7d5ad2d4e806a73233e0ab88f62",
-    "src/data/bist-equity-session-2026.json": "7b513388a0bf8448995d81ea47a17a1594981cd7e5ccfade04c3c47426d86c37"
+    "src/data/bist-equity-session-2026.json": "7b513388a0bf8448995d81ea47a17a1594981cd7e5ccfade04c3c47426d86c37",
+    "src/dedupe.ts": "b666a1523e1540dd35105e3caeffcc33d018fec724d9e5962c19a0a0a6e3df39"
   }
 }

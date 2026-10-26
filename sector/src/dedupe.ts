@@ -2,6 +2,12 @@ import {sha256} from './utils/text';
 import type {Draft,Document} from './types';
 const normalized=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 function marketView(draft:Draft):string|undefined {
+ const o=draft.card_data?.overview;
+ // Distinct intraday snapshots must not share the model's generic daily key.
+ // Include every displayed fact, so a corrected broker/panel is not suppressed.
+ if(o)return JSON.stringify(['market-overview-v1',o.view,o.level,o.percent,o.direction,o.points,o.volume,o.low,o.high,
+  o.panels.map(p=>[p.key,p.rows.map(r=>[r.label,r.value])]),[o.breadth.up,o.breadth.neutral,o.breadth.down],
+  o.brokers.map(b=>[b.side,b.first5,b.rows.map(r=>[r.name,r.net,r.share,r.total])])]);
  if(!['institutional','akd','broker_flow','custody'].includes(draft.template))return;
  const d=draft.card_data;
  // Buy-only, sell-only and combined reports are separately requested views.
