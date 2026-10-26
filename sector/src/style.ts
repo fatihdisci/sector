@@ -20,14 +20,14 @@ export function editorialPolicy(documents:Document[]){
  // labels. Neither makes a company's contract/buyback a fund story.
  const kap=documents.find(d=>d.source_id==='kap');
  const circuit=documents.some(d=>d.source_id==='kap'&&/devre kesici/i.test(d.title));
- const market=documents.some(d=>d.market_data);
+ const market=documents.some(d=>d.market_data||d.source_layout);
  const fund=!market&&(kap?[kap]:documents).some(d=>d.source_id==='kap'
   ?fundWord.test(fold(d.title))||/(?:\btefas\b|\bpblk\b|yatirim fon|emeklilik fon|serbest fon|fon(?:lar)?(?:in|un|u)?\s+(?:kriz|tasfiye|katilma|iade|ödeme|odeme))/u.test(fold(d.body))
   :fundWord.test(fold(d.title+'\n'+d.body)));
  const bist=codes.length>0||/\bbist\b|borsa istanbul/i.test(fold(text));
  const indexTags=fund?[]:kapIndexHashtags(documents);
  const ipo=!!kap?.official&&!fund&&codes.some(isRecentIpoTicker),ipoTag=ipo?['#HalkaArz']:[];
- return {output_preferences:preference,excluded_equity_codes:excluded,required_hashtags:circuit?['#Borsa','#BIST',...(codes.length?codes.map(c=>'#'+c):['#DevreKesici']),...ipoTag,...indexTags]:fund?['#Fon','#PBLK','#Tasfiye']:bist?['#Borsa','#BIST',...(documents.some(d=>d.market_data?.kind==='institutional')?[]:codes.map(c=>'#'+c)),...ipoTag,...indexTags]:[],verified_equity_codes:codes,
+ return {output_preferences:preference,excluded_equity_codes:excluded,required_hashtags:circuit?['#Borsa','#BIST',...(codes.length?codes.map(c=>'#'+c):['#DevreKesici']),...ipoTag,...indexTags]:fund?['#Fon','#PBLK','#Tasfiye']:bist?['#Borsa','#BIST',...(documents.some(d=>d.market_data?.kind==='institutional'||d.source_layout)?[]:codes.map(c=>'#'+c)),...ipoTag,...indexTags]:[],verified_equity_codes:codes,
   publisher_names:[...new Set(documents.filter(d=>!d.official).map(d=>d.source_name))],
   instruction:(documents.some(d=>d.circuit_scope?.kind==='pay')?'Bu yalnız BIST30 kapsamındaki pay devre kesici bildirimlerinin seçkisidir, tüm piyasa toplamı değildir. Dışlanan kodları çıktıya ekleme. ':documents.some(d=>d.circuit_scope?.kind==='market')?'Bu kodsuz piyasa geneli/endekse bağlı devre kesicidir; tek bir pay bildirimi değildir. Hisse kodu veya piyasa toplamı tahmin etme. ':'')+'Etiketleri yalnız hashtags dizisinde ver; başlık, gövde ve kart alanlarına hashtag satırı ekleme. Devre kesici gruplarında #Borsa #BIST ve gruptaki bütün doğrulanmış asıl hisse kodlarını kullan; yalnız kod yoksa #DevreKesici kullan. Bu gruplarda zorunlu kodlar 3 etiket sınırından önceliklidir; ek konu etiketi ekleme. Yayıncıya göre/haberine göre veya Kaynak satırı yazma. Kaynak düğmede bulunur. İddia, koşul ve açıklamanın gerçek sahibini koru. Çok hisseli haberlerde kodları gruplandırıp her grubun ilk beşini tweet gövdesinde göster; doğrulanmış kod etiketleri 3 etiket sınırından önceliklidir. Görselde tam listeyi koru. Diğer içeriklerde konu etiketleri 2–3 adet; required_hashtags zorunludur. KAP endeks etiketlerinde yalnız required_hashtags içindeki doğrulanmış #BIST30 ve #BIST100 etiketlerini kullan; index_tier veya metinden üyelik tahmin etme. Fon içeriklerinde yalnız #Fon #PBLK #Tasfiye kullan; bu üç etiket hisse etiketlerinden önceliklidir. Diğer içeriklerde doğrulanmış tek şirket kodu varsa kullan. BIST dışındaki haberleri BIST diye etiketleme.'};
 }

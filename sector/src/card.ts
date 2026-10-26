@@ -40,7 +40,7 @@ export function cardSvg(d:Pick<Draft,'headline'|'body'|'template'|'card_data'|'o
  if(d.card_data?.report)return reportCard(d);
  const headline=d.headline.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u,'').trim();
  if(!headline||!d.body.trim())throw new Error('card_content_empty');
- if(['circuit','institutional','akd','volume','broker_flow','custody'].includes(d.template))return marketCard({...d,headline},theme??legacyTheme(d.template),layout,fitText);
+ if(['circuit','institutional','akd','volume','broker_flow','custody','theoretical'].includes(d.template))return marketCard({...d,headline},theme??legacyTheme(d.template),layout,fitText);
  const label=templateLabel(d.template),special=d.template==='breaking'||d.template==='circuit';
  const dark=(theme??legacyTheme(d.template))==='navy';
  const bg=dark?COLORS.navy:COLORS.paper,fg=dark?COLORS.paper:COLORS.navy;
@@ -80,7 +80,7 @@ export function cardSvg(d:Pick<Draft,'headline'|'body'|'template'|'card_data'|'o
  </g></svg>`;
 }
 
-export function templateLabel(template:Draft['template']):string {return ({breaking:'SON DAKİKA',circuit:'DEVRE KESİCİ',kap:'KAP BİLDİRİMİ',company:'ŞİRKET HABERLERİ',market:'BIST / PİYASA',finance:'EKONOMİ / FİNANS',economic_data:'EKONOMİK VERİ',global:'KÜRESEL PİYASALAR',info:'BİLGİ / İSTATİSTİK',news:'HABER',institutional:'KURUM ALIM / SATIM',akd:'ARACI KURUM DAĞILIMI',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA'} as const)[template];}
+export function templateLabel(template:Draft['template']):string {return ({breaking:'SON DAKİKA',circuit:'DEVRE KESİCİ',kap:'KAP BİLDİRİMİ',company:'ŞİRKET HABERLERİ',market:'BIST / PİYASA',finance:'EKONOMİ / FİNANS',economic_data:'EKONOMİK VERİ',global:'KÜRESEL PİYASALAR',info:'BİLGİ / İSTATİSTİK',news:'HABER',institutional:'KURUM ALIM / SATIM',akd:'ARACI KURUM DAĞILIMI',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA',theoretical:'TEORİK EŞLEŞME'} as const)[template];}
 
 type Box={x:number;y:number;width:number;height:number;size:number;min:number;weight:number;color:string;align?:'center'};
 function fitText(value:string,b:Box):string {

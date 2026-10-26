@@ -15,7 +15,7 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
  const text=(s:string,x:number,y:number,size:number,color=fg,weight=400,anchor='start')=>`<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}">${esc(s.replace(/−/g,'-'))}</text>`;
  const rule=(y:number)=>`<path d="M${left} ${y} H1004" stroke="${steel}" stroke-width="1"/>`;
  const block=(s:string,x:number,y:number,w:number,h:number,size:number=40,color=fg,min=26,weight=400,align?:'center')=>fit(s.replace(/−/g,'-'),{x,y,width:w,height:h,size,min,weight,color,align});
- const labels:{[key:string]:string}={circuit:'DEVRE KESİCİ',institutional:data?.buy?.length&&!data?.sell?.length?'KURUM / ALIM':data?.sell?.length&&!data?.buy?.length?'KURUM / SATIM':'KURUM ALIM / SATIM',akd:'HİSSE / AKD',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA'};
+ const labels:{[key:string]:string}={circuit:'DEVRE KESİCİ',institutional:data?.buy?.length&&!data?.sell?.length?'KURUM / ALIM':data?.sell?.length&&!data?.buy?.length?'KURUM / SATIM':'KURUM ALIM / SATIM',akd:'HİSSE / AKD',volume:'İŞLEM HACMİ',broker_flow:'ARACI KURUM / NET İŞLEM',custody:'TAKAS / SAKLAMA',theoretical:'TEORİK EŞLEŞME'};
  const inverse=layout==='brief'||layout==='masthead';
  let art=layout==='frame'?rect(34,34,1012,1282,'none',steel):layout==='rail'?rect(0,0,38,1350,fg)+rect(38,0,6,1350,steel):'';
  if(inverse)art+=rect(0,0,1080,180,fg);
@@ -32,6 +32,16 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
   else art+=`<path d="${MARK_PATH}" transform="translate(380 500) scale(.75)" fill="${steel}" opacity=".20"/>`;
   let y=836;for(const row of data?.metrics?.slice(1,3)??[]){art+=rule(y-20)+text(row.label,left,y+16,27,steel)+text(row.value,1004,y+22,36,fg,700,'end');y+=110;}
   art+=rule(1110)+block(d.body,left,1150,width,150,32,fg,26);
+ }else if(d.template==='theoretical'){
+  art+=block(d.headline,left,268,width,155,61,fg,38,700,align);
+  const table=(title:string,rows:CardRow[]|undefined,y:number,invert:boolean)=>{
+   if(!rows?.length)return '';if(rows.length>5)throw Error('market_card_capacity_theoretical');
+   const ink=invert?bg:fg,muted=invert?bg:steel,x=left+24,inner=width-48,bounds=[0,.24,.50,.72,1];
+   let svg=rect(left,y,width,365,invert?fg:bg,invert?undefined:steel)+text(title,x,y+43,25,muted,700);
+   ['HİSSE','TEORİK FİYAT','DEĞİŞİM','KALAN'].forEach((h,j)=>svg+=text(h,x+bounds[j]*inner,y+83,20,muted,700));
+   rows.forEach((r,i)=>{const cells=[r.label,...r.value.split('|')];if(cells.length!==4)throw Error('theoretical_cell_missing');cells.forEach((v,j)=>svg+=block(v.trim(),x+bounds[j]*inner,y+110+i*49,(bounds[j+1]-bounds[j])*inner-12,48,24,ink,20,j===0?700:400));});return svg;
+  };
+  art+=table('TEORİK YÜKSELENLER',data?.buy,480,layout!=='masthead')+table('TEORİK DÜŞENLER',data?.sell,860,layout==='masthead');
  }else if(d.template==='custody'){
   if((data?.holdings?.length??0)>5)throw Error('market_card_capacity_custody');
   art+=block(d.headline,left,268,width,155,61,fg,38,700,align);
@@ -89,7 +99,7 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
     svg+=block(r.value,x+32+labelWidth,y,col-labelWidth-54,48,both?25:33,ink,both?18:23);
    });return svg;
   };
-  art+=panel(`${brokerLabel} ÜZERİNDEN ALIM`,data.buy,left,layout!=='masthead')+panel(`${brokerLabel} ÜZERİNDEN SATIM`,data.sell,both?left+col+gap:left,layout==='masthead');
+  art+=panel(`${data.buy_broker??brokerLabel} ÜZERİNDEN ALIM`,data.buy,left,layout!=='masthead')+panel(`${data.sell_broker??brokerLabel} ÜZERİNDEN SATIM`,data.sell,both?left+col+gap:left,layout==='masthead');
   // Institutional tables carry their own units; no generated prose footer.
  }else{
   art+=block(d.headline,left,268,width,192,61,fg,38,700,align);

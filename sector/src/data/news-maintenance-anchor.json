@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "Sentinel_0b3b5acd1e7881918fe77806bb1b0570; direct user: BIST30 devre kesici filtresini CI ve güvenli kurulumla canlıya al",
-  "recorded_at": 1792995610329,
+  "approval_source": "direct owner request 2026-10-26: @SermayeBorsasi kanalını bağla ve gönderilen teorik/piyasa/kurum görsellerinden içerik üret; tamam yapalım",
+  "recorded_at": 1793003045914,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -33,9 +33,9 @@
     "src/article.ts": "997687f537f7a1864065a04219eeb078bd8994e3b0ed8ed508045a22e267b3db",
     "src/gallery-range.ts": "feda2b615823b2f703ffc9886165f48fcae466d9941c938fb0ccd12416923a2c",
     "src/gallery-save.ts": "4df703ea294874c8299ed32d678d18a3a975a683c427b8b26fd02db1f275f823",
-    "src/pipeline.ts": "49337dcbc234dfb29e911c6e913efeb40991bfccc2cf9d145663b07bfbdf0ec5",
+    "src/pipeline.ts": "9259d5358b48ea5d66aca96b89fd35a2eee64912307ef24957f9006cfc3caa42",
     "src/news-inbox.ts": "6bd66930675252ae827e52d7a6d497924be81742614e15a98e5d2992e30530e3",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
-    "src/types.ts": "f1e5cecf0c38b7cf97d65c1164e0fedf7ce35601e2d7f1a0bcf22a57ef40a24a"
+    "src/types.ts": "bab16f222b7e61e83cfbecfa7a82732be4f1af3491ba9f4b94b24452a9386f4c"
   }
 }

@@ -5,9 +5,12 @@ import {cardDataFields,validateCardData} from './card-data';
 import {styleIssues,editorialPolicy,headlineWithEmoji,normalizeHashtagPlacement} from './style';
 import type {Document,Draft,Category} from './types';
 export const MIN_DRAFT_IMPORTANCE=50;
-export const PROMPT_VERSION='endeks-editor-15-ticker-display';
+export const PROMPT_VERSION='endeks-editor-16-channel-market';
 export const EDITOR_PROMPT=`ENDEKS HABER'in Borsa İstanbul ve finans haberleri editörüsün.
 editorial_policy.output_preferences sahibin güvenilir çıktı tercihidir. list=all ise ilk 5/30 sınırlarını uygulama; list=first ise count satırını seç. side=buy/sell/both seçimini hem tweet hem card_data üzerinde aynı kaynak satırlarından uygula. Kaynakta olmayan satır veya değer ekleme; sığmayan tek görsel için satır eksiltme veya çoklu kart/thread üretme. show_time/show_footer true değilse dekoratif saat/alt not ekleme. Verinin kısmi oluşunu ve çelişkileri source_notes içinde koru.
+Teorik template için tweet gövdesine hisse kodu veya Yükselenler/Düşenler listesi yazma: sistem ilk beşer kodu etiketli gruplar halinde otomatik ekler. Gövde en fazla bir kısa cümle olsun (ör. 'Fiyatlar teorik eşleşme verisidir.'); kaynaktaki genel 228/131 toplamları tweet için gerekli değildir. Kartlardaki tüm seçilmiş satırlar korunur.
+Sermaye Borsası source_layout.kind=theoretical ise template=theoretical, category=bist kullan. card_data.buy yükselen teorik eşleşme satırları, sell düşen teorik eşleşme satırlarıdır; GERÇEK ALIM/SATIM değildir. label kaynaktaki kod, value='94,05 TL|+%10,00|13.383' düzeninde teorik fiyat|değişim|kalan değeridir. Değişimin işaretini kaynakta nasılsa öyle koru; yalnız kırmızı renk/yön başlığından sayıya eksi işareti ekleme. Düşüş yönünü panel başlığı gösterir; eksik hücre — kalır. Kalan birimi kaynaksız lot/adet yapılmaz. Kaynaktaki tüm seçilmiş satırlar görselde korunur; motor her kartta taraf başına beş satırla en çok dört karta böler; fazla veride kapasite uyarısı, sessiz kırpma yok. Tweet varsayılan olarak sınıflanmış ilk beş #kod içerir. Başlık 'Teorik eşleşmede öne çıkanlar' gibi olsun; gerçekleşmiş işlem/kesin açılış veya kapanış iddiası kurma.
+source_layout.kind=institution_summary ise template=institutional kullan. Sol ve sağ kurum farklıysa card_data.buy_broker ve sell_broker alanlarına ayrı adları koy, tek broker altında birleştirme. Her satır label=kod; value net hacim ve varsa maliyet etiket/birimiyle. Kurum ÜZERİNDEN yapılan işlemler ifadesini koru. source_layout.kind=market_overview ise template=volume veya market ile BIST100 seviyesi, yüzde değişim, puan farkı ve hacmi birbirinden ayır; endekse puan katkısını hisse yüzde değişimi diye anlatma. Hangi bölümün çıktısını hazırladığını açık başlıkla belirt; istenen bölüm bilinmiyorsa BIST100 genel görünümünü özetle, diğer kaynak bölümlerini editör kanıtında koru. Aynı kaynaktaki iki aracı kurum farklı kimliktir. Açılış saatindeki kalıp 'günü tamamladı' ifadesini kesin kapanış sonucu gibi tekrarlama; çelişkiyi source_notes/uncertainties içinde koru, gerektiğinde yalnız tartışmasız anlık değerleri sun.
 Öncelik: önemli KAP açıklamaları; devre kesici ve piyasa gelişmeleri; temettü, sermaye işlemleri, geri alım ve pay işlemleri, bilançolar; halka arz, SPK ve Borsa İstanbul; TCMB/faiz/enflasyon/Türkiye ekonomisi; yatırımcıyı etkileyen Fed ve küresel finans; borsa bilgi ve istatistikleri. Dünya, enerji ve teknoloji haberini yatırımcı açısından somut önem taşıyorsa ele al.
 Devre kesicide template=circuit, category=bist kullan. Hisse kodu, işlem durumu ve yeniden başlama saati yalnız resmî belgede açıkça varsa yaz; sebep, fiyat, saat veya süre tahmin etme. Görünür tweet ve kart alanlarında pay işlem sırası eki .E yazma: KARCL.E yerine KARCL kullan; kaynağın kanıt alıntısını ise birebir koru. Temerrüt gibi farklı işlem türlerini normal pay işlemi gibi gösterme. Bir gruptaki farklı hisselerin saat/durumlarını karıştırma; bütün resmî bildirimleri kaynak kabul et. KAP şirket açıklamalarında template=kap, piyasa verilerinde market, makro finansta finance kullanabilirsin. Eski şablonlar da desteklenir.
 Devre kesici belgeleri üç dakikalık tek toplu olaydır. Bütün doğrulanmış hisse kodlarını hashtags ve card_data.tickers dizilerinde birer kez kullan; headline alanında genel olay başlığını koru, kodları headline/body içine kendin tekrar listeleme. Tweet gövdesinde hisse kodlarını hashtagli veya hashtagsiz ikinci kez yazma; baştaki #KOD listesi yeterlidir. Sistem doğrulanmış kodları tweetin EN ÜST BAŞLIK SATIRINA #KOD olarak taşır, sonda tekrarlamaz. Kısa başlık '🚨 Devre kesici uygulandı', kısa gövde 'Sürekli işleme ara verildi.' gibi, yalnız kaynağın doğruladığı geçmiş zamanlı bir açıklama olsun. Fiyat, gerekçe, tek tek saat listesi veya gelecekte yeniden başlayacak iddiası ekleme; üç dakikalık toplama süresinde işlem yeniden başlamış olabilir. Günlük /devrekesici raporunun tweetinde ve görselinde saat veya 'itibarıyla/itibariyle' ifadesi kullanma. Görselde grubun bütün kodlarını koru; tweet başlık satırında yalnız ilk beş kod gösterilir. Devre kesici card_headline='Devre kesici', card_body='Devre kesici uygulandı.' olsun; card_data yalnız tickers dizisini içersin. Görselde DEVRE KESİCİ başlığının altında doğrulanmış kodlar #KOD biçiminde gösterilir. Tarih, fiyat, saat veya uzun açıklama görsele eklenmez. Gerçekte ara verilmediğini belirten farklı bir resmî durum varsa bunu standart durdurma metnine dönüştürme; gerçek durumu koru.
@@ -76,9 +79,9 @@ Düzeltmede öncelik doğru ve kısa ana haberdir. Aynı sorunlu rakamı, tarihi
 previous_validation_issues ve required_corrections önceki denetimin hata bulgularıdır, yeni olgu kaynağı değildir. İlgili hatayı gerçek kaynak pasajlarıyla düzelt; çözemiyorsan uncertainties belirt.`;
 const str={type:'string'};
 const row={type:'object',additionalProperties:false,required:['label','value'],properties:{label:str,value:str}};
-const cardData={type:'object',additionalProperties:false,properties:{broker:str,ticker:str,tickers:{type:'array',items:str},as_of:str,buy:{type:'array',maxItems:40,items:row},sell:{type:'array',maxItems:40,items:row},holdings:{type:'array',maxItems:20,items:row},metrics:{type:'array',maxItems:3,items:row}}};
+const cardData={type:'object',additionalProperties:false,properties:{buy_broker:str,sell_broker:str,broker:str,ticker:str,tickers:{type:'array',items:str},as_of:str,buy:{type:'array',maxItems:40,items:row},sell:{type:'array',maxItems:40,items:row},holdings:{type:'array',maxItems:20,items:row},metrics:{type:'array',maxItems:3,items:row}}};
 export const DRAFT_SCHEMA={type:'object',additionalProperties:false,required:['headline','body','card_headline','card_body','hashtags','category','importance','template','claims','entities','event_key','uncertainties'],properties:{
- headline:str,body:str,card_headline:str,card_body:str,card_data:cardData,hashtags:{type:'array',items:str},category:{type:'string',enum:['turkiye','central_banks','companies','technology','energy','global','data','bist','kap']},importance:{type:'integer',minimum:0,maximum:100},template:{type:'string',enum:['breaking','economic_data','company','global','info','circuit','kap','market','finance','news','institutional','akd','volume','broker_flow','custody']},
+ headline:str,body:str,card_headline:str,card_body:str,card_data:cardData,hashtags:{type:'array',items:str},category:{type:'string',enum:['turkiye','central_banks','companies','technology','energy','global','data','bist','kap']},importance:{type:'integer',minimum:0,maximum:100},template:{type:'string',enum:['breaking','economic_data','company','global','info','circuit','kap','market','finance','news','institutional','akd','volume','broker_flow','custody','theoretical']},
  claims:{type:'array',items:{type:'object',additionalProperties:false,required:['text','evidence'],properties:{text:str,evidence:{type:'array',items:{type:'object',additionalProperties:false,required:['document','passage','quote'],properties:{document:{type:'integer',minimum:0},passage:str,quote:str}}}}}},
  entities:{type:'array',items:str},event_key:str,uncertainties:{type:'array',items:str},source_notes:{type:'array',items:str}
 }};
@@ -121,7 +124,7 @@ export function numericTokens(text:string):string[] {
  text=text.replace(/(?<![\d.,])(\d{1,9})\s+bin\s+(\d{1,3})(?![\d.,])/giu,(_m,a,b)=>String(BigInt(a)*1000n+BigInt(b)));
  const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
  text=text.replace(/\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.((?:19|20)\d{2})\b/g,(_m,d,m,y)=>`${Number(d)} ${months[Number(m)-1]} ${y}`);
- return [...text.matchAll(/(?:(?:[%$€₺]|yüzde)\s*)?[-+]?\d+(?:[.,]\d+)*(?:\s*(?:milyar|milyon|trilyon|billion|million|trillion|bin|thousand))?(?:\s*(?:TL|TRY|USD|EUR|dolar|dollars?|lira|euros?|avro|percent|per cent|puan|basis points|%))?/giu)].map(m=>norm(m[0]));
+ return [...text.matchAll(/(?:(?:[%$€₺]|yüzde)\s*)?[-+]?\d+(?:[.,]\d+)*(?:\s*(?:milyar|milyon|trilyon|billion|million|trillion|bin|thousand))?(?:\s*(?:(?:TL|TRY|USD|EUR)(?![\p{L}])|dolar|dollars?|lira|euros?|avro|percent|per cent|puan|basis points|%|₺|\$|€))?/giu)].map(m=>norm(m[0]));
 }
 // Format equivalents only; this does not invent a currency or convert scales.
 function quantity(token:string,language='tr',context=''):{value:string;unit:string|null} {
@@ -168,6 +171,15 @@ export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;v
  if(!value||typeof value!=='object')throw new Error('invalid_draft');
  const d=value as Draft;
  validateCardData(d.card_data,documents);
+ const theoretical=documents.find(doc=>doc.source_layout?.kind==='theoretical')?.source_layout;
+ if(theoretical){
+  if(d.template!=='theoretical')throw Error('theoretical_template_required');
+  for(const side of ['buy','sell']as const){const source=theoretical.panels.find(p=>p.name===side)?.symbols??[],wanted=d.output_preferences?.side&&d.output_preferences.side!=='both'&&d.output_preferences.side!==side?[]:d.output_preferences?.list==='first'?source.slice(0,d.output_preferences.count):source,actual=d.card_data?.[side]??[];
+   if(wanted.length!==actual.length||wanted.some((symbol,i)=>actual[i]?.label!==symbol))throw Error('theoretical_row_coverage');
+   if(actual.some(row=>row.value.split('|').length!==3))throw Error('theoretical_cell_missing');
+  }
+ }
+
  for(const document of documents)for(const c of document.editor_corrections??[]){const [side,index,field]=c.path.split('.');const actual=(d.card_data as any)?.[side]?.[Number(index)]?.[field];if(actual!==c.after_value)throw Error('editor_correction_not_applied');}
  const selectedMarket=documents.find(x=>x.market_data?.focus==='buy'||x.market_data?.focus==='sell')?.market_data;
  if(selectedMarket?.focus==='buy'&&d.card_data?.sell?.length||selectedMarket?.focus==='sell'&&d.card_data?.buy?.length)throw Error('market_focus_mismatch');
@@ -186,17 +198,18 @@ export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;v
  }
  if(d.source_notes!==undefined&&(!Array.isArray(d.source_notes)||d.source_notes.length>20||d.source_notes.some(n=>typeof n!=='string'||n.length>4000)))throw new Error('invalid_source_notes');
  if(typeof d.headline!=='string'||!d.headline.trim()||typeof d.body!=='string'||!Array.isArray(d.claims)||!d.claims.length||!Array.isArray(d.hashtags)||d.hashtags.length<2||d.hashtags.length>Math.max(3,editorialPolicy(documents).required_hashtags.length)||!Array.isArray(d.entities)||!d.entities.length||!Array.isArray(d.uncertainties)||!Number.isInteger(d.importance)||d.importance<0||d.importance>100||!d.event_key?.trim())throw new Error('incomplete_draft');
- if(!['turkiye','central_banks','companies','technology','energy','global','data','bist','kap'].includes(d.category)||!['breaking','economic_data','company','global','info','circuit','kap','market','finance','news','institutional','akd','volume','broker_flow','custody'].includes(d.template))throw new Error('invalid_category');
+ if(!['turkiye','central_banks','companies','technology','energy','global','data','bist','kap'].includes(d.category)||!['breaking','economic_data','company','global','info','circuit','kap','market','finance','news','institutional','akd','volume','broker_flow','custody','theoretical'].includes(d.template))throw new Error('invalid_category');
  if(d.hashtags.some(t=>!/^#[\p{L}\p{N}_]{2,40}$/u.test(t)||/^#(?:haber|gündem)$/i.test(t)))throw new Error('generic_or_invalid_hashtags');
  if(new Set(d.hashtags.map(norm)).size!==d.hashtags.length)throw new Error('duplicate_hashtags');
  if(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)?(?:bununla birlikte|şirket[,\s])/iu.test(d.headline))throw new Error('missing_headline_subject');
+ if(d.template==='theoretical'&&!twitter.parseTweet(postText(d)).valid)throw Error('tweet_capacity_exceeded');
  if(d.output_preferences?.list&&!twitter.parseTweet(postText(d)).valid)throw Error('tweet_capacity_exceeded');
  if(postText(d,[]).length>1024)throw new Error('telegram_caption_too_long');
  const issues=styleIssues(d,documents);if(issues.length)throw new Error(issues[0]);
  const sourceText=documents.map(doc=>doc.title+'\n'+doc.body).join('\n');
  const proof=proofNumbers(documents.map(d=>({text:d.title+'\n'+d.body,language:d.language,context:d.body})));
  if(typeof d.card_headline!=='string'||!d.card_headline.trim()||typeof d.card_body!=='string'||!d.card_body.trim())throw new Error('missing_card_content');
- for(const n of numericTokens([d.headline,d.body,d.card_headline,d.card_body,...cardDataFields(d.card_data).map(([,value])=>value)].join(' ')))if(!supportedNumber(n,proof))throw new Error('unsupported_number_or_unit');
+ for(const n of [d.headline,d.body,d.card_headline,d.card_body,...cardDataFields(d.card_data).map(([,value])=>value)].flatMap(value=>numericTokens(value)))if(!supportedNumber(n,proof))throw new Error('unsupported_number_or_unit');
  for(const entity of d.entities)if(!entity.trim()||!norm(sourceText).includes(norm(entity)))throw new Error('unsupported_entity');
  const citedFamilies=new Set<string>();let primary=false;
  for(const claim of d.claims) {
@@ -226,11 +239,11 @@ function formattedPostText(d:Draft):string {
  if(d.card_data?.report)return [headlineWithEmoji(d.headline),d.body,'#Borsa #BIST'].join('\n\n');
  const clean=normalizeHashtagPlacement(d),headline=headlineWithEmoji(clean.headline);
  const hashtagLine=(tags:string[])=>[...tags.filter(t=>!/^#BIST(?:30|100)$/.test(t)),...tags.filter(t=>/^#BIST(?:30|100)$/.test(t))].join(' ');
- if(clean.template==='institutional'){
+ if(clean.template==='institutional'||clean.template==='theoretical'){
   const groups=(['buy','sell'] as const).map(side=>{
    const rows=clean.card_data?.[side]??[];
    const codes=[...new Set(rows.map(r=>r.label).filter(c=>/^[A-Z][A-Z0-9]{3,4}$/.test(c)))].slice(0,listLimit);
-   return codes.length?(side==='buy'?'Alınanlar: ':'Satılanlar: ')+codes.map(c=>'#'+c).join(' '):'';
+   return codes.length?(clean.template==='theoretical'?(side==='buy'?'Teorik yükselenler: ':'Teorik düşenler: '):(side==='buy'?'Alınanlar: ':'Satılanlar: '))+codes.map(c=>'#'+c).join(' '):'';
   }).filter(Boolean);
   if(groups.length){
    const stockTags=new Set([...(clean.card_data?.buy??[]),...(clean.card_data?.sell??[])].map(r=>'#'+r.label));
@@ -259,6 +272,6 @@ function formattedPostText(d:Draft):string {
 
 export function postText(d:Draft,_sources:string[]=[]):string {
  const data=d.card_data;
- const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(d.template==='institutional'?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
+ const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(['institutional','theoretical'].includes(d.template)?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
  return hashtagTickers(formattedPostText(d),codes);
 }

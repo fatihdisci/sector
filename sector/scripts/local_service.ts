@@ -1,3 +1,5 @@
+import{pollChannel,channelDocuments}from'../src/telegram-channel';
+import{channelTransport}from'./channel_reader';
 import {newsReviewArtifact} from './news_review_artifact';
 import {COMPANY_CATALOG_VERSION,COMPANY_CATALOG_PROVENANCE,catalogEntities} from '../src/news-company-catalog';
 import {kapDeliveryHealth} from '../src/kap-health';
@@ -46,6 +48,7 @@ const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',aw
 try{const keys=JSON.parse(await readFile(directory+'/x-credentials.json','utf8'));if(validXKeys(keys))env.X_PUBLISH_ENABLED='true';}catch{/* X stays disabled until credentials are saved locally. */}
 env.RENDER_REPORT=png;
 env.READ_SPK_X=async manifest=>{const post=JSON.parse(manifest);return post.cached_documents??(post.url?.startsWith('https://x.com/fintables/status/')?fintablesPostDocuments(post,readPdf,readImage):spkPostDocuments(post,readPdf,readImage));};
+env.READ_TELEGRAM_CHANNEL=async raw=>{const m=JSON.parse(raw);if(Date.now()-m.captured_at>86400000)throw Error('channel_evidence_expired');return m.cached_documents??channelDocuments(raw,channelTransport,readImage,readPdf);};
 await seed(env);
 const lockPath=directory+'/service.lock';let lock;
 try{lock=await open(lockPath,'wx',0o600);await lock.writeFile(String(process.pid));}
@@ -90,6 +93,7 @@ async function buybackLoop(){while(!stopping()){try{
  const result=await pollBuybacks(env,{readImage:readBuybackImage,indices:async()=>{let db:DatabaseSync|undefined;try{db=new DatabaseSync(directory+'/kap/kap.sqlite',{readOnly:true});if(Number(db.prepare('PRAGMA application_id').get()!.application_id)!==0x534B4150)return null;const row=db.prepare("SELECT value FROM settings WHERE key='indices'").get();return row?JSON.parse(String(row.value)):null;}catch{return null;}finally{db?.close();}}});
  await status('buyback_report_health',{ok:!['needs_review','blocked_existing'].includes(result.state),at:new Date().toISOString(),...result});
  }catch(e){await status('buyback_report_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10*60_000);}}
+async function channelLoop(){while(!stopping()){try{const result=await pollChannel(env,channelTransport);await status('telegram_channel_health',{ok:true,at:new Date().toISOString(),...result});}catch(e){await status('telegram_channel_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(60_000);}}
 async function fintablesXLoop(){while(!stopping()){try{await pollFintablesX(env);}catch(e){await status('fintables_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function spkXLoop(){while(!stopping()){try{await pollSpkX(env);}catch(e){await status('spk_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function xAccountReportLoop(){let nextPoll=0;while(!stopping()){
@@ -144,5 +148,5 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);
   try{await modelLoop();}finally{clearInterval(stopCheck);}return;
  }
- await Promise.all([buybackLoop(),spkXLoop(),fintablesXLoop(),xAccountReportLoop(),newsLoop(),modelLoop(),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
+ await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),xAccountReportLoop(),newsLoop(),modelLoop(),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
 });}finally{shutdown.dispose();}

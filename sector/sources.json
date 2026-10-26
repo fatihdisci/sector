@@ -392,5 +392,26 @@
     "method": "reference",
     "editorial_priority": 90,
     "minimum_score": 0
+  },
+  {
+    "id": "sermaye-telegram",
+    "name": "Sermaye Borsası (@SermayeBorsasi)",
+    "url": "https://t.me/SermayeBorsasi",
+    "family": "telegram-sermayeborsasi",
+    "language": "tr",
+    "official": false,
+    "allowed_hosts": [
+      "t.me"
+    ],
+    "poll_seconds": 60,
+    "fresh_hours": 24,
+    "enabled": true,
+    "editorial_priority": 70,
+    "minimum_score": 60,
+    "checked_at": "2026-10-26",
+    "terms_url": "https://t.me/SermayeBorsasi",
+    "rights_note": "Kanal metni ve görsellerinden olgular; özgün ENDEKS HABER içeriği, resmî kaynak değildir.",
+    "review_mode": "telegram",
+    "method": "reference"
   }
 ]

@@ -87,6 +87,10 @@ def presentation_issues(draft,policy=None):
     if EMOJI.search(rest) or any(EMOJI.search(str(draft.get(k,''))) for k in ['body','card_headline','card_body']) or any(EMOJI.search(t) for t in draft['hashtags']):
         issues.append('Yalnız tweet başlığının başında boşlukla ayrılmış tek uygun emoji bırak. Gövde, başlığın devamı, etiketler ve görsel metnindeki bütün emojileri kaldır; olgusal bilgileri sözcüklerle koru.')
     if len(text.encode('utf-16-le'))//2>1024:issues.append('Başlık, gövde ve etiketleri kritik olguları koruyarak toplam 1024 UTF-16 karakter içine yeniden yaz. Metni kesme veya bölme.')
+    if draft.get('template')=='theoretical':
+        codes=[str(row.get('label',''))for side in('buy','sell')for row in draft.get('card_data',{}).get(side,[])if isinstance(row,dict)]
+        if len(draft['body'])>65 or any(re.search(r'(?<![A-Z0-9])'+re.escape(c)+r'(?![A-Z0-9])',draft['body'])for c in codes if c):
+            issues.append('Teorik eşleşme tweet gövdesini tek kısa cümle yap (en çok 65 karakter). Hisse kodlarını gövdede listeleme; sistem ilk beşer kodu sınıflandırılmış #etiketlerle otomatik ekler. Teorik veri olduğunu söylemek yeterlidir. Kartlardaki bütün seçilmiş satırları eksiksiz koru; satırları azaltma.')
     policy=policy or {}
     required=policy.get('required_hashtags',[])
     if any(t.casefold() not in [h.casefold() for h in draft['hashtags']] for t in required):issues.append('Etiketleri yalnız hashtags dizisinde ve zorunlu hisse kodlarını atlamadan düzelt: '+' '.join(required))
