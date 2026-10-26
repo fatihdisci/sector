@@ -87,3 +87,11 @@ test('summary intentionally omits gainers/losers and aggregate institutions; sou
  const o=parseMarketOverview(source);assert.deepEqual(o.panels.map(p=>p.key),['contribution_up','contribution_down','volume']);assert(o.brokers.every(b=>b.rows.length===5));assert(docs[0].passages.some(p=>p.text.includes('Diğer (34)')));
  const d=structuredClone(source);d.passages=d.passages.filter(p=>!/^En çok (yükselenler|düşenler)/.test(p.text));assert.deepEqual(parseMarketOverview(d),o);
 });
+
+test('legacy 17:00 reader format preserves signed percent, combined contribution panels and header-scoped total currency',async()=>{
+ const fixture=JSON.parse(await readFile('test/fixtures/market-overview-26445-legacy.json','utf8')),ds=withOverviewEvidence([fixture.document]);const o=parseMarketOverview(fixture.document);
+ assert.equal(o.direction,'down');assert.equal(o.percent,'%0,51');assert.equal(o.points,'-57,24');assert.equal(o.low,'11.003,77');assert.equal(o.high,'11.204,86');assert.equal(o.panels[0].rows[4].label,'FROTO');assert.equal(o.panels[1].rows[4].label,'KRDMD');assert.equal(o.brokers[0].rows[0].net,'1,33 milyar');assert.equal(o.brokers[0].rows[0].total,'18,3 milyar TL');assert.equal(o.brokers[1].rows[4].name,'QNB');assert(o.brokers.every(b=>b.rows.length===5));
+ const out=repairDraftStyle(raw,ds);assert.deepEqual(numericIssues(out,ds),[]);assert.equal(validateDraft(out,ds).verification,'single_source_attributed');assert((await png(draftCards(out)[0])).length>20000);
+ const unknown=structuredClone(fixture.document);unknown.passages=unknown.passages.map((p:any)=>({...p,text:p.text.replace(/toplam  TL/g,'toplam')}));assert.throws(()=>parseMarketOverview(unknown),/broker_coverage/);
+ const unsigned=structuredClone(fixture.document);unsigned.passages=unsigned.passages.map((p:any)=>({...p,text:p.text.replace('%-0,51','%0,51')}));assert.throws(()=>parseMarketOverview(unsigned),/index_incomplete/);
+});

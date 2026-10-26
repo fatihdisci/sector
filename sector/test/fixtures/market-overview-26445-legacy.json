@@ -1,0 +1,128 @@
+{
+  "provenance": "Cached public-channel reader excerpt from the failed 17:00 request, read-only regression fixture; not a new model read, independent verification or new production result. Original source time does not prove measurement time.",
+  "document": {
+    "source_id": "sermaye-telegram",
+    "source_name": "Sermaye Borsası (@SermayeBorsasi)",
+    "family": "telegram-sermayeborsasi",
+    "official": false,
+    "language": "tr",
+    "source_layout": {
+      "kind": "market_overview",
+      "panels": [
+        {
+          "name": "ENDEKSI YUKSELTENLER",
+          "symbols": [
+            "ASTOR",
+            "AKBNK",
+            "YKBNK",
+            "TUPRS",
+            "FROTO"
+          ]
+        },
+        {
+          "name": "EN COK YUKSELENLER",
+          "symbols": [
+            "EMPAE",
+            "KARTN",
+            "ANELE",
+            "KAPLM",
+            "MCARD"
+          ]
+        },
+        {
+          "name": "EN COK DUSENLER",
+          "symbols": [
+            "OZATD",
+            "EUKYO",
+            "BLUME",
+            "TRHOL",
+            "BRKVY"
+          ]
+        },
+        {
+          "name": "ENDEKSI DUSURENLER",
+          "symbols": [
+            "ASELS",
+            "EREGL",
+            "BIMAS",
+            "GUBRF",
+            "KRDMD"
+          ]
+        },
+        {
+          "name": "HACIM LIDERLERI",
+          "symbols": [
+            "ASELS",
+            "AKBNK",
+            "ISCTR",
+            "YKBNK",
+            "THYAO"
+          ]
+        }
+      ],
+      "minimum_rows": 25,
+      "role_note": "OCR panel/satır adaylarıdır; sayı, birim ve tam kapsam piksellerden doğrulanmalıdır."
+    },
+    "body": "Konu: Sermaye Borsası piyasa görünümü; BIST 100 endeksi ve kurumsal dağılım panelleri.\nBIST 100: 11.059,75 puan; değişim %-0,51 ve -57,24 puan. Gün içi düşük 11.003,77, yüksek 11.204,86 puan. Anlık işlem hacmi 81,0 milyar TL. Grafikte saat etiketleri 09:55, 11:00, 12:05, 13:10, 14:15, 15:20, 16:25 ve 16:40; tarihe ilişkin bilgi yok.\nEndeks etkisi — yükseltenler: ASTOR +19,9; AKBNK +7,5; YKBNK +7,3; TUPRS +5,4; FROTO +3,2. Düşürenler: ASELS -17,4; EREGL -8,3; BIMAS -8,0; GUBRF -6,6; KRDMD -5,6. Bunlar endeks puan katkısı değerleridir.\nEn çok yükselenler: EMPAE %10,00; KARTN %10,00; ANELE %10,00; KAPLM %10,00; MCARD %9,98.\nEn çok düşenler: OZATD %10,00; EUKYO %10,00; BLUME %10,00; TRHOL %10,00; BRKVY %10,00. Görselde bu düşüş değerlerinin eksi işareti görünmüyor.\nHacim liderleri: ASELS 10,8 milyar; AKBNK 6,9 milyar; ISCTR 5,6 milyar; YKBNK 5,3 milyar; THYAO 5,0 milyar. Mr, milyar ölçeğini gösteriyor; hacmin para birimi görselde bu panel için belirtilmiyor.\nPiyasa geneli: yükselen 230, nötr 20, düşen 381.\nKurumsal dağılım — net alıcılar (net hacim; oran; toplam  TL): İş 1,33 milyar; %24,60; 18,3 milyar. Gedik 663,98 milyon; %12,28; 3,1 milyar. Ak 644,96 milyon; %11,93; 18,5 milyar. Midas 414,30 milyon; %7,66; 8,5 milyar. Oyak 406,64 milyon; %7,52; 3,0 milyar. Diğer (30) 1,95 milyar; %36,01; 39,3 milyar. İlk 5: %64,0.\nKurumsal dağılım — net satıcılar (net hacim; oran; toplam  TL): BofA 1,82 milyar; %33,63; 32,3 milyar. Yapı Kr. 1,37 milyar; %25,26; 38,8 milyar. Yat. Fin. 654,97 milyon; %12,11; 6,8 milyar. Deniz 498,01 milyon; %9,21; 7,2 milyar. QNB 278,91 milyon; %5,16; 8,3 milyar. Diğer (15) 791,07 milyon; %14,63; 26,9 milyar. İlk 5: %85,4. Kurum hacimleri işlem yönündeki net hacim olarak etiketlenmiş; işlemlerin kurumların kendi portföyüne ait olduğu gösterilmiyor.",
+    "passages": [
+      {
+        "id": "image_normalized_1",
+        "text": "Konu: Sermaye Borsası piyasa görünümü; BIST 100 endeksi ve kurumsal dağılım panelleri."
+      },
+      {
+        "id": "image_normalized_2",
+        "text": "BIST 100: 11.059,75 puan; değişim %-0,51 ve -57,24 puan. Gün içi düşük 11.003,77, yüksek 11.204,86 puan. Anlık işlem hacmi 81,0 milyar TL. Grafikte saat etiketleri 09:55, 11:00, 12:05, 13:10, 14:15, 15:20, 16:25 ve 16:40; tarihe ilişkin bilgi yok."
+      },
+      {
+        "id": "image_normalized_3",
+        "text": "Endeks etkisi — yükseltenler: ASTOR +19,9; AKBNK +7,5; YKBNK +7,3; TUPRS +5,4; FROTO +3,2. Düşürenler: ASELS -17,4; EREGL -8,3; BIMAS -8,0; GUBRF -6,6; KRDMD -5,6. Bunlar endeks puan katkısı değerleridir."
+      },
+      {
+        "id": "image_normalized_4",
+        "text": "En çok yükselenler: EMPAE %10,00; KARTN %10,00; ANELE %10,00; KAPLM %10,00; MCARD %9,98."
+      },
+      {
+        "id": "image_normalized_5",
+        "text": "En çok düşenler: OZATD %10,00; EUKYO %10,00; BLUME %10,00; TRHOL %10,00; BRKVY %10,00. Görselde bu düşüş değerlerinin eksi işareti görünmüyor."
+      },
+      {
+        "id": "image_normalized_6",
+        "text": "Hacim liderleri: ASELS 10,8 milyar; AKBNK 6,9 milyar; ISCTR 5,6 milyar; YKBNK 5,3 milyar; THYAO 5,0 milyar. Mr, milyar ölçeğini gösteriyor; hacmin para birimi görselde bu panel için belirtilmiyor."
+      },
+      {
+        "id": "image_normalized_7",
+        "text": "Piyasa geneli: yükselen 230, nötr 20, düşen 381."
+      },
+      {
+        "id": "image_normalized_8",
+        "text": "Kurumsal dağılım — net alıcılar (net hacim; oran; toplam  TL): İş 1,33 milyar; %24,60; 18,3 milyar. Gedik 663,98 milyon; %12,28; 3,1 milyar. Ak 644,96 milyon; %11,93; 18,5 milyar. Midas 414,30 milyon; %7,66; 8,5 milyar. Oyak 406,64 milyon; %7,52; 3,0 milyar. Diğer (30) 1,95 milyar; %36,01; 39,3 milyar. İlk 5: %64,0."
+      },
+      {
+        "id": "image_normalized_9",
+        "text": "Kurumsal dağılım — net satıcılar (net hacim; oran; toplam  TL): BofA 1,82 milyar; %33,63; 32,3 milyar. Yapı Kr. 1,37 milyar; %25,26; 38,8 milyar. Yat. Fin. 654,97 milyon; %12,11; 6,8 milyar. Deniz 498,01 milyon; %9,21; 7,2 milyar. QNB 278,91 milyon; %5,16; 8,3 milyar. Diğer (15) 791,07 milyon; %14,63; 26,9 milyar. İlk 5: %85,4. Kurum hacimleri işlem yönündeki net hacim olarak etiketlenmiş; işlemlerin kurumların kendi portföyüne ait olduğu gösterilmiyor."
+      }
+    ],
+    "url": "https://t.me/SermayeBorsasi/26445",
+    "title": "Sermaye Borsası kaynak görseli",
+    "published_at": "2026-10-26T14:00:03+00:00",
+    "channel_publication": {
+      "channel": "SermayeBorsasi",
+      "peer_id": 2426639373,
+      "message_id": 26445,
+      "posted_at": "2026-10-26T14:00:03+00:00",
+      "edited_at": "2026-10-26T14:00:40+00:00",
+      "version": "6bd1d72aaf20bfedd441585e113ee3d0588832fc28b09c44b2fa0e3846d36991",
+      "forwarded": false,
+      "forwarded_at": null
+    },
+    "market_editorial_context": {
+      "version": 1,
+      "label": "Kapanışa doğru",
+      "basis": "original_channel_publication_time",
+      "calendar_version": "bist-equity-2026-reviewed-2026-10-26",
+      "measurement_time_verified": false,
+      "publication_is_not_data_day": true,
+      "reason": "owner_editorial_label"
+    }
+  }
+}
