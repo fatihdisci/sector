@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "thread:01a16797-9b60-72ba-879f-e236fd1d3028; fintables_equity_question:Sentinel_9db7320760148191a07441d6e0d437f5; fintables_equity_owner_answer:Sentinel_6a7f5956352c8191a0cea10695b452e2",
-  "recorded_at": 1792988692905,
+  "approval_source": "Sentinel_0b3b5acd1e7881918fe77806bb1b0570; direct user: BIST30 devre kesici filtresini CI ve güvenli kurulumla canlıya al",
+  "recorded_at": 1792995610329,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -36,6 +36,6 @@
     "src/pipeline.ts": "49337dcbc234dfb29e911c6e913efeb40991bfccc2cf9d145663b07bfbdf0ec5",
     "src/news-inbox.ts": "6bd66930675252ae827e52d7a6d497924be81742614e15a98e5d2992e30530e3",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
-    "src/types.ts": "c5717e7622cb11c6f7308a9be5bbbdedbfeec081692abbdb4626eae2cdb33122"
+    "src/types.ts": "f1e5cecf0c38b7cf97d65c1164e0fedf7ce35601e2d7f1a0bcf22a57ef40a24a"
   }
 }

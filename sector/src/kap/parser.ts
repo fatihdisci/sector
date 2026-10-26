@@ -74,14 +74,14 @@ export function parseDisclosure(html:string,id:number):Disclosure {
   // Preserve both statuses; do not discard the relation if the page was corrected later.
   isCorrection:changeStatus==='DUZENLENEN'||changeStatus==='DUZELTILEN',publishedAt:kapDate(b.publishDate),attachmentCount:Number(b.attachmentCount??0)};
 }
-export interface Listing {id:number;publishedAt:string;}
+export interface Listing {id:number;publishedAt:string;circuit?:{title:string;summary:string;company:string};}
 export function parseListing(value:unknown,now=Date.now()):Listing[] {
  if(!Array.isArray(value)||value.length>10000)throw new Error('kap_listing_shape');
- const result=value.map(x=>{const row=object(x);if(!Number.isSafeInteger(row.disclosureIndex)||Number(row.disclosureIndex)<=0)throw new Error('kap_listing_id');string(row.subject,'subject',true);return {id:Number(row.disclosureIndex),publishedAt:kapDate(row.publishDate,true)};});
+ const result=value.map(x=>{const row=object(x);if(!Number.isSafeInteger(row.disclosureIndex)||Number(row.disclosureIndex)<=0)throw new Error('kap_listing_id');string(row.subject,'subject',true);return {id:Number(row.disclosureIndex),publishedAt:kapDate(row.publishDate,true),...(typeof row.summary==='string'&&typeof row.title==='string'&&normalize(String(row.subject)).includes('DEVRE KESICI')&&row.summary.length<=1200&&row.title.length<=300?{circuit:{title:String(row.subject),summary:row.summary,company:row.title}}:{})};});
  if(new Set(result.map(x=>x.id)).size!==result.length||result.some(x=>Date.parse(x.publishedAt)>now+300_000))throw new Error('kap_listing_invalid');
  return result.sort((a,b)=>a.id-b.id);
 }
-export interface Indices {bist30:string[];bist50?:string[];bist100:string[];checkedAt:string;source:string;}
+export interface Indices {bist30:string[];bist50?:string[];bist100:string[];checkedAt:string;source:string;sourceSha256?:string;}
 export function parseIndices(html:string,now=Date.now()):Indices {
  const text=flightText(html);
  const read=(code:string,count:number)=>{const m=new RegExp('"code"\\s*:\\s*"'+code+'"\\s*,\\s*"content"\\s*:\\s*(?=\\[)').exec(text);if(!m)throw new Error('kap_index_missing');

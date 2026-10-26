@@ -1,3 +1,4 @@
+import{sha256}from'../utils/text';
 import {ORIGIN,parseDisclosure,parseListing,parseIndices,fullText} from './parser';
 export class KapHttpError extends Error {constructor(public status:number){super('kap_http_'+status);}}
 export class KapClient {
@@ -22,6 +23,6 @@ export class KapClient {
  }
  async disclosure(id:number){if(!Number.isSafeInteger(id)||id<=0)throw new Error('kap_id');try{return parseDisclosure(await this.read(`/tr/Bildirim/${id}`,'text/html'),id);}catch(e){if(e instanceof KapHttpError&&e.status===404)return null;throw e;}}
  async listing(){return parseListing(JSON.parse(await this.read('/tr/api/disclosure/list/light','application/json')));}
- async indices(){return parseIndices(await this.read('/tr/Endeksler','text/html'));}
+ async indices(){const raw=await this.read('/tr/Endeksler','text/html');return{...parseIndices(raw),sourceSha256:await sha256(raw)};}
  async fullText(id:number){if(!Number.isSafeInteger(id)||id<=0)throw new Error('kap_id');return fullText(await this.read(`/tr/Bildirim/${id}`,'text/html'),id);}
 }

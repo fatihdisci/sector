@@ -44,6 +44,10 @@ export function mkkSettlement(d:Disclosure):boolean {
  const title=normalize(d.title).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ');
  return /^MERKEZI KAYIT KURULUSU(?: |$)/.test(company)&&/^BORCLANMA ARACLARI YATIRIM FONLARI VE VARANT ITFA KUPON GETIRI NAKDI UZLASI ODEME ISLEMLERI(?: |$)/.test(title);
 }
+// Explicit topic opt-outs still apply when a narrower circuit scope overrides index routing.
+export function circuitOptOut(d:Disclosure,p:Preferences):boolean {
+ return !p.circuitNotifications||(d.isFund&&p.funds==='off')||mkkSettlement(d)||muted(d.title)||muted(subject(d))||p.excludedTitles.some(t=>normalize(d.title).includes(normalize(t)));
+}
 export function important(d:Disclosure):boolean {
  if(mkkSettlement(d))return false;
  const t=subject(d);
