@@ -16,13 +16,18 @@ export function matchingCompanies<T extends {name:string;code:string;verified:bo
  return matches.filter(e=>new Set(entities.filter(x=>(x.issuer_oid??x.code)===(e.issuer_oid??e.code)).map(x=>x.code)).size===1);
 }
 
-// Only catalogued equity codes in explicit equity context; ordinary words/fund lists do not qualify.
+// A financial statement is equity context only for an explicit catalogued $/# code.
+export const financialStatementMention=(folded:string)=>/\b(bilanco\w*|(?:finansal|mali) tablo\w*|finansal (?:sonuc|rapor)\w*|net (?:kar|zarar)\w*)\b/.test(folded);
+// BIST hashtags establish context, never index membership or instrument identity.
 export function explicitEquityCodes(raw:string,fold:(s:string)=>string):string[]{
- const folded=fold(raw);
+ const folded=fold(raw),normalized=raw.normalize('NFKC');
  if(/\bfon (?:kodu|kodlari)\b/.test(folded))return [];
- if(!/\b(hisse\w*|borsa\w*|bist|pay senedi)\b/.test(folded))return [];
+ const equityContext=/\b(hisse\w*|borsa\w*|bist(?:\s*(?:30|50|100))?|pay senedi)\b/.test(folded);
+ if(!equityContext&&!financialStatementMention(folded))return [];
  const known=new Set(catalog.companies.map(c=>c.code));
- return [...new Set([...raw.matchAll(/(?:^|[^A-Za-z0-9])([A-Z][A-Z0-9]{3,4})(?![A-Za-z0-9])/g)].map(m=>m[1]).filter(c=>known.has(c)))];
+ const plain=equityContext?[...normalized.matchAll(/(?:^|[^\p{L}\p{N}_])([A-Z][A-Z0-9]{3,4})(?![\p{L}\p{N}_])/gu)].map(m=>m[1]):[];
+ const tagged=[...normalized.matchAll(/(?:^|[^\p{L}\p{N}_])[$#]([A-Za-z][A-Za-z0-9]{3,4})(?![\p{L}\p{N}_])/gu)].map(m=>m[1].toUpperCase());
+ return [...new Set([...plain,...tagged].filter(c=>known.has(c)))];
 }
 
 // Official issuer identity is weaker than instrument-type evidence. Never put these codes in equity output.
