@@ -20,3 +20,13 @@ test('source evidence preserves all album texts/media, exact versions, unofficia
  await assert.rejects(channelDocuments(JSON.stringify(m),async()=>({...await transport(),peer_id:1}),extract,extract,NOW),/identity/);await assert.rejects(channelDocuments(JSON.stringify(m),transport,extract,extract,NOW+86400001),/expired/);await assert.rejects(channelDocuments(JSON.stringify(m),transport,async()=>({coverage:{complete:false,page_count:1,pages:[]}}),extract,NOW),/incomplete/);
  const link={...m,messages:[msg(101,{links:['http://127.0.0.1/secret']})]};link.hash=await sha256(link.messages[0].fingerprint);await assert.rejects(channelDocuments(JSON.stringify(link),async()=>({channel:CHANNEL,peer_id:CHANNEL_ID,messages:link.messages}),extract,extract,NOW),/link_unsupported/);
 });
+
+test('theoretical edits settle after channel window once, without replay on next poll',async()=>{
+ const env=await setup(),start=Date.parse('2026-10-26T09:40:00+03:00');await pollChannel(env,async()=>batch([],100,true),start-60000);
+ const a=msg(101,{at:new Date(start).toISOString(),text:'Teorik Eşleşme — 09:40',media:'image'});
+ await pollChannel(env,async()=>batch([a],101),start+120000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,0);
+ const latest={...a,text:'Teorik Eşleşme — 09:52',edited_at:'2026-10-26T09:52:00+03:00',fingerprint:'b'.repeat(64)};
+ await pollChannel(env,async()=>batch([latest],101),start+12*60000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,0);
+ await pollChannel(env,async()=>batch([],101),start+14*60000);const rows=(await env.DB.prepare('select document from articles').all<any>()).results;assert.equal(rows.length,1);assert.equal(JSON.parse(rows[0].document).messages[0].fingerprint,latest.fingerprint);
+ await pollChannel(env,async()=>batch([latest],101),start+15*60000);assert.equal((await env.DB.prepare('select count(*) n from articles').first<any>()).n,1);assert.equal((await env.DB.prepare('select count(*) n from x_posts').first<any>()).n,0);
+});

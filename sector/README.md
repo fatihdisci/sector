@@ -42,6 +42,20 @@ Sayı denetimi İngilizce/Türkçe ondalık ve binlik ayırıcıları, milyon/mi
 Bu denetim haberin dış dünyada kesin doğru olduğunu kanıtlamaz: resmî kaynak, çoklu kaynak ailesi veya tek kaynak aktarımı ayrı belirtilir.
 Eksik/çelişkili kanıtlar, belirsiz galeri/PDF veya doğrulamadan geçmeyen metinler kullanıcıya tamamlanmış haber gibi gönderilmez.
 
+### Piyasa özeti kartı
+
+Sermaye Borsası'nın tam BIST 100 görünümü genel başlık/paragraf kartına indirgenmez.
+`card_data.overview`, endeks ve puan/yüzde değişimi, hacim, gün içi düşük/yüksek,
+endeks katkısı ve hacim liderleri, piyasa genişliği ve iki kurum tablosunu tek sabit 1080×1350
+kartta korur. Tweet doğrudan haber diliyle yazılır; “kaynak tablosunda/görselde”
+gibi dolgu kullanılmaz. Endekse pozitif ve negatif katkı veren ilk beşer hisse
+ayrı gruplarda hashtagli verilir; puan katkısı fiyat yüzdesi değildir. Kaynak,
+bilinmeyen ölçüm zamanı ve okuma notları editör kanıtında kalır. Eksik panel,
+eşleşmeyen satır veya okunabilir kapasite aşımı inceleme gerektirir; satırlar
+sessizce silinmez, boş üç metrikli karta düşülmez. Kaynakta para birimi
+belirtilmeyen hacme TL eklenmez. Bu sabit kartta rastgele tasarım/hücre düzeltme
+sunulmaz; PNG ve tablo/kanıt görünümü kullanılabilir.
+
 ## Kaynak kaydı
 
 `sources.json` ortak kayıttır. Sağlık, etag, son başarılı kontrol ve hata bekleme süreleri ayrı veritabanında tutulur.
@@ -287,3 +301,5 @@ RSS'den bulunan tam tablo görseli mevcut yerel OCR ile okunur; bütün satırla
 Mini app'de Beğendiklerim / Beğenmediklerim ayrımı sahibin mevcut kayıtlarını salt okunur gösterir; kaynak/filtre tercihini değiştirmez. Mevcut 7 günlük panel kapsamı korunur.
 
 Geri alımın endeks/10 hisse seçim kanıtı, resmî şirket kataloğu, v2 gölge sınıflandırması ve bütün beğeni geçmişini indiren `/golgerapor` için [23 Ekim takip raporu](docs/news-catalog-feedback-followup.md). Asgari geri bildirim metadata/karar anlık görüntüleri oy defteriyle korunur; tam haber metni içermez ve 7 günlük haber aday saklama politikasından ayrıdır. Eski karar geçmişi geriye dönük uydurulmaz. Bu yerel değişiklikler aktif filtre veya canlıya geçiş onayı değildir.
+
+Kanal yayın programı (orijinal mesaj zamanı, Europe/Istanbul): 09:55 yalnız BIST 100 açılış seviyesi/yüzde/puan; 10:01 yalnız yükselenler, düşenler ve hacim liderleri (ilk beşer). Gün içi genel özet ve 18:11 gün sonu: endeks, katkı puanları, hacim liderleri, piyasa genişliği ve ilk beşer alıcı/satıcı kurum. Genel özette yükselen/düşen hisse listeleri ve Diğer kurum satırları gösterilmez; kaynak kaydı korunur. Bunlar borsanın resmî seans saatlerini değiştirmez. 09:40–09:52 ve 18:02–18:04 teorik mesaj düzenlemeleri aynı mesaj altında biriktirilir; sırasıyla 09:53/18:05 sonrası en az 60 saniye değişmeyen sürüm önizlenir. Haber mesajları mevcut haber akışındadır. Geç düzenleme yeni önizleme oluşturmaz; henüz üretilmemiş kartın açık İçerik oluştur isteği en yeni kayıtlı sürümü kullanır. Hazır/belirsiz teslimat yeniden üretilmez.

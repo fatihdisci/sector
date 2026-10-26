@@ -1,7 +1,9 @@
+import {parseMarketOverview,isFullOverview,overviewEvidence} from './market-overview';
 import type {CardData,CardRow,Document} from './types';
 import {verifiedEquityCodes} from './equity-codes';
 export function cardDataFields(data?:CardData):[string,string][] {
  if(!data)return [];
+ if(data.overview)return overviewEvidence(data.overview).map(p=>[p.id,p.text]);
  const values:[string,string][]=[];
  if(Array.isArray(data.tickers))data.tickers.forEach((code,i)=>values.push([`card_data.tickers[${i}]`,code]));
  for(const key of ['ticker','broker','as_of','buy_broker','sell_broker'] as const)if(typeof data[key]==='string')values.push(['card_data.'+key,data[key]!]);
@@ -12,6 +14,7 @@ export function validateCardData(value:unknown,documents:Document[]):void {
  if(value===undefined)return;
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('invalid_card_data');
  const data=value as CardData;
+ if(data.overview){const d=documents.find(isFullOverview);if(!d||JSON.stringify(data.overview)!==JSON.stringify(parseMarketOverview(d))||Object.keys(data).some(k=>k!=='overview'))throw Error('market_overview_source_mismatch');return;}
  if(Object.keys(data).some(k=>!['ticker','tickers','broker','as_of','buy','sell','holdings','metrics','buy_broker','sell_broker'].includes(k)))throw Error('invalid_card_data');
  if(data.tickers!==undefined){
   const verified=new Set(verifiedEquityCodes(documents));

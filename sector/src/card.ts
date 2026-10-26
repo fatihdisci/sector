@@ -1,3 +1,4 @@
+import {marketOverviewCard} from './market-overview-card';
 import {outputView} from './output-preferences';
 import {reportCard} from './report-card';
 import {marketCard} from './market-card';
@@ -37,6 +38,7 @@ export function draftCard(d:Draft,sources:string[]=[],date='',demo=false,theme?:
 export function cardSvg(d:Pick<Draft,'headline'|'body'|'template'|'card_data'|'output_preferences'>,_sources:string[]=[],_date='',_demo=false,theme?:CardTheme,layout:CardLayout='editorial'):string {
  d=outputView(d);
  if(!d.output_preferences?.show_time&&d.card_data?.as_of){d={...d,card_data:{...d.card_data}};delete d.card_data!.as_of;}
+ if(d.card_data?.overview)return marketOverviewCard(d.card_data.overview,d.headline,theme);
  if(d.card_data?.report)return reportCard(d);
  const headline=d.headline.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u,'').trim();
  if(!headline||!d.body.trim())throw new Error('card_content_empty');

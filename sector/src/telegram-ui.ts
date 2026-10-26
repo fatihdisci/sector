@@ -17,14 +17,14 @@ export function draftKeyboard(id:string,revision:number,docs:Document[],publish:
  const pub=(action:string,text:string):Button=>({text,callback_data:`dp:${action}:${id}:${revision}`});
  const more=menu('more','Diğer'),back=menu('main','Geri'),locked=state.published||!!state.api;
  if(view==='main')return {inline_keyboard:[locked?[menu('summary','Yayın özeti'),more]:state.deferred?[pub('undo','Hazıra al'),more]:[...(publish&&editable?[{text:'X’te paylaş',callback_data:`xpost:${id}:${revision}`}]:[]),...(editable?[{text:'Düzenle',callback_data:callback('edit',id,revision)}]:[]),more]]};
- const layouts=editable&&!locked&&draft?.template!=='circuit'&&!draft?.card_data?.report;
+ const layouts=editable&&!locked&&draft?.template!=='circuit'&&!draft?.card_data?.report&&!draft?.card_data?.overview;
  if(view==='layouts'&&layouts)return {inline_keyboard:[[{text:'Rastgele tasarım',callback_data:`design:${id}:${revision}`}],...CARD_LAYOUTS.map(l=>[{text:({editorial:'Standart',frame:'Çerçeveli',rail:'Sol şeritli',masthead:'Başlık bloğu',center:'Ortalanmış',brief:'Kısa haber'})[l],callback_data:`design:${id}:${revision}:${l}`}]),[back]]};
  const rows:Button[][]=[[sourceButton(docs)]];
  if(layouts)rows.push([menu('layouts','Tasarımı değiştir')]);
  rows.push([{text:'PNG indir',callback_data:`asset:image:${id}:${revision}`}]);
  if(editable&&!locked)rows.push([pub('mark','Elle paylaştım'),...(!state.deferred?[pub('defer','Ertele')]:[])]);
  if(editable)rows.push([{text:'Kanıtlar',callback_data:`ed:evidence:${id}:${revision}`}]);
- const data=draft?.card_data,table=!!data&&(!!data.report||!!data.tickers?.length||['buy','sell','holdings','metrics'].some(k=>(data as any)[k]?.length));
+ const data=draft?.card_data,table=!!data&&(!!data.report||!!data.overview||!!data.tickers?.length||['buy','sell','holdings','metrics'].some(k=>(data as any)[k]?.length));
  if(table&&editable)rows.push([{text:'Tablo verileri',callback_data:`ed:data:${id}:${revision}`}]);
  if(editable&&!locked&&!data?.report&&['buy','sell','holdings','metrics'].some(k=>(data as any)?.[k]?.length))rows.push([{text:'Hücre düzelt',callback_data:`ed:correct:${id}:${revision}`}]);
  if(data?.report?.general||data?.report?.buyback)rows.push([{text:'CSV indir',callback_data:`asset:csv:${id}:${revision}`}]);

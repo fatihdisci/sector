@@ -1,3 +1,4 @@
+import{channelProgramme}from'./channel-programme';
 import{bindChannelPublication}from'./channel-publication';
 import{sha256}from'./utils/text';import type{Env,Source,Document}from'./types';import{readDocument}from'./article';import registry from'../sources.json';
 export const CHANNEL='SermayeBorsasi',CHANNEL_ID=2426639373,CHANNEL_SOURCE='sermaye-telegram';
@@ -27,6 +28,8 @@ export async function pollChannel(env:Env,transport:ChannelTransport,now=Date.no
   const inserts=[];let fresh=0,corrections=0;
   for(const[g,members]of groups){members.sort((a,b)=>a.id-b.id);const old=next.seen[g],hash=await sha256(members.map(m=>m.fingerprint).join('|'));
    if(old?.hash===hash){for(const m of members)pending.delete(m.id);continue;}
+   const programme=channelProgramme(members[0].at,members.map(m=>m.text).join('\n'),undefined,members[0].provenance?.forwarded);
+   if(programme?.preview_after&&now<programme.preview_after)continue;
    if(now-Math.max(...members.map(m=>m.group?m.observed_at??now:Date.parse(m.edited_at??m.at)))<SETTLE)continue;
    if(members.length>10||old&&old.ids.some(id=>!members.some(m=>m.id===id)))throw Error('channel_album_incomplete');
    const url=`https://t.me/${CHANNEL}/${members[0].id}`,manifest:ChannelManifest={version:1,channel:CHANNEL,peer_id:CHANNEL_ID,url,messages:members,hash,captured_at:now};

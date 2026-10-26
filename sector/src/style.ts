@@ -1,3 +1,4 @@
+import {overviewPresentation} from './market-overview';
 import {marketTimeContext,marketTimeIssues,applyMarketEditorialHeader} from './market-time';
 import {outputView} from './output-preferences';
 import {kapIndexHashtags} from './kap/index-tags';
@@ -110,7 +111,7 @@ export function repairDraftStyle(value:Draft,documents:Document[]):Draft {
  if(!value||typeof value!=='object')return value;
  const preference=documents.find(d=>d.output_preferences)?.output_preferences;
  const {output_preferences:_ignored,...plain}=value;value={...plain,...(preference?{output_preferences:preference}:{})};
- value=applyMarketEditorialHeader(normalizeEquityDisplay(normalizeHashtagPlacement(value),documents),documents);
+ value=overviewPresentation(applyMarketEditorialHeader(normalizeEquityDisplay(normalizeHashtagPlacement(value),documents),documents),documents);
  const policy=editorialPolicy(documents),required=policy.required_hashtags;
  const tags=Array.isArray(value.hashtags)?[...new Set(value.hashtags.filter((t):t is string=>typeof t==='string').map(t=>'#'+t.trim().replace(/^#+/,'').replace(/[^\p{L}\p{N}_]/gu,'')))]:[];
  const valid=tags.filter(t=>!(policy.excluded_equity_codes.some(c=>t.toUpperCase()==='#'+c))&&!(/^#BIST(?:30|100)$/i.test(t)&&!required.includes(t.toUpperCase()))&&/^#[\p{L}\p{N}_]{2,40}$/u.test(t)&&!/^#(?:haber|gündem|keşfet|viral)$/iu.test(t));

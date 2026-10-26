@@ -1,3 +1,4 @@
+import {channelProgramme} from './channel-programme';
 import {equitySessionLabel} from './market-session';
 import {cardDataFields} from './card-data';
 import type{Document,Draft}from'./types';
@@ -22,6 +23,8 @@ export function marketTimeContext(documents:Document[]){
   const explicitTimes=d.passages.filter(p=>!p.id.startsWith('channel_')).flatMap(p=>[...p.text.toLocaleLowerCase('tr-TR').matchAll(/(?:veri|ölçüm)\s+(?:saati|zamanı)\s*:\s*(\d{1,2}:\d{2}(?::\d{2})?)/gu)].map(m=>m[1]));
   const forwarded=verified?cp!.forwarded:c.forwarded;
   let session=equitySessionLabel(verified?publish:null);
+  const programme=verified?channelProgramme(publish!,typeof c.caption==='string'?c.caption:d.title,d.source_layout?.kind,forwarded):null;
+  if(programme&&['opening','first_moves','close'].includes(programme.kind))session={...session,label:programme.label,reason:'owner_channel_programme'};
   if(invalid_date||source_data_days.length||explicitTimes.length)session={...session,label:null,reason:'explicit_source_time_precedes_publication'};
   if(forwarded===true)session={...session,label:null,reason:'forwarded_source'};
   const graph=d.passages.find(p=>/^Grafik\s*:/iu.test(p.text))?.text??'';
@@ -31,15 +34,14 @@ export function marketTimeContext(documents:Document[]){
 export function marketTimeIssues(draft:Draft,documents:Document[]):string[]{
  const contexts=marketTimeContext(documents);if(!contexts.length)return[];
  const label=contexts.length===1?contexts[0].editorial_session.label:null;
- const strip=(title:string)=>{if(!label)return title;const clean=title.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u,'');return clean.toLocaleLowerCase('tr-TR').startsWith(label.toLocaleLowerCase('tr-TR')+' — ')?clean.slice(label.length+3):title;};
+ const strip=(title:string)=>{if(!label)return title;const clean=title.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u,'');const folded=clean.toLocaleLowerCase('tr-TR'),expected=label.toLocaleLowerCase('tr-TR');if(folded===expected)return '';if(folded.startsWith(expected+' — '))return clean.slice(label.length+3);if(label==='Gün ortası'&&folded.startsWith('gün ortasında '))return clean.slice('Gün ortasında '.length);return title;};
  const tweet=[strip(draft.headline),draft.body].join('\n'),card=[strip(draft.card_headline),draft.card_body].join('\n');
  const visible=[tweet,card,...cardDataFields(draft.card_data).map(([,v])=>v),...(draft.claims??[]).map(c=>c.text)].join('\n').toLocaleLowerCase('tr-TR');
  const issues:string[]=[];
  if(contexts.some(c=>c.data_day_status==='conflict'))issues.push('market_source_date_conflict');
  if(contexts.some(c=>c.data_day_status==='invalid'))issues.push('market_source_date_invalid');
  if(/(?<!\p{L})(?:bugün|anlık|güncel|şimdi)(?!\p{L})|şu an|son seans|son durum|gün sonu|gün ortası|kapanış(?:ta|ı)|açılış(?:ta|ı)/iu.test(visible))issues.push('unsupported_market_currentness');
- const anchor=/(?:kaynak\s+(?:tablo(?:sunda|sı|da)|görsel(?:inde|i))|görselde|tabloda)/iu;
- if(!anchor.test((label?draft.body:tweet).toLocaleLowerCase('tr-TR'))||!anchor.test((label?draft.card_body:card).toLocaleLowerCase('tr-TR')))issues.push('market_snapshot_attribution_required');
+ if(/kaynak tablos|kaynak görsel|görselde|tabloda/iu.test([draft.headline,draft.body,draft.card_headline,draft.card_body].join('\n')))issues.push('market_source_prose_in_public_output');
  const days=contexts.flatMap(c=>c.source_data_days),one=contexts.every(c=>c.data_day_status==='source_labelled')&&new Set(days).size===1?days[0]:null;
  const cardVisible=[draft.card_headline,draft.card_body,...cardDataFields(draft.card_data).map(([,v])=>v)].join('\n').toLocaleLowerCase('tr-TR');
  if([...cardVisible.matchAll(dates)].length||/\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(cardVisible))issues.push('market_card_datetime_forbidden');
@@ -61,7 +63,7 @@ export function applyMarketEditorialHeader(draft:Draft,documents:Document[]):Dra
  const c=contexts[0],label=c.editorial_session.label;
  const change=(title:string)=>{if(typeof title!=='string'||!title.trim())return title;const emoji=/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u.exec(title)?.[0]??'',plain=title.slice(emoji.length),folded=plain.toLocaleLowerCase('tr-TR'),old=/^(?:güne başlarken|açılışın ilk dakikaları(?:nda)?|gün ortası(?:nda)?|kapanışa doğru|kapanışta)(?:\s*[—–:-]\s*|\s+|$)/u.exec(folded);let rest=old?plain.slice(old[0].length):plain;
   if(label)rest=rest.replace(/^kaynak tablosunda(?:\s*[—–:-]\s*|\s+)/iu,'');
-  return emoji+(label?label+' — '+rest:old?'Kaynak tablosunda — '+rest:rest);
+  return emoji+(label?label+' — '+rest:old?'Piyasa özeti — '+rest:rest);
  };
  if(draft.source_notes!==undefined&&!Array.isArray(draft.source_notes))return draft;
  const note='Editoryal zaman etiketi (kanal yayını): '+(label??'tarafsız kaynak başlığı')+'. Özgün kanal mesajı esas alındı; veri ölçüm günü/saati veya güncel fiyat teyidi değildir. İletim durumu: '+c.forward_state+'.';

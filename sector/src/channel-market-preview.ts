@@ -21,3 +21,14 @@ export function latestChannelVersionSQL(alias='a'):string{
  AND (json_extract(CASE WHEN json_valid(newer.document) THEN newer.document ELSE '{}' END,'$.captured_at')>json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.captured_at')
  OR (json_extract(CASE WHEN json_valid(newer.document) THEN newer.document ELSE '{}' END,'$.captured_at')=json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.captured_at') AND newer.rowid>${alias}.rowid)))`;
 }
+
+// A late edit remains a source revision; do not send another preview for a
+// source already shown, requested, completed or uncertain. Explicit owner
+// generation can rebind an unused preview to the newest source revision.
+export function channelPreviewUnseenSQL(alias='a'):string{
+ if(!/^[a-z]+$/.test(alias))throw Error('invalid_sql_alias');
+ return `NOT EXISTS(SELECT 1 FROM news_cards shown JOIN articles prior ON prior.id=shown.article_id
+ WHERE prior.id!=${alias}.id AND prior.source_id='sermaye-telegram' AND json_valid(prior.document)
+ AND json_extract(prior.document,'$.url')=json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.url')
+ AND shown.state NOT IN ('waiting','duplicate'))`;
+}

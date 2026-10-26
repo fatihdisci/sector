@@ -3,7 +3,7 @@ import test from'node:test';import assert from'node:assert/strict';import{execFi
 // dates/forward variants below are synthetic, not recovered production metadata.
 const quote='BIST 100: 11.004,37 puan. Görselde değişim “%1,01 düşüşle” ve ayrıca -112,62 puan olarak verilmiş.';
 const doc:Document={source_id:'sermaye-telegram',source_name:'Sermaye Borsası (@SermayeBorsasi)',official:false,family:'telegram-sermayeborsasi',language:'tr',url:'https://t.me/SermayeBorsasi/26431',title:'Sermaye Borsası kaynak görseli',published_at:'2026-10-26T11:00:03Z',body:quote,source_layout:{kind:'market_overview',panels:[],minimum_rows:0},passages:[{id:'image_normalized_2',text:quote},{id:'graph',text:'Grafik: BIST 100 hareketi; saat etiketleri 09:55, 13:25 ve 13:40.'},{id:'channel_context',text:JSON.stringify({message_id:26431,posted_at:'2026-10-26T11:00:03Z',edited_at:'2026-10-26T11:01:11Z',caption:'📈 BIST 100 — 14:00',version:'fixture-only'})}]};
-const draft:Draft={headline:'📊 Kaynak tablosunda BIST 100',body:'Görselde endeks 11.004,37 puan, değişim %1,01 düşüş ve puan farkı -112,62 puan olarak gösteriliyor.',card_headline:'Kaynak tablosunda BIST 100',card_body:'Görselde endeks 11.004,37 puan; değişim %1,01 düşüş, puan farkı -112,62 puan.',template:'market',category:'bist',importance:65,hashtags:['#Borsa','#BIST'],entities:['BIST 100'],event_key:'fixture-source-snapshot',uncertainties:[],source_notes:['Görselde veri tarihi yok. Kanalın yayın zamanı veri tarihi değildir; ölçüm tarihi veya güncellik iddiası kurulmadı.'],claims:[{text:'Kaynak görselinde BIST 100 11.004,37 puan, değişim %1,01 düşüş ve puan farkı -112,62 puan olarak yer alıyor.',evidence:[{document:0,passage:'image_normalized_2',quote}]}]};
+const draft:Draft={headline:'📊 BIST 100 düşüşte',body:'Endeks 11.004,37 puan, değişim %1,01 düşüş ve puan farkı -112,62 puan.',card_headline:'BIST 100 düşüşte',card_body:'Endeks 11.004,37 puan; değişim %1,01 düşüş, puan farkı -112,62 puan.',template:'market',category:'bist',importance:65,hashtags:['#Borsa','#BIST'],entities:['BIST 100'],event_key:'fixture-source-snapshot',uncertainties:[],source_notes:['Görselde veri tarihi yok. Kanalın yayın zamanı veri tarihi değildir; ölçüm tarihi veya güncellik iddiası kurulmadı.'],claims:[{text:'Kaynak görselinde BIST 100 11.004,37 puan, değişim %1,01 düşüş ve puan farkı -112,62 puan olarak yer alıyor.',evidence:[{document:0,passage:'image_normalized_2',quote}]}]};
 function withDate(text:string,forwarded?:boolean){return{...doc,body:doc.body+'\n'+text,passages:[...doc.passages.filter(p=>p.id!=='channel_context'),{id:'image_date',text},{id:'channel_context',text:JSON.stringify({message_id:26431,posted_at:doc.published_at,forwarded,forwarded_at:forwarded?'2026-10-23T10:00:00Z':null,caption:'BIST 100 — 14:00'})}]};}
 test('actual stored provenance proves publication/edit times, not the measurement date or forward state',()=>{
  const c=marketTimeContext([doc])[0];assert.equal(c.publication_day,'2026-10-26');assert.equal(c.data_day_status,'unknown');assert.equal(c.forward_state,'unknown');assert.equal(c.measurement_time,null);assert.equal(c.caption_time,'14:00');assert.equal(c.graph_last_label,'13:40');assert.equal(c.independent_date_verification,false);
@@ -23,13 +23,14 @@ test('conflicting or invalid source days do not become a usable as-of date; capt
  assert(marketTimeIssues(draft,[d]).includes('market_source_date_conflict'));const invalid=withDate('Veri tarihi: 31.02.2026');assert.equal(marketTimeContext([invalid])[0].data_day_status,'invalid');assert(marketTimeIssues(draft,[invalid]).includes('market_source_date_invalid'));
  assert(marketTimeIssues({...draft,card_data:{as_of:'14:00'}},[doc]).includes('unsupported_market_measurement_time'));assert(marketTimeIssues({...draft,body:'Kaynak tablosunda saat 13:40 itibarıyla değerler.'},[doc]).includes('unsupported_market_measurement_time'));
 });
-test('date-unknown static snapshot needs explicit source context in tweet and card; source numbers and evidence guards remain unchanged',()=>{
+test('direct market prose requires no source filler; numbers and evidence guards remain unchanged',()=>{
  assert.deepEqual(marketTimeIssues(draft,[doc]),[]);assert.equal(validateDraft(draft,[doc]).verification,'single_source_attributed');
  for(const text of['Bugün','Şimdi','Anlık','Güncel','Şu an'])assert(marketTimeIssues({...draft,body:text+' BIST 100'},[doc]).includes('unsupported_market_currentness'));
- assert(marketTimeIssues({...draft,headline:'📉 BIST 100 düşüşte',body:'Endeks 11.004,37 puanda.'},[doc]).includes('market_snapshot_attribution_required'));
+ assert(marketTimeIssues({...draft,body:'Kaynak tablosunda endeks 11.004,37 puanda.'},[doc]).includes('market_source_prose_in_public_output'));
+ assert(marketTimeIssues({...draft,card_body:'Görselde endeks 11.004,37 puanda.'},[doc]).includes('market_source_prose_in_public_output'));
  assert(marketTimeIssues({...draft,card_data:{metrics:[{label:'Bugün',value:'11.004,37 puan'}]}},[doc]).includes('unsupported_market_currentness'));
  assert(marketTimeIssues({...draft,body:'Kaynak tablosunda 26 Ekim değerleri.'},[doc]).includes('unsupported_market_data_day'));
- assert.throws(()=>validateDraft({...draft,body:'Görselde endeks 99.999,99 puan.'},[doc]),/unsupported_number_or_unit/);
+ assert.throws(()=>validateDraft({...draft,body:'Endeks 99.999,99 puan.'},[doc]),/unsupported_number_or_unit/);
  assert.throws(()=>acceptHermes(draft,{supported:false,issues:['unresolved']},[doc]),/semantic_review_failed/);
  assert.throws(()=>validateDraft({...draft,claims:[{...draft.claims[0],evidence:[{document:0,passage:'image_normalized_2',quote:'Bu alıntı kaynakta kesinlikle yoktur.'}]}]},[doc]),/invented_evidence/);
 });
@@ -42,6 +43,6 @@ test('missing date is not automatically removed from uncertainties or hidden by 
 test('KAP, standard news and non-overview AKD flows are outside this narrow snapshot rule',()=>{
  for(const d of[{...doc,source_id:'kap',official:true},{...doc,source_id:'rss'},{...doc,source_layout:{kind:'institution_summary' as const,panels:[],minimum_rows:0}}]){assert.deepEqual(marketTimeContext([d]),[]);assert.deepEqual(marketTimeIssues(draft,[d]),[]);}
 });
-test('date-free source-attributed card renders a real PNG without inventing an as-of or footer',async()=>{
- const svg=draftCards(draft,'navy','editorial')[0];assert(svg.includes('Kaynak tablosunda'));assert(!svg.includes('26 Ekim'));assert(!svg.includes('14:00'));const image=await png(svg);assert(image.length>10000);assert.equal(new DataView(image.buffer,image.byteOffset).getUint32(16),1080);
+test('date-free direct market card renders a real PNG without inventing an as-of or footer',async()=>{
+ const svg=draftCards(draft,'navy','editorial')[0];assert(!svg.includes('Kaynak tablosunda'));assert(svg.includes('BIST 100')); assert(!svg.includes('26 Ekim'));assert(!svg.includes('14:00'));const image=await png(svg);assert(image.length>10000);assert.equal(new DataView(image.buffer,image.byteOffset).getUint32(16),1080);
 });

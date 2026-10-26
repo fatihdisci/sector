@@ -1,6 +1,6 @@
 import {newsProgressNote,newsFailureNote,type NewsProgress} from './news-progress';
 export {newsProgressNote} from './news-progress';
-import{channelMarketPreviewSQL,latestChannelVersionSQL}from'./channel-market-preview';
+import{channelMarketPreviewSQL,latestChannelVersionSQL,channelPreviewUnseenSQL}from'./channel-market-preview';
 import {previewMarkup,refreshNewsMenu} from './news-menu';
 import {recordNewsCandidate,newsPreferences} from './news-routing';
 import {retryDraftDelivery,deliveryTarget} from './delivery-recovery';
@@ -53,6 +53,18 @@ export async function requestNews(env:Env,id:string,messageId:number,confirmedRe
   return 'Hazır taslak için güvenli yeniden deneme sınırı veya süre doldu; yeniden içerik üretilmedi.';
  }
 
+ // The same channel post can be edited during the theoretical window.
+ // Retarget only an explicit owner request with no prepared/uncertain delivery.
+ if(['sent','failed'].includes(row.state)){
+  const latest=await env.DB.prepare(`SELECT newer.id FROM articles prior JOIN articles newer ON newer.source_id=prior.source_id
+   WHERE prior.id=? AND prior.source_id='sermaye-telegram' AND ${channelMarketPreviewSQL('newer')}
+   AND json_valid(prior.document) AND json_extract(prior.document,'$.url')=json_extract(newer.document,'$.url')
+   AND newer.status='queued' AND newer.draft_id IS NULL
+   AND NOT EXISTS(SELECT 1 FROM model_jobs busy WHERE busy.article_id=newer.id AND (busy.state IN ('queued','leased','retry_pending') OR busy.result_draft IS NOT NULL))
+   AND newer.id!=prior.id AND json_extract(newer.document,'$.captured_at')>json_extract(prior.document,'$.captured_at')
+   ORDER BY json_extract(newer.document,'$.captured_at') DESC,newer.rowid DESC LIMIT 1`).bind(row.article_id).first<{id:string}>();
+  if(latest){const changed=await env.DB.prepare("UPDATE news_cards SET article_id=? WHERE id=? AND article_id=? AND state IN ('sent','failed') AND NOT EXISTS(SELECT 1 FROM news_cards other WHERE other.article_id=? AND other.id!=?) AND NOT EXISTS(SELECT 1 FROM model_jobs WHERE article_id=? AND state IN ('queued','leased','retry_pending'))").bind(latest.id,id,row.article_id,latest.id,id,row.article_id).run();if(!changed.meta.changes)return 'Güncel kanal sürümü başka bir işlemde; mevcut hazırlama tamamlanınca tekrar deneyebilirsin.';row.article_id=latest.id;}
+ }
  if(['requested','model_queued'].includes(row.state))return 'Hazırlama isteğin zaten sırada.';
  if(row.state==='complete')return 'Bu haberin tweet ve görseli zaten hazırlandı.';
  if(!['sent','failed'].includes(row.state))return 'Bu kart için işlem yapılamıyor.';
@@ -79,7 +91,7 @@ export async function announceNews(env:Env):Promise<void> {
  ${prefs.mode==='active'?"CASE WHEN json_extract(n.confidence,'$.event') IN ('rate','macro_data','regulation','halt') OR json_extract(n.confidence,'$.stage')='denied' THEN 100 ELSE 0 END + COALESCE(json_extract(n.confidence,'$.priority'),0)":'0'} AS priority,
  COALESCE(json_extract(s.config,'$.editorial_priority'),50) AS source_priority
  FROM articles a JOIN sources s ON s.id=a.source_id LEFT JOIN news_cards c ON c.article_id=a.id LEFT JOIN news_candidates n ON n.article_id=a.id
- WHERE ((${channelMarketPreviewSQL()} AND ${latestChannelVersionSQL()}) OR (NOT ${channelMarketPreviewSQL()} AND (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})))) AND s.enabled=1 AND a.status='queued' AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
+ WHERE ((${channelMarketPreviewSQL()} AND ${latestChannelVersionSQL()} AND ${channelPreviewUnseenSQL()}) OR (NOT ${channelMarketPreviewSQL()} AND (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})))) AND s.enabled=1 AND a.status='queued' AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
  ), oldest AS (SELECT id FROM eligible WHERE queue_at<=? ORDER BY queue_at ASC,id LIMIT 1),
  priority_slots AS (SELECT id FROM eligible WHERE id NOT IN (SELECT id FROM oldest) ORDER BY priority DESC,(julianday(published_at)*1440+source_priority/10) DESC,id LIMIT (SELECT CASE WHEN EXISTS(SELECT 1 FROM oldest) THEN 2 ELSE 3 END))
  SELECT * FROM eligible WHERE id IN (SELECT id FROM oldest) OR id IN (SELECT id FROM priority_slots)

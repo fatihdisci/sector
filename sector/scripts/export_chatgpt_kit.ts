@@ -8,6 +8,7 @@ import {cardSvgs} from '../src/card-pages';
 import {png} from './render_local';
 import {CARD_LAYOUTS} from '../src/card-layout';
 import {report} from '../src/kap/reports';
+import {parseMarketOverview} from '../src/market-overview';
 
 const root=process.cwd(),exportsDir=join(root,'exports'),name='ENDEKS-HABER-ChatGPT',target=join(exportsDir,name),zipTarget=join(exportsDir,name+'.zip');
 const temp=await mkdtemp(join(tmpdir(),'endeks-kit-')),stage=join(temp,name),zipTemp=join(exportsDir,'.'+name+'.tmp.zip');
@@ -22,6 +23,7 @@ try{
  }
  await source('card-pages.ts');
  await source('market-session.ts');
+ await source('channel-programme.ts');
  for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','OFL.txt','profile.svg','profile.png','banner.svg','banner.png'])await copyFile(join(root,'assets',file),join(stage,'assets',file));
  for(const file of ['index.mjs','index_bg.wasm','package.json'])await copyFile(join(root,'node_modules/@resvg/resvg-wasm',file),join(stage,'runtime',file));
  execFileSync(join(root,'node_modules/.bin/esbuild'),['src/card-pages.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/cards.mjs')}`],{cwd:root});
@@ -35,6 +37,9 @@ const base=new URL('./',import.meta.url),input=process.argv[2],output=process.ar
  samples.push({name:'hisse-akd',template:'akd',headline:'ABCD aracı kurum dağılımı',body:'Net alıcı ve satıcı kurumların pay miktarları.',card_data:{ticker:'ABCD',buy:[{label:'Alfa Yatırım',value:'%20 · 123 lot · —'}],sell:[{label:'Beta Menkul',value:'110.000 lot'}]}},{name:'kurum',template:'institutional',headline:'Örnek Kurum üzerinden alınan/satılan hisseler',body:'Alım tarafında öne çıkan hisseler.',card_data:{broker:'Bank of America',buy:Array.from({length:10},(_,i)=>({label:'A'+String(i).padStart(4,'0'),value:`${10-i} milyon TL`}))}},{name:'takas',template:'custody',headline:'ABCD takas dağılımı',body:'Kaynakta yer alan saklama kuruluşları.',card_data:{ticker:'ABCD',metrics:[{label:'Toplam takas',value:'100 milyon lot'}],holdings:[{label:'Alfa',value:'10 milyon lot / %10'}]}},{name:'hacim',template:'volume',headline:'ABCD işlem hacmi',body:'Kaynakta açıklanan işlem hacmi.',card_data:{ticker:'ABCD',metrics:[{label:'İŞLEM HACMİ',value:'125 milyon TL'}]}});
  samples.push({name:'pay-geri-alimlari',template:'info',headline:'PAY GERİ ALIMLARI',body:'22.10.2026',card_data:{report:{rows:[],footer:'',buyback:{day:'2026-10-22',row_count:2,reader:'example',rows:[{ticker:'AAAA',day:'22.10.2026',nominal:'100.000',price:'4,25',amount:'425.000',raw:[]},{ticker:'BBBB',day:'22.10.2026',nominal:'70.000',price:null,amount:null,raw:[]}]}}}});
  samples.push({name:'teorik-eslesme-40',provenance:'Sentetik şablon örneği; canlı piyasa verisi değildir.',template:'theoretical',headline:'Teorik eşleşme',body:'Teorik fiyatlar gerçekleşmiş işlem fiyatı değildir.',card_data:{buy:Array.from({length:20},(_,i)=>({label:'A'+String(i).padStart(4,'0'),value:'94,05 TL|+%10,00|13.383'})),sell:Array.from({length:20},(_,i)=>({label:'B'+String(i).padStart(4,'0'),value:'6,84 TL|%10,00|923.160'}))}},{name:'kurum-akd-ozeti',provenance:'Sentetik şablon örneği; canlı işlem değildir.',template:'institutional',headline:'Kurumlar üzerinden öne çıkan hisseler',body:'Alım ve satım tarafındaki kurumlar ayrı gösterilir.',card_data:{buy_broker:'BofA',sell_broker:'QNB',buy:Array.from({length:5},(_,i)=>({label:'A'+String(i).padStart(4,'0'),value:`${5-i} milyon TL · maliyet 10,25 TL`})),sell:Array.from({length:5},(_,i)=>({label:'B'+String(i).padStart(4,'0'),value:`-${5-i} milyon TL · maliyet 12,50 TL`}))}});
+ const overviewFixture=JSON.parse(await readFile(join(root,'test/fixtures/market-overview-26431.json'),'utf8'));
+ samples.push({name:'piyasa-ozeti',provenance:overviewFixture.provenance,template:'market',headline:'Gün ortası',body:'BIST 100 piyasa özeti',theme:'paper',card_data:{overview:parseMarketOverview(overviewFixture.document)}});
+ for(const [time,view,title]of [['09:55','opening','Borsa açılışı'],['10:01','first_moves','Açılışın ilk anları'],['18:11','close','Gün sonu']]){const d=structuredClone(overviewFixture.document);d.channel_publication.posted_at='2026-10-26T'+time+':00+03:00';samples.push({name:'piyasa-'+view,provenance:'Sentetik yayın saatiyle yerleşim testi; gerçek açılış/kapanış raporu değildir. '+overviewFixture.provenance,template:'market',headline:title,body:'',theme:'paper',card_data:{overview:parseMarketOverview(d)}});}
  const circuitFixture=JSON.parse(await readFile(join(root,'test/fixtures/circuit-report-2026-10-23.json'),'utf8'));
  samples.push({name:'devre-kesici-raporu-40',provenance:circuitFixture.provenance,...report('circuit',circuitFixture.disclosures.map((disclosure:any)=>({disclosure})),circuitFixture.indices,circuitFixture.at,'').draft});
  for(const s of samples){const {name:n,...d}=s;await writeFile(join(stage,'examples',n+'.json'),JSON.stringify(d,null,2));const svgs=cardSvgs(d,d.theme,d.layout);for(let i=0;i<svgs.length;i++){const svg=svgs[i],page=svgs.length===1?n:n+'-'+(i+1);await writeFile(join(stage,'examples',page+'.svg'),svg);await writeFile(join(stage,'examples',page+'.png'),await png(svg));}}

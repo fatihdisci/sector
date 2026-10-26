@@ -1,7 +1,8 @@
+import {withOverviewEvidence} from './market-overview';
 import {bindChannelPublication} from './channel-publication';
 import {outputPreferences} from './output-preferences';
 import {chooseLayout,savedLayout} from './card-layout';
-import {previousModelIssues} from './model-recovery';
+import {recordModelReview,previousModelIssues} from './model-recovery';
 import {withKapUnitEvidence} from './kap-unit-evidence';
 import {chooseTheme,savedTheme,legacyTheme} from './card-theme';
 import {editorialPolicy} from './style';
@@ -42,7 +43,14 @@ export async function leaseJob(env:Env) {
  const lock=await env.DB.prepare("UPDATE model_jobs SET state='leased',lease_token=?,lease_until=? WHERE id=? AND state IN ('queued','retry_pending')").bind(token,now()+600,job.id).run();if(!lock.meta.changes)return null;
  const article=job.kind==='news'?await env.DB.prepare("SELECT source_id,document FROM articles WHERE id=?").bind(job.article_id).first<{source_id:string;document:string|null}>():null;
  const evidence=withKapUnitEvidence(JSON.parse(job.documents));
- const normalized=JSON.stringify(article?.source_id==='sermaye-telegram'&&article.document?await bindChannelPublication(evidence,article.document):evidence);
+ let normalized:string;
+ try{normalized=JSON.stringify(withOverviewEvidence(article?.source_id==='sermaye-telegram'&&article.document?await bindChannelPublication(evidence,article.document):evidence));}
+ catch(e){
+  if(!(e instanceof Error)||!/^market_overview_[a-z_]+$/.test(e.message))throw e;
+  await env.DB.prepare("UPDATE model_jobs SET state='needs_review',error=?,lease_until=0 WHERE id=? AND state='leased' AND lease_token=?").bind(e.message,job.id,token).run();
+  await recordModelReview(env,job.id,{issues:['Piyasa tablosunun bütün bölüm ve hücreleri güvenle eşleştirilemedi; eksik özet veya görsel hazırlanmadı. '+e.message]});
+  return null;
+ }
  if(normalized!==job.documents){job.documents=normalized;job.input_hash=await sha256(normalized);await env.DB.prepare('UPDATE model_jobs SET documents=?,input_hash=? WHERE id=? AND lease_token=?').bind(normalized,job.input_hash,job.id,token).run();}
  const editing=job.kind==='edit'?await env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(job.draft_id).first<{content:string}>():null;
  const theme=editing?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(editing.content) as Draft).template)):await chooseTheme(env,job.article_id);

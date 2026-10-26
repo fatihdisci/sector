@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {join,relative,dirname,extname} from 'node:path';
 import {execFileSync} from 'node:child_process';
 
-test('ChatGPT kit ZIP has exact SHA manifest, complete source closure, and 31 valid PNG examples',async(t)=>{
+test('ChatGPT kit ZIP has exact SHA manifest, complete source closure, and 35 valid PNG examples',async(t)=>{
  const root=process.cwd(),zip=join(root,'exports/ENDEKS-HABER-ChatGPT.zip'),tmp=await mkdtemp(join(tmpdir(),'kit-verify-'));
  try{
   try{await access(zip);}catch{t.skip('release staging omits the offline kit; CI exports it before running this integrity test');return;}
@@ -17,7 +17,7 @@ test('ChatGPT kit ZIP has exact SHA manifest, complete source closure, and 31 va
   for(const [file,expected] of Object.entries(manifest))assert.equal(createHash('sha256').update(await readFile(join(base,file))).digest('hex'),expected,file);
   const sourceRoot=join(base,'src');
   for(const file of actual.filter(f=>f.startsWith('src/')&&f.endsWith('.ts'))){const text=await readFile(join(base,file),'utf8');for(const match of text.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)){let dep=join(dirname(join(base,file)),match[1]);if(!extname(dep))dep+='.ts';await readFile(dep);}}
-  const examples=actual.filter(f=>f.startsWith('examples/')&&f.endsWith('.png'));assert.equal(examples.length,31);
+  const examples=actual.filter(f=>f.startsWith('examples/')&&f.endsWith('.png'));assert.equal(examples.length,35);
   for(const file of examples){const data=await readFile(join(base,file));assert.equal(data.toString('hex',0,8),'89504e470d0a1a0a');const svg=await readFile(join(base,file.replace(/\.png$/,'.svg')),'utf8');const dimensions=svg.match(/<svg[^>]*width="(\d+)"[^>]*height="(\d+)"/);assert(dimensions,file);assert.equal(data.readUInt32BE(16),Number(dimensions[1]));assert.equal(data.readUInt32BE(20),Number(dimensions[2]));if(!file.includes('pay-geri-alimlari')){assert.equal(data.readUInt32BE(16),1080);assert.equal(data.readUInt32BE(20),1350);}else{assert(data.readUInt32BE(16)<=4096);assert(data.readUInt32BE(20)<=4096);}}
   const built=join(tmp,'cards.mjs');execFileSync(join(root,'node_modules/.bin/esbuild'),['src/card-pages.ts','--bundle','--platform=node','--format=esm',`--outfile=${built}`],{cwd:root});
   assert.deepEqual(await readFile(built),await readFile(join(base,'runtime/cards.mjs')),'runtime bundle must match current source');
@@ -29,6 +29,8 @@ test('ChatGPT kit ZIP has exact SHA manifest, complete source closure, and 31 va
   for(let i=1;i<=3;i++)assert.deepEqual(await readFile(join(tmp,`daily-${i}.png`)),await readFile(join(base,`examples/devre-kesici-raporu-40-${i}.png`)),'standalone runtime must reproduce the selected daily report');
   execFileSync(process.execPath,[join(base,'render.mjs'),join(base,'examples/teorik-eslesme-40.json'),join(tmp,'theory.png')],{cwd:tmp});
   for(let i=1;i<=4;i++)assert.deepEqual(await readFile(join(tmp,`theory-${i}.png`)),await readFile(join(base,`examples/teorik-eslesme-40-${i}.png`)),'theoretical runtime must preserve all four pages');
+  execFileSync(process.execPath,[join(base,'render.mjs'),join(base,'examples/piyasa-ozeti.json'),join(tmp,'overview.png')],{cwd:tmp});
+  assert.deepEqual(await readFile(join(tmp,'overview.png')),await readFile(join(base,'examples/piyasa-ozeti.png')),'market dashboard must reproduce all source panels');
   assert(sourceRoot);
  }finally{await rm(tmp,{recursive:true,force:true});}
 });

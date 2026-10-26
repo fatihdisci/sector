@@ -11,6 +11,6 @@ try {
  const issues=[...evidenceIssues(draft,documents),...numericIssues(draft,documents)];
  if(postText(draft).length>1024)issues.push('output_capacity_exceeded');
  try{if(validateDraft(draft,documents).verification==='needs_review')issues.push('Taslakta çözülmemiş belirsizlik var. Etkilenen olguyu kaynaklardan çöz veya doğrulanabilir çekirdek haberi seç. Çelişkiyi tahminle düzeltme; aktarılan olguyu hâlâ etkiliyorsa uncertainties korunsun. Yalnız hiç aktarılmayan ikincil alanın kaynak sorunuysa source_notes içinde kaydet.');}catch(e){issues.push(e instanceof Error?e.message:'invalid_draft');}
- if(draft?.card_data&&['circuit','institutional','akd','volume','broker_flow','custody'].includes(draft.template))try{for(const layout of CARD_LAYOUTS)draftCards(draft,'navy',layout);}catch{issues.push('output_capacity_exceeded');}
+ if(draft?.card_data&&(draft.card_data.overview||['circuit','institutional','akd','volume','broker_flow','custody'].includes(draft.template)))try{for(const layout of CARD_LAYOUTS)draftCards(draft,'navy',layout);}catch{issues.push('output_capacity_exceeded');}
  process.stdout.write(JSON.stringify([...new Set(issues)]));
 }catch{process.stdout.write(JSON.stringify(['invalid_validation_input']));}
