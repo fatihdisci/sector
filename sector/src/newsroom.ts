@@ -1,3 +1,4 @@
+import{channelMarketPreviewSQL}from'./channel-market-preview';
 import {COMPANY_CATALOG_VERSION} from './news-company-catalog';
 import {sha256} from './utils/text';
 import {detailedInterestReport} from './news-interest-report';
@@ -26,7 +27,7 @@ export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now()
  // Freshness is checked at selection time, not inherited from a stale eligible flag.
  return (await env.DB.prepare(`WITH eligible_rows AS (
  SELECT n.id,n.title,n.event_group,n.first_seen FROM news_candidates n
- WHERE n.route='digest' AND n.expires_at>? AND n.first_seen>=?
+ WHERE n.route='digest' AND NOT EXISTS(SELECT 1 FROM articles a WHERE a.id=n.article_id AND ${channelMarketPreviewSQL()}) AND n.expires_at>? AND n.first_seen>=?
  AND ((n.published_at IS NULL AND ?=0) OR (n.eligible=1 AND julianday(n.published_at) BETWEEN julianday(?,'unixepoch') AND julianday(?,'unixepoch')))
  AND (? IS NULL OR n.id IN (SELECT value FROM json_each(?)))
  AND (? IS NOT NULL OR NOT EXISTS(SELECT 1 FROM news_digest_runs r,json_each(r.items) i

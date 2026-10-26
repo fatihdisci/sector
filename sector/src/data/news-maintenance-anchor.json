@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "direct owner request 2026-10-26: @SermayeBorsasi kanalını bağla ve gönderilen teorik/piyasa/kurum görsellerinden içerik üret; tamam yapalım",
-  "recorded_at": 1793003045914,
+  "approval_source": "direct owner request 2026-10-26: telegram kanalına mesajlar geldi görseller ama bizim sisteme düşmedi her dakika kontrol edilmesi lazımdı; deliver recognized channel table editor previews without changing news routes or prior policy approvals",
+  "recorded_at": 1793005920565,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -22,9 +22,10 @@
   },
   "parent_state_hash": "2ac447bef85fd05ac6500c74c393419a985a63dce2f8d69c5531f457f1a6288c",
   "runtime_files": {
+    "src/channel-market-preview.ts": "1d547546336fe027b33e60164d09fccd4aee9501991205caf6b48e8bc0e88169",
     "src/news-routing.ts": "8789adfc4c1ddca4b784b7d68e155c7ae3aca6eec294f176aa394f974a802361",
     "src/news-company-catalog.ts": "55f8d6545506ad75af30f1d04a6efdedb1d89d75b54ad38410e3f2aab7a832f2",
-    "src/newsroom.ts": "41a8164c8da1baff8831b5ce419f9388039f0223d7440b4e3d34b524c45029fe",
+    "src/newsroom.ts": "0a0740dcbe47d1a6d9e2ea4ace552fccd558c48697c699d0e98d0f01116db65d",
     "src/news-readiness.ts": "16e5c25089018de533f7cb1168330ee27655348f3eff7b4383f7b198e305f86a",
     "src/news-owner-review.ts": "bd907f83423a5b92343797769c4d23512ed9a9c818efb0844d4617fe4c81233d",
     "src/news-event-matching.ts": "ca0bbd112f5d92368734323dd88a81225e12fba8480b3670b7f0af80c870de5c",
@@ -34,7 +35,7 @@
     "src/gallery-range.ts": "feda2b615823b2f703ffc9886165f48fcae466d9941c938fb0ccd12416923a2c",
     "src/gallery-save.ts": "4df703ea294874c8299ed32d678d18a3a975a683c427b8b26fd02db1f275f823",
     "src/pipeline.ts": "9259d5358b48ea5d66aca96b89fd35a2eee64912307ef24957f9006cfc3caa42",
-    "src/news-inbox.ts": "6bd66930675252ae827e52d7a6d497924be81742614e15a98e5d2992e30530e3",
+    "src/news-inbox.ts": "3ad41bd167fc2e1b9cee96e77da817c56aef8566fb83158fec4aa109279b7cab",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
     "src/types.ts": "bab16f222b7e61e83cfbecfa7a82732be4f1af3491ba9f4b94b24452a9386f4c"
   }

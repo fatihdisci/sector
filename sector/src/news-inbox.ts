@@ -1,3 +1,4 @@
+import{channelMarketPreviewSQL,latestChannelVersionSQL}from'./channel-market-preview';
 import {previewMarkup,refreshNewsMenu} from './news-menu';
 import {recordNewsCandidate,newsPreferences} from './news-routing';
 import {retryDraftDelivery,deliveryTarget} from './delivery-recovery';
@@ -86,13 +87,13 @@ export async function announceNews(env:Env):Promise<void> {
  ${prefs.mode==='active'?"CASE WHEN json_extract(n.confidence,'$.event') IN ('rate','macro_data','regulation','halt') OR json_extract(n.confidence,'$.stage')='denied' THEN 100 ELSE 0 END + COALESCE(json_extract(n.confidence,'$.priority'),0)":'0'} AS priority,
  COALESCE(json_extract(s.config,'$.editorial_priority'),50) AS source_priority
  FROM articles a JOIN sources s ON s.id=a.source_id LEFT JOIN news_cards c ON c.article_id=a.id LEFT JOIN news_candidates n ON n.article_id=a.id
- WHERE (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})) AND s.enabled=1 AND a.status='queued' AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
+ WHERE ((${channelMarketPreviewSQL()} AND ${latestChannelVersionSQL()}) OR (NOT ${channelMarketPreviewSQL()} AND (n.id IS NULL OR (${prefs.mode==='active'?"n.eligible=1 AND n.route='instant'":'n.legacy_eligible=1'})))) AND s.enabled=1 AND a.status='queued' AND a.published_at>=? AND (c.id IS NULL OR (c.state='waiting' AND c.next_try<=?))
  ), oldest AS (SELECT id FROM eligible WHERE queue_at<=? ORDER BY queue_at ASC,id LIMIT 1),
  priority_slots AS (SELECT id FROM eligible WHERE id NOT IN (SELECT id FROM oldest) ORDER BY priority DESC,(julianday(published_at)*1440+source_priority/10) DESC,id LIMIT (SELECT CASE WHEN EXISTS(SELECT 1 FROM oldest) THEN 2 ELSE 3 END))
  SELECT * FROM eligible WHERE id IN (SELECT id FROM oldest) OR id IN (SELECT id FROM priority_slots)
  ORDER BY CASE WHEN id IN (SELECT id FROM oldest) THEN 1 ELSE 0 END ASC,priority DESC,(julianday(published_at)*1440+source_priority/10) DESC,id LIMIT 3`).bind(cutoff,time,Date.now()-600000).all<{id:string;title:string;summary:string;url:string;published_at:string;config:string;card_id:string|null}>();
  for(const a of rows.results??[]){
-  const source=JSON.parse(a.config) as Source;if(prefs.mode!=='active'&&topicScore(a.title,a.summary,source.official).score<(source.minimum_score??60))continue;
+  const source=JSON.parse(a.config) as Source;if(prefs.mode!=='active'&&!await env.DB.prepare('SELECT id FROM articles a WHERE id=? AND '+channelMarketPreviewSQL()+' AND '+latestChannelVersionSQL()).bind(a.id).first()&&topicScore(a.title,a.summary,source.official).score<(source.minimum_score??60))continue;
   const id=a.card_id??crypto.randomUUID();
   if(!a.card_id){
    const existing=await env.DB.prepare("SELECT c.id,a.title FROM news_cards c JOIN articles a ON a.id=c.article_id WHERE c.state!='duplicate' AND ABS(julianday(a.published_at)-julianday(?))<0.25").bind(a.published_at).all<{id:string;title:string}>();
