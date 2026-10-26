@@ -1,3 +1,5 @@
+import {newsProgressNote,newsFailureNote,type NewsProgress} from './news-progress';
+export {newsProgressNote} from './news-progress';
 import{channelMarketPreviewSQL,latestChannelVersionSQL}from'./channel-market-preview';
 import {previewMarkup,refreshNewsMenu} from './news-menu';
 import {recordNewsCandidate,newsPreferences} from './news-routing';
@@ -18,17 +20,7 @@ export function previewDuplicate(a:string,b:string):boolean {
  return subject(a)===subject(b)&&numbers(a)===numbers(b)&&titleSimilarity(a,b)>=.9;
 }
 
-type ProgressCard={id:string;message_id:number;title:string;summary:string;url:string;config:string;status:string;error?:string|null;job_state:string|null;delivery_state:string|null};
-export function newsProgressNote(row:Pick<ProgressCard,'status'|'job_state'|'delivery_state'|'error'>,paused=false):string {
- if(row.delivery_state==='sent')return 'Tweet ve görsel hazırlandı.';
- if(row.delivery_state==='waiting'||row.delivery_state==='sending')return 'Tweet ve görsel hazır, Telegram’a iletiliyor.';
- if(row.status==='needs_review')return 'Kaynak eksiksiz okunamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi.';
- if(row.status==='queued'&&row.error)return 'Kaynak okuma hatası oluştu; sınırlı yeniden deneme bekleniyor.';
- if(row.job_state==='leased')return 'Tweet ve görsel hazırlanıyor; kaynak ve sayılar kontrol ediliyor.';
- if(paused||row.job_state==='paused')return 'İsteğin kaydedildi. İçerik hazırlama geçici olarak beklemede; otomatik devam edecek.';
- if(row.job_state==='queued'||row.job_state==='retry_pending')return 'İsteğin sırada. Önce başlayan içerik tamamlanınca hazırlanacak.';
- return 'Haberin tam metni okunuyor.';
-}
+type ProgressCard=NewsProgress&{id:string;message_id:number;title:string;summary:string;url:string;config:string};
 async function showNewsProgress(env:Env,row:ProgressCard,note:string):Promise<boolean>{
  if(env.MODE!=='telegram_review')return true;
  const key='news_progress:'+row.id;
@@ -111,16 +103,20 @@ export async function announceNews(env:Env):Promise<void> {
 }
 export async function refreshNewsRequests(env:Env):Promise<void>{
  const paused=Number((await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>())?.value??0)>Date.now();
- const rows=await env.DB.prepare(`SELECT c.id,c.message_id,c.state,a.title,a.summary,a.url,a.error,a.status,s.config,j.state AS job_state,d.id AS draft_id,d.message_id AS draft_message_id,d.delivery_state FROM news_cards c JOIN articles a ON a.id=c.article_id JOIN sources s ON s.id=a.source_id LEFT JOIN model_jobs j ON j.article_id=a.id AND j.expected_revision=0 LEFT JOIN drafts d ON d.id=COALESCE(j.result_draft,a.draft_id) WHERE c.state IN ('requested','model_queued')`).all<{id:string;message_id:number;state:string;title:string;summary:string;url:string;error:string|null;status:string;config:string;job_state:string|null;delivery_state:string|null;draft_id:string|null;draft_message_id:number|null}>();
+ const rows=await env.DB.prepare(`SELECT c.id,c.message_id,c.state,a.title,a.summary,a.url,a.error,a.status,s.config,c.requested_at,a.lease_until AS article_lease_until,j.lease_until AS job_lease_until,j.error AS job_error,CASE WHEN mr.updated_at>=j.created_at THEN mr.issues ELSE NULL END AS review_issues,j.state AS job_state,d.id AS draft_id,d.message_id AS draft_message_id,d.delivery_state FROM news_cards c JOIN articles a ON a.id=c.article_id JOIN sources s ON s.id=a.source_id LEFT JOIN model_jobs j ON j.article_id=a.id AND j.expected_revision=0 LEFT JOIN model_reviews mr ON mr.job_id=j.id LEFT JOIN drafts d ON d.id=COALESCE(j.result_draft,a.draft_id) WHERE c.state IN ('requested','model_queued')`).all<ProgressCard&{state:string;draft_id:string|null;draft_message_id:number|null}>();
+ const time=Math.floor(Date.now()/1000);
+ const activeJobs=(await env.DB.prepare("SELECT COUNT(*) n FROM model_jobs WHERE state='leased' AND lease_until>?").bind(time).first<{n:number}>())?.n??0;
+ const heartbeat=await env.DB.prepare("SELECT value FROM system_state WHERE key='model_worker_heartbeat'").first<{value:string}>();
+ let workerAt:number|undefined,workerStopped=false;try{const value=JSON.parse(heartbeat?.value??'null');const at=Date.parse(value?.at);if(Number.isFinite(at)){workerAt=at/1000;workerStopped=value.stopped===true;}}catch{}
+ const context={now:time,activeJobs,workerAt,workerStopped};
  for(const r of rows.results??[]){
   // A renewed source read owns the next job state; the previous failed attempt is stale.
-  if(r.state==='requested'&&r.status==='queued'&&!r.draft_id&&['needs_review','expired'].includes(r.job_state??'')){await showNewsProgress(env,r,newsProgressNote({...r,job_state:null,delivery_state:null},paused));continue;}
-  if(r.delivery_state==='sent'){if(await showNewsProgress(env,r,newsProgressNote(r,paused)))await env.DB.prepare("UPDATE news_cards SET state='complete' WHERE id=?").bind(r.id).run();continue;}
-  if(r.status!=='needs_review'&&!['needs_review','expired'].includes(r.job_state??'')&&!['uncertain','failed','suppressed'].includes(r.delivery_state??'')){await showNewsProgress(env,r,newsProgressNote(r,paused));continue;}
-  const changed=await env.DB.prepare("UPDATE news_cards SET state='failed' WHERE id=? AND state IN ('requested','model_queued')").bind(r.id).run();
+  if(r.state==='requested'&&r.status==='queued'&&!r.draft_id&&['needs_review','expired'].includes(r.job_state??'')){await showNewsProgress(env,r,newsProgressNote({...r,job_state:null,delivery_state:null},paused,context));continue;}
+  if(r.delivery_state==='sent'){if(await showNewsProgress(env,r,newsProgressNote(r,paused,context)))await env.DB.prepare("UPDATE news_cards SET state='complete' WHERE id=?").bind(r.id).run();continue;}
+  if(r.status!=='needs_review'&&!['needs_review','expired'].includes(r.job_state??'')&&!['uncertain','failed','suppressed'].includes(r.delivery_state??'')){await showNewsProgress(env,r,newsProgressNote(r,paused,context));continue;}
   const deliveryProblem=['uncertain','failed','suppressed'].includes(r.delivery_state??'');
   const known=r.draft_id?await deliveryTarget(env,r.draft_id,r.draft_message_id):undefined;
-  const note=r.delivery_state==='suppressed'?'Bu içerik güncel gönderim tercihlerine göre kapatıldı.':deliveryProblem?(r.delivery_state==='uncertain'&&!known?'Tweet ve görsel hazır, ancak teslimat doğrulanamadı. Mesaj gelmiş olabilir. Aynı düğme güvenli yeniden gönderim seçeneğini açar.':'Tweet ve görsel hazır. Teslimatı aynı düğmeyle yeniden deneyebilirsin; AI tekrar çalışmaz.'):r.error?.startsWith('gallery_')?'Galerinin sayfa ve tablo bütünlüğü doğrulanamadı. Eksik veriden içerik üretilmedi. Kaynak düzeltildikten sonra yeniden deneyebilirsin.':'Taslak doğrulanamadı. Aynı düğmeyle yeniden deneyebilirsin.';
-  if(changed.meta.changes&&env.MODE==='telegram_review')await telegram(env,'editMessageText',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(r.message_id),text:previewText(JSON.parse(r.config).name,r.title,r.summary)+'\n\n'+note,link_preview_options:JSON.stringify({is_disabled:true}),reply_markup:JSON.stringify(await previewMarkup(env,r.id,r.url))})).catch(()=>{});
+  const note=r.delivery_state==='suppressed'?'Bu içerik güncel gönderim tercihlerine göre kapatıldı.':deliveryProblem?(r.delivery_state==='uncertain'&&!known?'Tweet ve görsel hazır, ancak teslimat doğrulanamadı. Mesaj gelmiş olabilir. Aynı düğme güvenli yeniden gönderim seçeneğini açar.':'Tweet ve görsel hazır. Teslimatı aynı düğmeyle yeniden deneyebilirsin; AI tekrar çalışmaz.'):newsFailureNote(r);
+  if(await showNewsProgress(env,r,note))await env.DB.prepare("UPDATE news_cards SET state='failed' WHERE id=? AND state IN ('requested','model_queued')").bind(r.id).run();
  }
 }

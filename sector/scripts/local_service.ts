@@ -1,3 +1,4 @@
+import {withModelHeartbeat} from './model_heartbeat';
 import{pollChannel,channelDocuments}from'../src/telegram-channel';
 import{channelTransport}from'./channel_reader';
 import {newsReviewArtifact} from './news_review_artifact';
@@ -146,7 +147,7 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
  if(process.argv.includes('--prepare-once')){await tick(env);console.log('Sources scanned and model jobs prepared.');return;}
  if(process.argv.includes('--model-once')){ // run one fully checked job for commissioning
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);
-  try{await modelLoop();}finally{clearInterval(stopCheck);}return;
+  try{await withModelHeartbeat(env,modelLoop);}finally{clearInterval(stopCheck);}return;
  }
- await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),xAccountReportLoop(),newsLoop(),modelLoop(),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
+ await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),xAccountReportLoop(),newsLoop(),withModelHeartbeat(env,modelLoop),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
 });}finally{shutdown.dispose();}

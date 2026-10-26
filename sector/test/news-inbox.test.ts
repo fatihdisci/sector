@@ -58,6 +58,7 @@ test('requested news shows persistent stage changes on its existing card, withou
   await env.DB.prepare("INSERT INTO system_state VALUES('model_paused_until',?)").bind(String(Date.now()+60000)).run();
   await refreshNewsRequests(env);await refreshNewsRequests(env);assert.equal(calls.length,2);assert.match(calls[1].get('text')!,/geçici olarak beklemede/);
   await env.DB.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state) VALUES('j','a','[]','x',?,'news','leased')").bind(Date.now()/1000).run();
+  await env.DB.prepare("UPDATE model_jobs SET lease_until=? WHERE id='j'").bind(Math.floor(Date.now()/1000)+600).run();
   await refreshNewsRequests(env);assert.equal(calls.length,3);assert.match(calls[2].get('text')!,/kaynak ve sayılar/);
   assert(calls.every(c=>c.get('message_id')==='100'));
  }finally{globalThis.fetch=original;}

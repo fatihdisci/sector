@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "direct owner request 2026-10-26: hata verdi bak; Kurum AKD özetinde en çok alan/satan kurumun hisseleri, beş satırın boşluğunu kaldır ve kutuları yatay yerleştir; preserve prior editorial approvals and settings",
-  "recorded_at": 1793007347473,
+  "approval_source": "direct owner approval 2026-10-26 Sentinel_0a6a8f91e7ec8191b21ae2fcd767d7a8: Onaylıyorum — deploy only the reviewed 14:00 BIST100 production/status fix after CI and consistent backup, preserve existing filter/digest/KAP settings; one controlled retry, no X publication",
+  "recorded_at": 1793014367395,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -35,7 +35,7 @@
     "src/gallery-range.ts": "feda2b615823b2f703ffc9886165f48fcae466d9941c938fb0ccd12416923a2c",
     "src/gallery-save.ts": "4df703ea294874c8299ed32d678d18a3a975a683c427b8b26fd02db1f275f823",
     "src/pipeline.ts": "9259d5358b48ea5d66aca96b89fd35a2eee64912307ef24957f9006cfc3caa42",
-    "src/news-inbox.ts": "079b9799a0a08e0932fe0e2d1cc552b71a803da277a280779eda59dfc3296d2b",
+    "src/news-inbox.ts": "0c9c64c3a185ca75ea3d4fbb57a7225b6fceb2dc7bf41ced1ea03180a6a7600f",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
     "src/types.ts": "bab16f222b7e61e83cfbecfa7a82732be4f1af3491ba9f4b94b24452a9386f4c"
   }
