@@ -1,0 +1,871 @@
+[
+  {
+    "image": 1,
+    "source_image_sha256": "626f6831b84cf9e4eb4e258fffc58b998c5700d3164b4b7a3bbce3c7c5e56789",
+    "documents": [
+      {
+        "source_layout": {
+          "kind": "market_overview",
+          "panels": [
+            {
+              "name": "ENDEKSI YUKSELTENLER",
+              "symbols": [
+                "ASTOR",
+                "GUBRF",
+                "ENERY",
+                "DOHOL",
+                "KRDMD"
+              ]
+            },
+            {
+              "name": "ENDEKSI DUSURENLER",
+              "symbols": [
+                "TUPRS",
+                "AKBNK",
+                "BIMAS",
+                "YKBNK",
+                "ASELS"
+              ]
+            },
+            {
+              "name": "EN COK YUKSELENLER",
+              "symbols": [
+                "ASTOR",
+                "DIRIT",
+                "KAPLM",
+                "ISVEA",
+                "ANELE"
+              ]
+            },
+            {
+              "name": "EN COK DUSENLER",
+              "symbols": [
+                "TEHOL",
+                "RALYH",
+                "UFUK",
+                "TRHOL",
+                "TERA"
+              ]
+            },
+            {
+              "name": "HACIM LIDERLERI",
+              "symbols": [
+                "ASELS",
+                "EUPWR",
+                "ASTOR",
+                "AKBNK",
+                "PETKM"
+              ]
+            }
+          ],
+          "minimum_rows": 25
+        },
+        "body": "BIST 100: 11.135,99 puan. Değişim %0,14 düşüş; puan farkı -15,97 puan. Gün içi en düşük 11.130,66, en yüksek 11.145,04 puan; anlık işlem hacmi 1,5 milyar TL.\n\nEndeksi yükseltenler (puan etkisi): ASTOR +21.8; GUBRF +2.1; ENERY +1.2; DOHOL +0.8; KRDMD +0.5.\n\nEndeksi düşürenler (puan etkisi): TUPRS -7.7; AKBNK -3.5; BIMAS -3.3; YKBNK -3.0; ASELS -2.9.\n\nEn çok yükselenler (değişim): ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,94; ANELE %9.93.\n\nEn çok düşenler (değişim): TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9.98.\n\nHacim liderleri: ASELS 192.6 milyon; EUPWR 110.3 milyon; ASTOR 102.5 milyon; AKBNK 97.3 milyon; PETKM 84.8 milyon.\n\nPiyasa genişliği: Yükselen 241; Nötr 97; Düşen 293.\n\nKurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.1. Yapı Kr.: 73,21 milyon; %21,21; 581,5 milyon TL. QNB: 56,01 milyon; %16,22; 188,8 milyon TL. Ak: 33,60 milyon; %9,73; 371,5 milyon TL. Garanti: 30,92 milyon; %8,96; 93,5 milyon TL. Yat. Fin.: 27,69 milyon; %8,02; 133,2 milyon TL. Diğer (17): 123,80 milyon; %35,86; 1,3 milyar TL.\n\nKurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.0. Deniz: 82,72 milyon; %23,96; 257,2 milyon TL. Destek: 41,28 milyon; %11,96; 59,2 milyon TL. Phillip: 40,28 milyon; %11,67; 104,9 milyon TL. Vakıf: 30,75 milyon; %8,91; 130,0 milyon TL. A1: 25,77 milyon; %7,46; 62,8 milyon TL. Diğer (28): 124,43 milyon; %36,04; 1,0 milyar TL.\n\nKaynak sınırlamaları (veri tahmini yapılmadı): Görselde açık tarih ve saat belirtilmiyor. Hacim liderleri panelinde ve kurumsal dağılımın net hacim sütunlarında para birimi belirtilmiyor.\n\nYÜKSELENLER: ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,94; ANELE %9,93.\nDÜŞENLER: TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9,98.\nHACİM LİDERLERİ: ASELS 192,6 milyon; EUPWR 110,3 milyon; ASTOR 102,5 milyon; AKBNK 97,3 milyon; PETKM 84,8 milyon.",
+        "passages": [
+          {
+            "id": "image_visual_1",
+            "text": "BIST 100: 11.135,99 puan. Değişim %0.14 düşüş; puan farkı -15,97 puan. Gün içi en düşük 11.130,66, en yüksek 11.145,04 puan; anlık işlem hacmi 1,5 milyar TL."
+          },
+          {
+            "id": "image_visual_2",
+            "text": "Endeksi yükseltenler (puan etkisi): ASTOR +21.8; GUBRF +2.1; ENERY +1.2; DOHOL +0.8; KRDMD +0.5."
+          },
+          {
+            "id": "image_visual_3",
+            "text": "Endeksi düşürenler (puan etkisi): TUPRS -7.7; AKBNK -3.5; BIMAS -3.3; YKBNK -3.0; ASELS -2.9."
+          },
+          {
+            "id": "image_visual_4",
+            "text": "En çok yükselenler (değişim): ASTOR %9.95; DIRIT %9.95; KAPLM %9.94; ISVEA %9.94; ANELE %9.93."
+          },
+          {
+            "id": "image_visual_5",
+            "text": "En çok düşenler (değişim): TEHOL %10.00; RALYH %9.99; UFUK %9.99; TRHOL %9.99; TERA %9.98."
+          },
+          {
+            "id": "image_visual_6",
+            "text": "Hacim liderleri: ASELS 192.6 milyon; EUPWR 110.3 milyon; ASTOR 102.5 milyon; AKBNK 97.3 milyon; PETKM 84.8 milyon."
+          },
+          {
+            "id": "image_visual_7",
+            "text": "Piyasa genişliği: Yükselen 241; Nötr 97; Düşen 293."
+          },
+          {
+            "id": "image_visual_8",
+            "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.1. Yapı Kr.: 73,21 milyon; %21.21; 581,5 milyon TL. QNB: 56,01 milyon; %16.22; 188,8 milyon TL. Ak: 33,60 milyon; %9.73; 371,5 milyon TL. Garanti: 30,92 milyon; %8.96; 93,5 milyon TL. Yat. Fin.: 27,69 milyon; %8.02; 133,2 milyon TL. Diğer (17): 123,80 milyon; %35.86; 1,3 milyar TL."
+          },
+          {
+            "id": "image_visual_9",
+            "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.0. Deniz: 82,72 milyon; %23.96; 257,2 milyon TL. Destek: 41,28 milyon; %11.96; 59,2 milyon TL. Phillip: 40,28 milyon; %11.67; 104,9 milyon TL. Vakıf: 30,75 milyon; %8.91; 130,0 milyon TL. A1: 25,77 milyon; %7.46; 62,8 milyon TL. Diğer (28): 124,43 milyon; %36.04; 1,0 milyar TL."
+          },
+          {
+            "id": "image_normalized_1",
+            "text": "BIST 100: 11.135,99 puan. Değişim %0,14 düşüş; puan farkı -15,97 puan. Gün içi en düşük 11.130,66, en yüksek 11.145,04 puan; anlık işlem hacmi 1,5 milyar TL."
+          },
+          {
+            "id": "image_normalized_2",
+            "text": "Endeksi yükseltenler (puan etkisi): ASTOR +21.8; GUBRF +2.1; ENERY +1.2; DOHOL +0.8; KRDMD +0.5."
+          },
+          {
+            "id": "image_normalized_3",
+            "text": "Endeksi düşürenler (puan etkisi): TUPRS -7.7; AKBNK -3.5; BIMAS -3.3; YKBNK -3.0; ASELS -2.9."
+          },
+          {
+            "id": "image_normalized_4",
+            "text": "En çok yükselenler (değişim): ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,94; ANELE %9.93."
+          },
+          {
+            "id": "image_normalized_5",
+            "text": "En çok düşenler (değişim): TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9.98."
+          },
+          {
+            "id": "image_normalized_6",
+            "text": "Hacim liderleri: ASELS 192.6 milyon; EUPWR 110.3 milyon; ASTOR 102.5 milyon; AKBNK 97.3 milyon; PETKM 84.8 milyon."
+          },
+          {
+            "id": "image_normalized_7",
+            "text": "Piyasa genişliği: Yükselen 241; Nötr 97; Düşen 293."
+          },
+          {
+            "id": "image_normalized_8",
+            "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.1. Yapı Kr.: 73,21 milyon; %21,21; 581,5 milyon TL. QNB: 56,01 milyon; %16,22; 188,8 milyon TL. Ak: 33,60 milyon; %9,73; 371,5 milyon TL. Garanti: 30,92 milyon; %8,96; 93,5 milyon TL. Yat. Fin.: 27,69 milyon; %8,02; 133,2 milyon TL. Diğer (17): 123,80 milyon; %35,86; 1,3 milyar TL."
+          },
+          {
+            "id": "image_normalized_9",
+            "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %64.0. Deniz: 82,72 milyon; %23,96; 257,2 milyon TL. Destek: 41,28 milyon; %11,96; 59,2 milyon TL. Phillip: 40,28 milyon; %11,67; 104,9 milyon TL. Vakıf: 30,75 milyon; %8,91; 130,0 milyon TL. A1: 25,77 milyon; %7,46; 62,8 milyon TL. Diğer (28): 124,43 milyon; %36,04; 1,0 milyar TL."
+          },
+          {
+            "id": "image_visual_format",
+            "text": "Yalnız biçim eşdeğerleri: Mr=milyar, Mn=milyon, ₺=TL. Yüzde hücresinde ondalık nokta virgüle normalleştirildi; fiyat/miktar binlik noktaları değiştirilmedi. Eksik para birimi eklenmedi."
+          },
+          {
+            "id": "image_source_note_1",
+            "text": "Görselde açık tarih ve saat belirtilmiyor."
+          },
+          {
+            "id": "image_source_note_2",
+            "text": "Hacim liderleri panelinde ve kurumsal dağılımın net hacim sütunlarında para birimi belirtilmiyor."
+          },
+          {
+            "id": "channel_context",
+            "text": "{\"caption\":\"📈 BIST 100 — 10:01\"}"
+          },
+          {
+            "id": "overview_gainers",
+            "text": "YÜKSELENLER: ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,94; ANELE %9,93."
+          },
+          {
+            "id": "overview_losers",
+            "text": "DÜŞENLER: TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9,98."
+          },
+          {
+            "id": "overview_volume",
+            "text": "HACİM LİDERLERİ: ASELS 192,6 milyon; EUPWR 110,3 milyon; ASTOR 102,5 milyon; AKBNK 97,3 milyon; PETKM 84,8 milyon."
+          },
+          {
+            "id": "overview_numbers_v1",
+            "text": "YÜKSELENLER: ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,94; ANELE %9,93.\nDÜŞENLER: TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9,98.\nHACİM LİDERLERİ: ASELS 192,6 milyon; EUPWR 110,3 milyon; ASTOR 102,5 milyon; AKBNK 97,3 milyon; PETKM 84,8 milyon."
+          }
+        ],
+        "coverage": {
+          "complete": true,
+          "page_count": 1,
+          "pages": [
+            {
+              "page": 1,
+              "mode": "image_ocr_visual",
+              "characters": 5235,
+              "tables": 0
+            }
+          ]
+        },
+        "source_id": "sermaye-telegram",
+        "source_name": "Sermaye Borsası",
+        "family": "telegram-sermayeborsasi",
+        "official": false,
+        "language": "tr",
+        "url": "https://t.me/SermayeBorsasi/26489",
+        "title": "Sermaye Borsası kaynak görseli",
+        "published_at": "2026-10-27T07:01:12+00:00",
+        "channel_publication": {
+          "channel": "SermayeBorsasi",
+          "peer_id": 2426639373,
+          "message_id": 26489,
+          "posted_at": "2026-10-27T07:01:12+00:00",
+          "edited_at": "2026-10-27T07:06:58+00:00",
+          "version": "150f0558ef736d3f1d141ef11a0e64de0caf8cb42c5dcd5c3d02820071201d12",
+          "forwarded": false,
+          "forwarded_at": null
+        },
+        "market_editorial_context": {
+          "version": 1,
+          "label": "Açılışın ilk anları",
+          "basis": "original_channel_publication_time",
+          "calendar_version": "bist-equity-2026-reviewed-2026-10-26",
+          "measurement_time_verified": false,
+          "publication_is_not_data_day": true,
+          "reason": "owner_channel_programme"
+        }
+      }
+    ]
+  },
+  {
+    "image": 2,
+    "source_image_sha256": "ad68e6ccac0fd9292df82f60988920ebd78368c42c9b91fe2565a73f9b11ddd1",
+    "documents": [
+      {
+        "source_layout": {
+          "kind": "market_overview",
+          "panels": [
+            {
+              "name": "ENDEKSI YUKSELTENLER",
+              "symbols": [
+                "ASTOR",
+                "DOHOL",
+                "TKFEN",
+                "AKSA",
+                "GUBRF"
+              ]
+            },
+            {
+              "name": "ENDEKSI DUSURENLER",
+              "symbols": [
+                "BIMAS",
+                "ASELS",
+                "FROTO",
+                "TURSG",
+                "THYAO"
+              ]
+            },
+            {
+              "name": "EN COK YUKSELENLER",
+              "symbols": [
+                "ASTOR",
+                "DIRIT",
+                "KAPLM",
+                "ISVEA",
+                "GOODY"
+              ]
+            },
+            {
+              "name": "EN COK DUSENLER",
+              "symbols": [
+                "TEHOL",
+                "RALYH",
+                "UFUK",
+                "TRHOL",
+                "TERA"
+              ]
+            },
+            {
+              "name": "HACIM LIDERLERI",
+              "symbols": [
+                "PETKM",
+                "ASTOR",
+                "ASELS",
+                "SASA",
+                "THYAO"
+              ]
+            }
+          ],
+          "minimum_rows": 25
+        },
+        "body": "BIST 100: 11.138,10 puan. Değişim %0,12 düşüş; puan farkı -13,86 puan. Gün içi en düşük 11.138,10, en yüksek 11.138,10 puan; işlem hacmi 431 milyon TL.\n\nEndeksi yükseltenler (puan etkisi): ASTOR +21.8; DOHOL +0.7; TKFEN +0.5; AKSA +0.4; GUBRF +0.4.\n\nEndeksi düşürenler (puan etkisi): BIMAS -5.3; ASELS -2.9; FROTO -2.5; TURSG -1.9; THYAO -1.7.\n\nEn çok yükselenler (değişim): ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,87; GOODY %9.47.\n\nEn çok düşenler (değişim): TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9.98.\n\nHacim liderleri: PETKM 78.0 milyon; ASTOR 51.3 milyon; ASELS 36.2 milyon; SASA 27.6 milyon; THYAO 20.2 milyon.\n\nPiyasa genişliği: Yükselen 237; Nötr 194; Düşen 200.\n\nKurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %76.1. QNB: 42,10 milyon; %31,47; 70,3 milyon TL. Yat. Fin.: 24,94 milyon; %18,64; 48,8 milyon TL. Garanti: 19,45 milyon; %14,54; 42,6 milyon TL. Gedik: 8,91 milyon; %6,66; 39,1 milyon TL. Osmanlı: 6,46 milyon; %4,83; 30,2 milyon TL. Diğer (21): 31,92 milyon; %23,86; 229,5 milyon TL.\n\nKurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %53.3. Ziraat: 20,78 milyon; %15,53; 54,1 milyon TL. Phillip: 17,55 milyon; %13,12; 45,9 milyon TL. Vakıf: 12,89 milyon; %9,63; 41,8 milyon TL. Marbaş: 10,53 milyon; %7,87; 22,2 milyon TL. Tacirler: 9,59 milyon; %7,17; 31,3 milyon TL. Diğer (23): 62,44 milyon; %46,68; 505,8 milyon TL.\n\nKaynak sınırlamaları (veri tahmini yapılmadı): Görselde açık tarih veya saat yok. Kaynak metni endeksin «günü tamamladığını» söylüyor; bu ifade bağımsız bir kapanış doğrulaması olarak alınmadı. Hacim liderleri panelinde ve kurumsal dağılımın net hacim sütunlarında para birimi belirtilmiyor.\n\nBIST 100 seviyesi 11.138,10 puan; değişim %0,12 düşüş; puan farkı -13,86 puan.",
+        "passages": [
+          {
+            "id": "image_visual_1",
+            "text": "BIST 100: 11.138,10 puan. Değişim %0.12 düşüş; puan farkı -13,86 puan. Gün içi en düşük 11.138,10, en yüksek 11.138,10 puan; işlem hacmi 431 milyon TL."
+          },
+          {
+            "id": "image_visual_2",
+            "text": "Endeksi yükseltenler (puan etkisi): ASTOR +21.8; DOHOL +0.7; TKFEN +0.5; AKSA +0.4; GUBRF +0.4."
+          },
+          {
+            "id": "image_visual_3",
+            "text": "Endeksi düşürenler (puan etkisi): BIMAS -5.3; ASELS -2.9; FROTO -2.5; TURSG -1.9; THYAO -1.7."
+          },
+          {
+            "id": "image_visual_4",
+            "text": "En çok yükselenler (değişim): ASTOR %9.95; DIRIT %9.95; KAPLM %9.94; ISVEA %9.87; GOODY %9.47."
+          },
+          {
+            "id": "image_visual_5",
+            "text": "En çok düşenler (değişim): TEHOL %10.00; RALYH %9.99; UFUK %9.99; TRHOL %9.99; TERA %9.98."
+          },
+          {
+            "id": "image_visual_6",
+            "text": "Hacim liderleri: PETKM 78.0 milyon; ASTOR 51.3 milyon; ASELS 36.2 milyon; SASA 27.6 milyon; THYAO 20.2 milyon."
+          },
+          {
+            "id": "image_visual_7",
+            "text": "Piyasa genişliği: Yükselen 237; Nötr 194; Düşen 200."
+          },
+          {
+            "id": "image_visual_8",
+            "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %76.1. QNB: 42,10 milyon; %31.47; 70,3 milyon TL. Yat. Fin.: 24,94 milyon; %18.64; 48,8 milyon TL. Garanti: 19,45 milyon; %14.54; 42,6 milyon TL. Gedik: 8,91 milyon; %6.66; 39,1 milyon TL. Osmanlı: 6,46 milyon; %4.83; 30,2 milyon TL. Diğer (21): 31,92 milyon; %23.86; 229,5 milyon TL."
+          },
+          {
+            "id": "image_visual_9",
+            "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %53.3. Ziraat: 20,78 milyon; %15.53; 54,1 milyon TL. Phillip: 17,55 milyon; %13.12; 45,9 milyon TL. Vakıf: 12,89 milyon; %9.63; 41,8 milyon TL. Marbaş: 10,53 milyon; %7.87; 22,2 milyon TL. Tacirler: 9,59 milyon; %7.17; 31,3 milyon TL. Diğer (23): 62,44 milyon; %46.68; 505,8 milyon TL."
+          },
+          {
+            "id": "image_normalized_1",
+            "text": "BIST 100: 11.138,10 puan. Değişim %0,12 düşüş; puan farkı -13,86 puan. Gün içi en düşük 11.138,10, en yüksek 11.138,10 puan; işlem hacmi 431 milyon TL."
+          },
+          {
+            "id": "image_normalized_2",
+            "text": "Endeksi yükseltenler (puan etkisi): ASTOR +21.8; DOHOL +0.7; TKFEN +0.5; AKSA +0.4; GUBRF +0.4."
+          },
+          {
+            "id": "image_normalized_3",
+            "text": "Endeksi düşürenler (puan etkisi): BIMAS -5.3; ASELS -2.9; FROTO -2.5; TURSG -1.9; THYAO -1.7."
+          },
+          {
+            "id": "image_normalized_4",
+            "text": "En çok yükselenler (değişim): ASTOR %9,95; DIRIT %9,95; KAPLM %9,94; ISVEA %9,87; GOODY %9.47."
+          },
+          {
+            "id": "image_normalized_5",
+            "text": "En çok düşenler (değişim): TEHOL %10,00; RALYH %9,99; UFUK %9,99; TRHOL %9,99; TERA %9.98."
+          },
+          {
+            "id": "image_normalized_6",
+            "text": "Hacim liderleri: PETKM 78.0 milyon; ASTOR 51.3 milyon; ASELS 36.2 milyon; SASA 27.6 milyon; THYAO 20.2 milyon."
+          },
+          {
+            "id": "image_normalized_7",
+            "text": "Piyasa genişliği: Yükselen 237; Nötr 194; Düşen 200."
+          },
+          {
+            "id": "image_normalized_8",
+            "text": "Kurumsal dağılım — net alıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %76.1. QNB: 42,10 milyon; %31,47; 70,3 milyon TL. Yat. Fin.: 24,94 milyon; %18,64; 48,8 milyon TL. Garanti: 19,45 milyon; %14,54; 42,6 milyon TL. Gedik: 8,91 milyon; %6,66; 39,1 milyon TL. Osmanlı: 6,46 milyon; %4,83; 30,2 milyon TL. Diğer (21): 31,92 milyon; %23,86; 229,5 milyon TL."
+          },
+          {
+            "id": "image_normalized_9",
+            "text": "Kurumsal dağılım — net satıcılar; sütunlar kurum, net hacim, oran, toplam TL. İlk 5: %53.3. Ziraat: 20,78 milyon; %15,53; 54,1 milyon TL. Phillip: 17,55 milyon; %13,12; 45,9 milyon TL. Vakıf: 12,89 milyon; %9,63; 41,8 milyon TL. Marbaş: 10,53 milyon; %7,87; 22,2 milyon TL. Tacirler: 9,59 milyon; %7,17; 31,3 milyon TL. Diğer (23): 62,44 milyon; %46,68; 505,8 milyon TL."
+          },
+          {
+            "id": "image_visual_format",
+            "text": "Yalnız biçim eşdeğerleri: Mr=milyar, Mn=milyon, ₺=TL. Yüzde hücresinde ondalık nokta virgüle normalleştirildi; fiyat/miktar binlik noktaları değiştirilmedi. Eksik para birimi eklenmedi."
+          },
+          {
+            "id": "image_source_note_1",
+            "text": "Görselde açık tarih veya saat yok. Kaynak metni endeksin «günü tamamladığını» söylüyor; bu ifade bağımsız bir kapanış doğrulaması olarak alınmadı."
+          },
+          {
+            "id": "image_source_note_2",
+            "text": "Hacim liderleri panelinde ve kurumsal dağılımın net hacim sütunlarında para birimi belirtilmiyor."
+          },
+          {
+            "id": "channel_context",
+            "text": "{\"caption\":\"📊 Piyasa Raporu — 09:55\"}"
+          },
+          {
+            "id": "overview_index",
+            "text": "BIST 100 seviyesi 11.138,10 puan; değişim %0,12 düşüş; puan farkı -13,86 puan."
+          },
+          {
+            "id": "overview_numbers_v1",
+            "text": "BIST 100 seviyesi 11.138,10 puan; değişim %0,12 düşüş; puan farkı -13,86 puan."
+          }
+        ],
+        "coverage": {
+          "complete": true,
+          "page_count": 1,
+          "pages": [
+            {
+              "page": 1,
+              "mode": "image_ocr_visual",
+              "characters": 5138,
+              "tables": 0
+            }
+          ]
+        },
+        "source_id": "sermaye-telegram",
+        "source_name": "Sermaye Borsası",
+        "family": "telegram-sermayeborsasi",
+        "official": false,
+        "language": "tr",
+        "url": "https://t.me/SermayeBorsasi/26488",
+        "title": "Sermaye Borsası kaynak görseli",
+        "published_at": "2026-10-27T06:55:52+00:00",
+        "channel_publication": {
+          "channel": "SermayeBorsasi",
+          "peer_id": 2426639373,
+          "message_id": 26488,
+          "posted_at": "2026-10-27T06:55:52+00:00",
+          "edited_at": "2026-10-27T06:56:20+00:00",
+          "version": "093c3a980c5cfede9b44091586d79a509b1667ccc87b47e6c55ded40cb6f5ca2",
+          "forwarded": false,
+          "forwarded_at": null
+        },
+        "market_editorial_context": {
+          "version": 1,
+          "label": "Borsa açılışı",
+          "basis": "original_channel_publication_time",
+          "calendar_version": "bist-equity-2026-reviewed-2026-10-26",
+          "measurement_time_verified": false,
+          "publication_is_not_data_day": true,
+          "reason": "owner_channel_programme"
+        }
+      }
+    ]
+  },
+  {
+    "image": 3,
+    "source_image_sha256": "4a544ed0bbdbaf54ddbe7d801a794c8dcc60b788ac47ccd9f3cae132b54df094",
+    "documents": [
+      {
+        "source_layout": {
+          "kind": "theoretical",
+          "panels": [
+            {
+              "name": "buy",
+              "symbols": [
+                "GOODY",
+                "EPLAS",
+                "GEREL",
+                "ASTOR",
+                "KAPLM",
+                "ISVEA",
+                "ANELE",
+                "KARTN",
+                "MERIT",
+                "OTTO",
+                "IZFAS",
+                "BEGYO",
+                "LXGYO",
+                "AKSUE",
+                "SANFM",
+                "EUPWR",
+                "POLTK",
+                "SOKE",
+                "SARAE",
+                "ESCAR"
+              ]
+            },
+            {
+              "name": "sell",
+              "symbols": [
+                "TEHOL",
+                "UFUK",
+                "LYDHO",
+                "DSTKF",
+                "OZATD",
+                "HEDEF",
+                "IEYHO",
+                "GUNDG",
+                "LYDYE",
+                "BRKVY",
+                "HRKET",
+                "TMPOL",
+                "AEFES",
+                "ODINE",
+                "BULGS",
+                "BIGEN",
+                "BORLS",
+                "SKTAS",
+                "LILAK",
+                "INFO"
+              ]
+            }
+          ],
+          "minimum_rows": 40
+        },
+        "body": "Konu: Teorik Eşleşme; saat 09:52.\n\nEn çok yükselenler paneli: Toplam 215; görüntüde 20 satır gösteriliyor.\n\nYükselenler — GOODY: Teorik fiyat 2,09 TL; değişim +%10,00; KALAN 214.171.\n\nYükselenler — EPLAS: Teorik fiyat 5,28 TL; değişim +%10,00; KALAN 107.084.\n\nYükselenler — GEREL: Teorik fiyat 26,52 TL; değişim +%9,95; KALAN 428.513.\n\nYükselenler — ASTOR: Teorik fiyat 172,40 TL; değişim +%9,95; KALAN 7.306.658.\n\nYükselenler — KAPLM: Teorik fiyat 103,40 TL; değişim +%9,94; KALAN 42.344.\n\nYükselenler — ISVEA: Teorik fiyat 16,15 TL; değişim +%9,94; KALAN 53.418.\n\nYükselenler — ANELE: Teorik fiyat 9,19 TL; değişim +%9,93; KALAN 23.303.\n\nYükselenler — KARTN: Teorik fiyat 101,80 TL; değişim +%9,52; KALAN 75.\n\nYükselenler — MERIT: Teorik fiyat 13,10 TL; değişim +%8,80; KALAN 17.900.\n\nYükselenler — OTTO: Teorik fiyat 83,00 TL; değişim +%6,62; KALAN 467.\n\nYükselenler — IZFAS: Teorik fiyat 15,30 TL; değişim +%6,03; KALAN 2.407.\n\nYükselenler — BEGYO: Teorik fiyat 3,54 TL; değişim +%5,99; KALAN 29.616.\n\nYükselenler — LXGYO: Teorik fiyat 5,81 TL; değişim +%5,64; KALAN 24.\n\nYükselenler — AKSUE: Teorik fiyat 12,05 TL; değişim +%5,61; KALAN 3.144.\n\nYükselenler — SANFM: Teorik fiyat 3,46 TL; değişim +%5,49; KALAN 2.939.\n\nYükselenler — EUPWR: Teorik fiyat 41,76 TL; değişim +%4,98; KALAN 3.242.\n\nYükselenler — POLTK: Teorik fiyat 2.915 TL; değişim +%4,86; KALAN 4.\n\nYükselenler — SOKE: Teorik fiyat 7,75 TL; değişim +%4,73; KALAN 3.030.\n\nYükselenler — SARAE: Teorik fiyat 31,46 TL; değişim +%4,31; KALAN 62.002.\n\nYükselenler — ESCAR: Teorik fiyat 9,40 TL; değişim +%4,21; KALAN 5.362.\n\nEn çok düşenler paneli: Toplam 146; görüntüde 20 satır gösteriliyor.\n\nDüşenler — TEHOL: Teorik fiyat 2,07 TL; değişim %10,00 düşüş; KALAN 74.914.224.\n\nDüşenler — UFUK: Teorik fiyat 139,70 TL; değişim %9,99 düşüş; KALAN 99.998.\n\nDüşenler — LYDHO: Teorik fiyat 21,64 TL; değişim %9,98 düşüş; KALAN 103.425.\n\nDüşenler — DSTKF: Teorik fiyat 116,40 TL; değişim %9,98 düşüş; KALAN 1.063.131.\n\nDüşenler — OZATD: Teorik fiyat 213,10 TL; değişim %9,97 düşüş; KALAN 445.810.\n\nDüşenler — HEDEF: Teorik fiyat 10,58 TL; değişim %9,96 düşüş; KALAN 109.891.\n\nDüşenler — IEYHO: Teorik fiyat 9,85 TL; değişim %9,96 düşüş; KALAN 4.758.833.\n\nDüşenler — GUNDG: Teorik fiyat 88,10 TL; değişim %9,96 düşüş; KALAN 34.988.\n\nDüşenler — LYDYE: Teorik fiyat 2.535 TL; değişim %9,95 düşüş; KALAN 6.447.\n\nDüşenler — BRKVY: Teorik fiyat 26,26 TL; değişim %9,95 düşüş; KALAN 500.000.\n\nDüşenler — HRKET: Teorik fiyat 6,24 TL; değişim %9,83 düşüş; KALAN 46.292.\n\nDüşenler — TMPOL: Teorik fiyat 74,80 TL; değişim %9,77 düşüş; KALAN 535.\n\nDüşenler — AEFES: Teorik fiyat 14,27 TL; değişim %9,74 düşüş; KALAN 40.140.\n\nDüşenler — ODINE: Teorik fiyat 77,90 TL; değişim %9,73 düşüş; KALAN 29.328.\n\nDüşenler — BULGS: Teorik fiyat 5,77 TL; değişim %7,83 düşüş; KALAN 4.628.\n\nDüşenler — BIGEN: Teorik fiyat 6,89 TL; değişim %7,64 düşüş; KALAN 47.504.\n\nDüşenler — BORLS: Teorik fiyat 2,08 TL; değişim %6,31 düşüş; KALAN 6.871.\n\nDüşenler — SKTAS: Teorik fiyat 1,30 TL; değişim %5,80 düşüş; KALAN 55.105.\n\nDüşenler — LILAK: Teorik fiyat 19,34 TL; değişim %5,29 düşüş; KALAN 7.193.\n\nDüşenler — INFO: Teorik fiyat 0,77 TL; değişim %4,94 düşüş; KALAN 211.948.\n\nKaynak sınırlamaları (veri tahmini yapılmadı): Görselde tarih ve KALAN sütununun birimi belirtilmiyor. Düşenler panelindeki yüzdeler görselde eksi işareti olmadan yazılmış; düşüş yönü panel başlığından okunuyor.",
+        "passages": [
+          {
+            "id": "image_visual_1",
+            "text": "Konu: Teorik Eşleşme; saat 09:52."
+          },
+          {
+            "id": "image_visual_2",
+            "text": "En çok yükselenler paneli: Toplam 215; görüntüde 20 satır gösteriliyor."
+          },
+          {
+            "id": "image_visual_3",
+            "text": "Yükselenler — GOODY: Teorik fiyat 2,09 TL; değişim +%10.00; KALAN 214.171."
+          },
+          {
+            "id": "image_visual_4",
+            "text": "Yükselenler — EPLAS: Teorik fiyat 5,28 TL; değişim +%10.00; KALAN 107.084."
+          },
+          {
+            "id": "image_visual_5",
+            "text": "Yükselenler — GEREL: Teorik fiyat 26,52 TL; değişim +%9.95; KALAN 428.513."
+          },
+          {
+            "id": "image_visual_6",
+            "text": "Yükselenler — ASTOR: Teorik fiyat 172,40 TL; değişim +%9.95; KALAN 7.306.658."
+          },
+          {
+            "id": "image_visual_7",
+            "text": "Yükselenler — KAPLM: Teorik fiyat 103,40 TL; değişim +%9.94; KALAN 42.344."
+          },
+          {
+            "id": "image_visual_8",
+            "text": "Yükselenler — ISVEA: Teorik fiyat 16,15 TL; değişim +%9.94; KALAN 53.418."
+          },
+          {
+            "id": "image_visual_9",
+            "text": "Yükselenler — ANELE: Teorik fiyat 9,19 TL; değişim +%9.93; KALAN 23.303."
+          },
+          {
+            "id": "image_visual_10",
+            "text": "Yükselenler — KARTN: Teorik fiyat 101,80 TL; değişim +%9.52; KALAN 75."
+          },
+          {
+            "id": "image_visual_11",
+            "text": "Yükselenler — MERIT: Teorik fiyat 13,10 TL; değişim +%8.80; KALAN 17.900."
+          },
+          {
+            "id": "image_visual_12",
+            "text": "Yükselenler — OTTO: Teorik fiyat 83,00 TL; değişim +%6.62; KALAN 467."
+          },
+          {
+            "id": "image_visual_13",
+            "text": "Yükselenler — IZFAS: Teorik fiyat 15,30 TL; değişim +%6.03; KALAN 2.407."
+          },
+          {
+            "id": "image_visual_14",
+            "text": "Yükselenler — BEGYO: Teorik fiyat 3,54 TL; değişim +%5.99; KALAN 29.616."
+          },
+          {
+            "id": "image_visual_15",
+            "text": "Yükselenler — LXGYO: Teorik fiyat 5,81 TL; değişim +%5.64; KALAN 24."
+          },
+          {
+            "id": "image_visual_16",
+            "text": "Yükselenler — AKSUE: Teorik fiyat 12,05 TL; değişim +%5.61; KALAN 3.144."
+          },
+          {
+            "id": "image_visual_17",
+            "text": "Yükselenler — SANFM: Teorik fiyat 3,46 TL; değişim +%5.49; KALAN 2.939."
+          },
+          {
+            "id": "image_visual_18",
+            "text": "Yükselenler — EUPWR: Teorik fiyat 41,76 TL; değişim +%4.98; KALAN 3.242."
+          },
+          {
+            "id": "image_visual_19",
+            "text": "Yükselenler — POLTK: Teorik fiyat 2.915 TL; değişim +%4.86; KALAN 4."
+          },
+          {
+            "id": "image_visual_20",
+            "text": "Yükselenler — SOKE: Teorik fiyat 7,75 TL; değişim +%4.73; KALAN 3.030."
+          },
+          {
+            "id": "image_visual_21",
+            "text": "Yükselenler — SARAE: Teorik fiyat 31,46 TL; değişim +%4.31; KALAN 62.002."
+          },
+          {
+            "id": "image_visual_22",
+            "text": "Yükselenler — ESCAR: Teorik fiyat 9,40 TL; değişim +%4.21; KALAN 5.362."
+          },
+          {
+            "id": "image_visual_23",
+            "text": "En çok düşenler paneli: Toplam 146; görüntüde 20 satır gösteriliyor."
+          },
+          {
+            "id": "image_visual_24",
+            "text": "Düşenler — TEHOL: Teorik fiyat 2,07 TL; değişim %10.00 düşüş; KALAN 74.914.224."
+          },
+          {
+            "id": "image_visual_25",
+            "text": "Düşenler — UFUK: Teorik fiyat 139,70 TL; değişim %9.99 düşüş; KALAN 99.998."
+          },
+          {
+            "id": "image_visual_26",
+            "text": "Düşenler — LYDHO: Teorik fiyat 21,64 TL; değişim %9.98 düşüş; KALAN 103.425."
+          },
+          {
+            "id": "image_visual_27",
+            "text": "Düşenler — DSTKF: Teorik fiyat 116,40 TL; değişim %9.98 düşüş; KALAN 1.063.131."
+          },
+          {
+            "id": "image_visual_28",
+            "text": "Düşenler — OZATD: Teorik fiyat 213,10 TL; değişim %9.97 düşüş; KALAN 445.810."
+          },
+          {
+            "id": "image_visual_29",
+            "text": "Düşenler — HEDEF: Teorik fiyat 10,58 TL; değişim %9.96 düşüş; KALAN 109.891."
+          },
+          {
+            "id": "image_visual_30",
+            "text": "Düşenler — IEYHO: Teorik fiyat 9,85 TL; değişim %9.96 düşüş; KALAN 4.758.833."
+          },
+          {
+            "id": "image_visual_31",
+            "text": "Düşenler — GUNDG: Teorik fiyat 88,10 TL; değişim %9.96 düşüş; KALAN 34.988."
+          },
+          {
+            "id": "image_visual_32",
+            "text": "Düşenler — LYDYE: Teorik fiyat 2.535 TL; değişim %9.95 düşüş; KALAN 6.447."
+          },
+          {
+            "id": "image_visual_33",
+            "text": "Düşenler — BRKVY: Teorik fiyat 26,26 TL; değişim %9.95 düşüş; KALAN 500.000."
+          },
+          {
+            "id": "image_visual_34",
+            "text": "Düşenler — HRKET: Teorik fiyat 6,24 TL; değişim %9.83 düşüş; KALAN 46.292."
+          },
+          {
+            "id": "image_visual_35",
+            "text": "Düşenler — TMPOL: Teorik fiyat 74,80 TL; değişim %9.77 düşüş; KALAN 535."
+          },
+          {
+            "id": "image_visual_36",
+            "text": "Düşenler — AEFES: Teorik fiyat 14,27 TL; değişim %9.74 düşüş; KALAN 40.140."
+          },
+          {
+            "id": "image_visual_37",
+            "text": "Düşenler — ODINE: Teorik fiyat 77,90 TL; değişim %9.73 düşüş; KALAN 29.328."
+          },
+          {
+            "id": "image_visual_38",
+            "text": "Düşenler — BULGS: Teorik fiyat 5,77 TL; değişim %7.83 düşüş; KALAN 4.628."
+          },
+          {
+            "id": "image_visual_39",
+            "text": "Düşenler — BIGEN: Teorik fiyat 6,89 TL; değişim %7.64 düşüş; KALAN 47.504."
+          },
+          {
+            "id": "image_visual_40",
+            "text": "Düşenler — BORLS: Teorik fiyat 2,08 TL; değişim %6.31 düşüş; KALAN 6.871."
+          },
+          {
+            "id": "image_visual_41",
+            "text": "Düşenler — SKTAS: Teorik fiyat 1,30 TL; değişim %5.80 düşüş; KALAN 55.105."
+          },
+          {
+            "id": "image_visual_42",
+            "text": "Düşenler — LILAK: Teorik fiyat 19,34 TL; değişim %5.29 düşüş; KALAN 7.193."
+          },
+          {
+            "id": "image_visual_43",
+            "text": "Düşenler — INFO: Teorik fiyat 0,77 TL; değişim %4.94 düşüş; KALAN 211.948."
+          },
+          {
+            "id": "image_normalized_1",
+            "text": "Konu: Teorik Eşleşme; saat 09:52."
+          },
+          {
+            "id": "image_normalized_2",
+            "text": "En çok yükselenler paneli: Toplam 215; görüntüde 20 satır gösteriliyor."
+          },
+          {
+            "id": "image_normalized_3",
+            "text": "Yükselenler — GOODY: Teorik fiyat 2,09 TL; değişim +%10,00; KALAN 214.171."
+          },
+          {
+            "id": "image_normalized_4",
+            "text": "Yükselenler — EPLAS: Teorik fiyat 5,28 TL; değişim +%10,00; KALAN 107.084."
+          },
+          {
+            "id": "image_normalized_5",
+            "text": "Yükselenler — GEREL: Teorik fiyat 26,52 TL; değişim +%9,95; KALAN 428.513."
+          },
+          {
+            "id": "image_normalized_6",
+            "text": "Yükselenler — ASTOR: Teorik fiyat 172,40 TL; değişim +%9,95; KALAN 7.306.658."
+          },
+          {
+            "id": "image_normalized_7",
+            "text": "Yükselenler — KAPLM: Teorik fiyat 103,40 TL; değişim +%9,94; KALAN 42.344."
+          },
+          {
+            "id": "image_normalized_8",
+            "text": "Yükselenler — ISVEA: Teorik fiyat 16,15 TL; değişim +%9,94; KALAN 53.418."
+          },
+          {
+            "id": "image_normalized_9",
+            "text": "Yükselenler — ANELE: Teorik fiyat 9,19 TL; değişim +%9,93; KALAN 23.303."
+          },
+          {
+            "id": "image_normalized_10",
+            "text": "Yükselenler — KARTN: Teorik fiyat 101,80 TL; değişim +%9,52; KALAN 75."
+          },
+          {
+            "id": "image_normalized_11",
+            "text": "Yükselenler — MERIT: Teorik fiyat 13,10 TL; değişim +%8,80; KALAN 17.900."
+          },
+          {
+            "id": "image_normalized_12",
+            "text": "Yükselenler — OTTO: Teorik fiyat 83,00 TL; değişim +%6,62; KALAN 467."
+          },
+          {
+            "id": "image_normalized_13",
+            "text": "Yükselenler — IZFAS: Teorik fiyat 15,30 TL; değişim +%6,03; KALAN 2.407."
+          },
+          {
+            "id": "image_normalized_14",
+            "text": "Yükselenler — BEGYO: Teorik fiyat 3,54 TL; değişim +%5,99; KALAN 29.616."
+          },
+          {
+            "id": "image_normalized_15",
+            "text": "Yükselenler — LXGYO: Teorik fiyat 5,81 TL; değişim +%5,64; KALAN 24."
+          },
+          {
+            "id": "image_normalized_16",
+            "text": "Yükselenler — AKSUE: Teorik fiyat 12,05 TL; değişim +%5,61; KALAN 3.144."
+          },
+          {
+            "id": "image_normalized_17",
+            "text": "Yükselenler — SANFM: Teorik fiyat 3,46 TL; değişim +%5,49; KALAN 2.939."
+          },
+          {
+            "id": "image_normalized_18",
+            "text": "Yükselenler — EUPWR: Teorik fiyat 41,76 TL; değişim +%4,98; KALAN 3.242."
+          },
+          {
+            "id": "image_normalized_19",
+            "text": "Yükselenler — POLTK: Teorik fiyat 2.915 TL; değişim +%4,86; KALAN 4."
+          },
+          {
+            "id": "image_normalized_20",
+            "text": "Yükselenler — SOKE: Teorik fiyat 7,75 TL; değişim +%4,73; KALAN 3.030."
+          },
+          {
+            "id": "image_normalized_21",
+            "text": "Yükselenler — SARAE: Teorik fiyat 31,46 TL; değişim +%4,31; KALAN 62.002."
+          },
+          {
+            "id": "image_normalized_22",
+            "text": "Yükselenler — ESCAR: Teorik fiyat 9,40 TL; değişim +%4,21; KALAN 5.362."
+          },
+          {
+            "id": "image_normalized_23",
+            "text": "En çok düşenler paneli: Toplam 146; görüntüde 20 satır gösteriliyor."
+          },
+          {
+            "id": "image_normalized_24",
+            "text": "Düşenler — TEHOL: Teorik fiyat 2,07 TL; değişim %10,00 düşüş; KALAN 74.914.224."
+          },
+          {
+            "id": "image_normalized_25",
+            "text": "Düşenler — UFUK: Teorik fiyat 139,70 TL; değişim %9,99 düşüş; KALAN 99.998."
+          },
+          {
+            "id": "image_normalized_26",
+            "text": "Düşenler — LYDHO: Teorik fiyat 21,64 TL; değişim %9,98 düşüş; KALAN 103.425."
+          },
+          {
+            "id": "image_normalized_27",
+            "text": "Düşenler — DSTKF: Teorik fiyat 116,40 TL; değişim %9,98 düşüş; KALAN 1.063.131."
+          },
+          {
+            "id": "image_normalized_28",
+            "text": "Düşenler — OZATD: Teorik fiyat 213,10 TL; değişim %9,97 düşüş; KALAN 445.810."
+          },
+          {
+            "id": "image_normalized_29",
+            "text": "Düşenler — HEDEF: Teorik fiyat 10,58 TL; değişim %9,96 düşüş; KALAN 109.891."
+          },
+          {
+            "id": "image_normalized_30",
+            "text": "Düşenler — IEYHO: Teorik fiyat 9,85 TL; değişim %9,96 düşüş; KALAN 4.758.833."
+          },
+          {
+            "id": "image_normalized_31",
+            "text": "Düşenler — GUNDG: Teorik fiyat 88,10 TL; değişim %9,96 düşüş; KALAN 34.988."
+          },
+          {
+            "id": "image_normalized_32",
+            "text": "Düşenler — LYDYE: Teorik fiyat 2.535 TL; değişim %9,95 düşüş; KALAN 6.447."
+          },
+          {
+            "id": "image_normalized_33",
+            "text": "Düşenler — BRKVY: Teorik fiyat 26,26 TL; değişim %9,95 düşüş; KALAN 500.000."
+          },
+          {
+            "id": "image_normalized_34",
+            "text": "Düşenler — HRKET: Teorik fiyat 6,24 TL; değişim %9,83 düşüş; KALAN 46.292."
+          },
+          {
+            "id": "image_normalized_35",
+            "text": "Düşenler — TMPOL: Teorik fiyat 74,80 TL; değişim %9,77 düşüş; KALAN 535."
+          },
+          {
+            "id": "image_normalized_36",
+            "text": "Düşenler — AEFES: Teorik fiyat 14,27 TL; değişim %9,74 düşüş; KALAN 40.140."
+          },
+          {
+            "id": "image_normalized_37",
+            "text": "Düşenler — ODINE: Teorik fiyat 77,90 TL; değişim %9,73 düşüş; KALAN 29.328."
+          },
+          {
+            "id": "image_normalized_38",
+            "text": "Düşenler — BULGS: Teorik fiyat 5,77 TL; değişim %7,83 düşüş; KALAN 4.628."
+          },
+          {
+            "id": "image_normalized_39",
+            "text": "Düşenler — BIGEN: Teorik fiyat 6,89 TL; değişim %7,64 düşüş; KALAN 47.504."
+          },
+          {
+            "id": "image_normalized_40",
+            "text": "Düşenler — BORLS: Teorik fiyat 2,08 TL; değişim %6,31 düşüş; KALAN 6.871."
+          },
+          {
+            "id": "image_normalized_41",
+            "text": "Düşenler — SKTAS: Teorik fiyat 1,30 TL; değişim %5,80 düşüş; KALAN 55.105."
+          },
+          {
+            "id": "image_normalized_42",
+            "text": "Düşenler — LILAK: Teorik fiyat 19,34 TL; değişim %5,29 düşüş; KALAN 7.193."
+          },
+          {
+            "id": "image_normalized_43",
+            "text": "Düşenler — INFO: Teorik fiyat 0,77 TL; değişim %4,94 düşüş; KALAN 211.948."
+          },
+          {
+            "id": "image_visual_format",
+            "text": "Yalnız biçim eşdeğerleri: Mr=milyar, Mn=milyon, ₺=TL. Yüzde hücresinde ondalık nokta virgüle normalleştirildi; fiyat/miktar binlik noktaları değiştirilmedi. Eksik para birimi eklenmedi."
+          },
+          {
+            "id": "image_source_note_1",
+            "text": "Görselde tarih ve KALAN sütununun birimi belirtilmiyor."
+          },
+          {
+            "id": "image_source_note_2",
+            "text": "Düşenler panelindeki yüzdeler görselde eksi işareti olmadan yazılmış; düşüş yönü panel başlığından okunuyor."
+          },
+          {
+            "id": "channel_context",
+            "text": "{\"caption\":\"⏱ Teorik Eşleşme — 09:52\"}"
+          }
+        ],
+        "coverage": {
+          "complete": true,
+          "page_count": 1,
+          "pages": [
+            {
+              "page": 1,
+              "mode": "image_ocr_visual",
+              "characters": 5299,
+              "tables": 0
+            }
+          ]
+        },
+        "source_id": "sermaye-telegram",
+        "source_name": "Sermaye Borsası",
+        "family": "telegram-sermayeborsasi",
+        "official": false,
+        "language": "tr",
+        "url": "https://t.me/SermayeBorsasi/26487",
+        "title": "Sermaye Borsası kaynak görseli",
+        "published_at": "2026-10-27T06:52:32+00:00",
+        "channel_publication": {
+          "channel": "SermayeBorsasi",
+          "peer_id": 2426639373,
+          "message_id": 26487,
+          "posted_at": "2026-10-27T06:52:32+00:00",
+          "edited_at": "2026-10-27T06:53:54+00:00",
+          "version": "da8797efde0185f095a47c33745283cec54c0d68fdae333af0b39c079a8b2f89",
+          "forwarded": false,
+          "forwarded_at": null
+        }
+      }
+    ]
+  }
+]

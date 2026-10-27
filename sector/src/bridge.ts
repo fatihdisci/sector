@@ -122,11 +122,11 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
   return {id:job.draft_id!,duplicate:false};
  }
  const recent=await env.DB.prepare('SELECT id,content FROM drafts WHERE created_at>? LIMIT 200').bind(time-48*3600).all<{id:string;content:string}>();
- const duplicate=documents[0].source_id==='kap'||job.kind==='manual'&&job.edit_request?undefined:(recent.results??[]).find(r=>sameEvent(draft,JSON.parse(r.content)));
+ const duplicate=documents[0].source_id==='kap'||job.kind==='news'||job.kind==='manual'&&job.edit_request?undefined:(recent.results??[]).find(r=>sameEvent(draft,JSON.parse(r.content)));
  if(duplicate){await env.DB.batch([
   env.DB.prepare("UPDATE model_jobs SET state='complete',error=NULL,documents='[]',result_draft=? WHERE id=?").bind(duplicate.id,job.id),
   env.DB.prepare("UPDATE articles SET status='duplicate',draft_id=?,document=NULL,document_expires=? WHERE id=?").bind(duplicate.id,time,job.article_id)]);return {id:duplicate.id,duplicate:true};}
- const id=crypto.randomUUID(),key=job.kind==='manual'&&job.edit_request?await sha256('manual-editor:'+job.article_id):documents[0].source_id==='kap'?await sha256(documents[0].url):await eventIdentity(draft,documents),media=`drafts/${id}/1.png`;
+ const id=crypto.randomUUID(),key=job.kind==='news'?await sha256('news-request:'+job.article_id):job.kind==='manual'&&job.edit_request?await sha256('manual-editor:'+job.article_id):documents[0].source_id==='kap'?await sha256(documents[0].url):await eventIdentity(draft,documents),media=`drafts/${id}/1.png`;
  await storeMedia(env,media,draft,images);
  const cited=documents[0].source_id==='kap'||documents[0].source_id==='manual-input'?documents:documents.map((d,i)=>({...d,body:'',passages:d.passages.filter(p=>draft.claims.some(c=>c.evidence.some(e=>e.document===i&&e.passage===p.id)))}));
  try {await env.DB.batch([

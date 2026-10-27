@@ -1,4 +1,13 @@
 // A separate editor-preview lane: does not relabel news urgency or feedback.
+export function channelPostSQL(alias='a'):string{
+ if(!/^[a-z]+$/.test(alias))throw Error('invalid_sql_alias');
+ return `(${alias}.source_id='sermaye-telegram' AND json_valid(${alias}.document)
+ AND json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.version')=1
+ AND json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.channel')='SermayeBorsasi'
+ AND json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.peer_id')=2426639373
+ AND json_type(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.messages')='array'
+ AND json_array_length(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.messages') BETWEEN 1 AND 10)`;
+}
 export function channelMarketPreviewSQL(alias='a'):string{
  if(!/^[a-z]+$/.test(alias))throw Error('invalid_sql_alias');
  return `(${alias}.source_id='sermaye-telegram'

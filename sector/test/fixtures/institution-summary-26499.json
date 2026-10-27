@@ -1,0 +1,56 @@
+{
+  "source": "Sermaye Borsası 2026-10-27 12:01",
+  "image_sha256": "ddde7d0ff5450fce25ac0c7888fe9b43fda3ea6d0e571fb666d3d13bfcbb817d",
+  "extraction": {
+    "complete": true,
+    "facts": [
+      "Konu: Kurum AKD Özeti; saat 12:01.",
+      "En çok alan kurum: Garanti; genel net +357,88 milyon TL.",
+      "Garanti üzerinden net alım — AKBNK: net hacim +140,13 milyon; maliyet 63,83 ₺.",
+      "Garanti üzerinden net alım — Z30KP.F: net hacim +95,04 milyon; maliyet 206,62 ₺.",
+      "Garanti üzerinden net alım — THYAO: net hacim +34,86 milyon; maliyet 256,39 ₺.",
+      "Garanti üzerinden net alım — YKBNK: net hacim +29,10 milyon; maliyet 35,03 ₺.",
+      "Garanti üzerinden net alım — KTLEV: net hacim +20,19 milyon; maliyet 4,30 ₺.",
+      "En çok satan kurum: BofA; genel net -1,60 milyar TL.",
+      "BofA üzerinden net satış — AKBNK: net hacim -289,09 milyon; maliyet 63,70 ₺.",
+      "BofA üzerinden net satış — THYAO: net hacim -281,19 milyon; maliyet 256,72 ₺.",
+      "BofA üzerinden net satış — YKBNK: net hacim -191,47 milyon; maliyet 35,12 ₺.",
+      "BofA üzerinden net satış — GARAN: net hacim -115,48 milyon; maliyet 126,57 ₺.",
+      "BofA üzerinden net satış — ISCTR: net hacim -55,24 milyon; maliyet 12,03 ₺."
+    ],
+    "notes": [
+      "Görselde tarih belirtilmiyor.",
+      "Hisse satırlarının net hacim hücrelerinde para birimi belirtilmiyor; maliyet hücrelerinde ₺ gösteriliyor."
+    ],
+    "issues": [],
+    "visual_layout": {
+      "kind": "institution_summary",
+      "panels": [
+        {
+          "name": "buy",
+          "symbols": [
+            "AKBNK",
+            "Z30KP.F",
+            "THYAO",
+            "YKBNK",
+            "KTLEV"
+          ]
+        },
+        {
+          "name": "sell",
+          "symbols": [
+            "AKBNK",
+            "THYAO",
+            "YKBNK",
+            "GARAN",
+            "ISCTR"
+          ]
+        }
+      ]
+    }
+  },
+  "audit": {
+    "supported": true,
+    "issues": []
+  }
+}

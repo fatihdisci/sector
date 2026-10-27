@@ -14,8 +14,8 @@ export function marketOverviewCard(o:MarketOverview,headline:string,theme:CardTh
   return s+'</g></svg>';
  }
  if(o.view==='opening'){
-  s+=line(200)+text('BIST 100',44,341,38,true,steel)+cell(o.level,44,505,992,132,true)+text('AÇILIŞ SEVİYESİ',44,563,25,true,steel)+line(640);
-  s+=cell(o.percent,44,818,992,112,true)+text(o.direction==='down'?'DÜŞÜŞLE BAŞLADI':'YÜKSELİŞLE BAŞLADI',44,883,36,true)+line(967)+text('PUAN FARKI',44,1041,25,true,steel)+cell(o.points,44,1152,992,76,true)+line(1230);return s+'</g></svg>';
+  s+=line(200)+text('BIST 100',44,341,38,true,steel)+cell(o.level,44,505,992,132,true)+text('ENDEKS SEVİYESİ',44,563,25,true,steel)+line(640);
+  s+=cell(o.percent,44,818,992,112,true)+text(o.direction==='down'?'DÜŞÜŞ':'YÜKSELİŞ',44,883,36,true)+line(967)+text('PUAN FARKI',44,1041,25,true,steel)+cell(o.points,44,1152,992,76,true)+line(1230);return s+'</g></svg>';
  }
  s+=line(183)+text('BIST 100',44,227,25,true,steel)+cell(o.level,44,326,680,90,true)+text(o.percent+' '+(o.direction==='down'?'DÜŞÜŞ':'YÜKSELİŞ'),1036,240,29,true,fg,'end')+text(o.points+' puan',1036,291,28,false,fg,'end');
 

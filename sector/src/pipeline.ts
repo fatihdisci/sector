@@ -4,6 +4,7 @@ import {scheduledSelection} from './newsroom';
 import {recordNewsCandidate,newsPreferences} from './news-routing';
 import {deliveryTarget} from './delivery-recovery';
 import {announceNews,refreshNewsRequests} from './news-inbox';
+import {channelMarketPreviewSQL,channelPostSQL} from './channel-market-preview';
 import registry from '../sources.json';
 import type {Env,Source,Document,Draft} from './types';
 import {parseFeed} from './feed';
@@ -16,6 +17,23 @@ import {sendDraft,TelegramError} from './telegram';
 type SourceRow={id:string;config:string;etag:string|null;modified:string|null;failures:number;last_ok:number|null;};
 export type DraftRow={id:string;content:string;documents:string;verification:string;revision:number;state:string;expires_at:number;message_id:number|null;media_key:string|null;};
 const now=()=>Math.floor(Date.now()/1000);
+// A request may have been made just before an edit was discovered. Move only
+// unprepared, unleased requests; delivered or in-flight work is never replayed.
+export async function retargetChannelRequests(env:Env,time=now()):Promise<void>{
+ const rows=await env.DB.prepare(`SELECT c.id,c.article_id FROM news_cards c JOIN articles a ON a.id=c.article_id
+ WHERE c.state='requested' AND a.source_id='sermaye-telegram' AND a.status='queued' AND a.lease_until<? AND json_valid(a.document)
+ AND NOT EXISTS(SELECT 1 FROM model_jobs j WHERE j.article_id=a.id AND (j.state IN ('queued','leased','retry_pending') OR j.result_draft IS NOT NULL))`).bind(time).all<{id:string;article_id:string}>();
+ for(const row of rows.results??[]){
+  const latest=await env.DB.prepare(`SELECT newer.id,(${channelPostSQL('newer')} AND (NOT ${channelMarketPreviewSQL('prior')} OR ${channelMarketPreviewSQL('newer')})) AS eligible,newer.status,newer.draft_id FROM articles prior JOIN articles newer ON newer.source_id=prior.source_id
+   WHERE prior.id=? AND json_valid(newer.document) AND json_extract(prior.document,'$.url')=json_extract(newer.document,'$.url')
+   ORDER BY json_extract(newer.document,'$.captured_at') DESC,newer.rowid DESC LIMIT 1`).bind(row.article_id).first<{id:string;eligible:number;status:string;draft_id:string|null}>();
+  if(!latest||latest.id===row.article_id||!latest.eligible||latest.status!=='queued'||latest.draft_id)continue;
+  await env.DB.prepare(`UPDATE news_cards SET article_id=? WHERE id=? AND article_id=? AND state='requested'
+   AND NOT EXISTS(SELECT 1 FROM news_cards WHERE article_id=? AND id!=?)
+   AND NOT EXISTS(SELECT 1 FROM model_jobs WHERE article_id IN (?,?) AND (state IN ('queued','leased','retry_pending') OR result_draft IS NOT NULL))
+   AND EXISTS(SELECT 1 FROM articles WHERE id=? AND status='queued' AND lease_until<?)`).bind(latest.id,row.id,row.article_id,latest.id,row.id,row.article_id,latest.id,row.article_id,time).run();
+ }
+}
 export const errorCode=(e:unknown)=>e instanceof Error&&/^[a-z][a-z\d_]{2,70}$/.test(e.message)?e.message:'operation_failed';
 export async function seed(env:Env):Promise<void> {
  await env.DB.prepare("INSERT OR IGNORE INTO system_state(key,value) VALUES('news_preview_since',?)").bind(new Date(Date.now()-300_000).toISOString()).run();
@@ -64,6 +82,7 @@ export async function quota(env:Env,bucket='ai-budget'):Promise<boolean> {
 export async function prepare(env:Env):Promise<void> {
  const pending=await env.DB.prepare("SELECT COUNT(*) AS count FROM drafts WHERE state IN ('pending','deferred') AND delivery_state IN ('waiting','sending')").first<{count:number}>();if((pending?.count??0)>=12)return;
  const time=now();
+ await retargetChannelRequests(env,time);
  const queue=await env.DB.prepare("SELECT a.*,s.config FROM articles a JOIN sources s ON s.id=a.source_id JOIN news_cards c ON c.article_id=a.id WHERE c.state='requested' AND a.status='queued' AND a.next_try<=? AND a.lease_until<? ORDER BY c.requested_at LIMIT 80").bind(time,time).all<{id:string;url:string;title:string;summary:string;published_at:string;attempts:number;config:string;document:string|null}>();
  const priority=(a:{title:string;summary:string;published_at:string;config:string})=>topicScore(a.title,a.summary,JSON.parse(a.config).official).score-(Date.now()-Date.parse(a.published_at))/3600_000*2;
  const selected=(queue.results??[]).sort((a,b)=>priority(b)-priority(a)).slice(0,2);
@@ -100,8 +119,9 @@ export async function prepare(env:Env):Promise<void> {
     env.DB.prepare("UPDATE news_cards SET state='model_queued' WHERE article_id=? AND state='requested'").bind(article.id)
    ]);
   } catch(e) {
-   const count=article.attempts+1,permanent=/^gallery_/.test(errorCode(e));
-   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(permanent||count>=3?'needs_review':'queued',count,time+Math.min(3600,120*2**count),errorCode(e),article.id).run();
+   const code=errorCode(e),count=article.attempts+1,permanent=/^gallery_/.test(code)||['image_vision_incomplete','image_vision_unverified'].includes(code);
+   const transient=['channel_message_changed','bot_query_busy'].includes(code);
+   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(permanent||count>=3?'needs_review':'queued',count,time+(transient?20:Math.min(3600,120*2**count)),code,article.id).run();
   }
  }
 }

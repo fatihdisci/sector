@@ -89,7 +89,7 @@ test('internal source notes do not enter a tweet and cannot override blocking un
  assert.equal(validateDraft({...note,uncertainties:['Şirketin yatırım yapıp yapmayacağı kaynaklardan doğrulanamıyor.']},[document]).verification,'needs_review');
 });
 
-test('same-day channel close submits beside legacy overview key and repeated result never publishes twice',async()=>{
+test('explicitly requested distinct channel posts each produce a deliverable and each submission stays idempotent',async()=>{
  const {repairDraftStyle}=await import('../src/style'),{withOverviewEvidence}=await import('../src/market-overview'),{draftCards}=await import('../src/card-pages'),{eventIdentity,sameEvent}=await import('../src/dedupe');
  const {env,sql,objects}=await environment();
  const source=(JSON.parse(await readFile('test/fixtures/market-overview-26453.json','utf8'))).document as Document;
@@ -103,16 +103,16 @@ test('same-day channel close submits beside legacy overview key and repeated res
  sql.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,state,created_at,expires_at) VALUES('old',?,'old',?,'[]','single_source_attributed','pending',?,?)").run(oldKey,JSON.stringify(legacy),time,time+86400);
  sql.prepare("INSERT INTO sources(id,config)VALUES('sermaye-telegram','{}')").run();
  const cards=[];for(const svg of draftCards(out,'paper','editorial'))cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
- let first='';
+ const created:string[]=[];
  for(const id of ['close','same-close']){
   const input=JSON.stringify(docs),hash=await sha256(input);
   sql.prepare("INSERT INTO articles(id,source_id,url,title,summary,published_at,first_seen)VALUES(?,'sermaye-telegram',?,'close','',?,?)").run(id,source.url+'/'+id,source.published_at!,time);
   sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state,lease_token,lease_until)VALUES(?,?,?,?,?,'news','leased','token',?)").run(id,id,input,hash,time,time+600);
   for(const [key,value]of [['card_theme:','paper'],['card_layout:','editorial']])sql.prepare('INSERT INTO system_state(key,value)VALUES(?,?)').run(key+id,value);
   const payload:Record<string,unknown>={id,lease_token:'token',input_hash:hash,draft:out,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},cards};
-  const r=await submitJob(env,payload);if(!first){first=r.id;assert(!r.duplicate)}else{assert(r.duplicate);assert.equal(r.id,first)};
-  assert.equal((await submitJob(env,payload)).id,first);
+  const r=await submitJob(env,payload);assert(!r.duplicate);created.push(r.id);
+  assert.equal((await submitJob(env,payload)).id,r.id);
  }
- assert.equal(sql.prepare('SELECT COUNT(*) n FROM drafts').get()!.n,2);assert.equal(objects.size,1);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM publication_log').get()!.n,0);
+ assert.notEqual(created[0],created[1]);assert.equal(sql.prepare('SELECT COUNT(*) n FROM drafts').get()!.n,3);assert.equal(objects.size,2);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM publication_log').get()!.n,0);
  assert.equal(sql.prepare("SELECT content FROM drafts WHERE id='old'").get()!.content,JSON.stringify(legacy));
 });
