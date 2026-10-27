@@ -61,7 +61,7 @@ sunulmaz; PNG ve tablo/kanıt görünümü kullanılabilir.
 `sources.json` ortak kayıttır. Sağlık, etag, son başarılı kontrol ve hata bekleme süreleri ayrı veritabanında tutulur.
 Kaynaklar tek tek `sources.candidates.json` ve `reports/source-check.json` üzerinden doğrulanmıştır.
 Kurulumda eski RSS arşivi canlı kuyruğa boşaltılmaz; başlangıç anı ve kısa zaman payı kaydedilir. Önem ve güncellik birlikte sıralanır.
-Günlük en fazla 240 model adayı ve aynı anda en fazla 12 teslim edilmemiş taslak kullanılır. Teslim edilmiş içerikler yeni haberleri durdurmaz. X paylaşımı yalnız açık Paylaş düğmesiyle ve günde en fazla 20 içerik için yapılır.
+Günlük en fazla 240 model adayı ve aynı anda en fazla 12 teslim edilmemiş taslak kullanılır. Teslim edilmiş içerikler yeni haberleri durdurmaz. X paylaşımı yalnız açık Paylaş düğmesiyle yapılır; uygulamada günlük X sayısı sınırı yoktur.
 NTV’nin denenen RSS’i ve TCMB’nin özel PPK beslemesi eski kaldığı için etkinleştirilmedi. PPK basın duyuruları genel TCMB basın akışından takip edilir.
 TÜİK RSS adayı 404, güncel veri portalı ise otomatik istemciye koruma sayfası verdi; bültenler okunmuş gibi sisteme eklenmedi.
 Haber okuyucusu KAP bağlantılarını birincil kaynak olarak okuyabilir. Ayrıca bağımsız KAP toplayıcısı çalışır; kalıcı cursor, saklama ve kuyruk kuralları [KAP.md](KAP.md) içindedir. Devre kesici gönderimi `circuitNotifications` tercihine bağlıdır; KAP kuyruğu haber servisindeki bağımsız Telegram tüketicisine bağlıdır.
@@ -232,7 +232,7 @@ Yalnız kayıtlı Telegram sahibi Paylaş düğmesine basabilir. Metin ve 1–4 
 
 Paylaş düğmesinden Hemen, 15, 30 veya 60 dakika seçilir. Plan Türkiye saatiyle gösterilir ve gönderim başlamadan iptal edilebilir. Planlanan metin ve görsel özetleri sabitlenir; kart veya görseller değişirse gönderilmez. Servis kapalıysa plan ancak yeniden açıldığında çalışabilir; beş dakikadan fazla gecikmiş planlar gönderilmez.
 
-Her istek bir kez gönderilir; kesinti veya gönderi sonrası doğrulama başarısızlığı `uncertain` olarak tutulur ve otomatik tekrarlanmaz. Dönen gönderi ID'si, mevcutsa, kontrol için saklanır. Başarı yalnız X'ten aynı ID, yazar, metin ve fotoğraf sayısı geri okunduktan sonra kaydedilir. Günlük 20 rezervasyon ve kart revizyonu kontrolleri korunur. Yerel sınır uzun gönderi erişimini garanti etmez; metin kesilmez veya otomatik zincire çevrilmez.
+Her istek bir kez gönderilir; kesinti veya gönderi sonrası doğrulama başarısızlığı `uncertain` olarak tutulur ve otomatik tekrarlanmaz. Dönen gönderi ID'si, mevcutsa, kontrol için saklanır. Başarı yalnız X'ten aynı ID, yazar, metin ve fotoğraf sayısı geri okunduktan sonra kaydedilir. Günlük X sayısı sınırı yoktur; kart revizyonu kontrolleri korunur. Yerel sınır uzun gönderi erişimini garanti etmez; metin kesilmez veya otomatik zincire çevrilmez.
 
 ### Kaynakla birlikte editoryal açıklama
 

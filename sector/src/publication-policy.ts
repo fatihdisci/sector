@@ -30,4 +30,4 @@ Rutinler: 45–75 dk. Güçlü tablolar: 60–90 dk. Doğrulanmış son dakika b
 Her pencerede yayın zorunlu değil.
 Rutin geri alımları /genelgerialım ile toplulaştır; devre kesicide her grubu X’e taşımak yerine önemli dalgayı ve /devrekesici gün raporunu seç.
 İlk 2 hafta 8 ve 12 paylaşım planlarını benzer hafta günlerinde karşılaştır. Sonraki 2 hafta günlük sayıyı sabitleyip rutin aralıklarını karşılaştır. Acil haberleri ayrı değerlendir.
-Elle paylaşınca ✅; gecikmeli işaretlediysen 🕒 ile gerçek saati düzelt. /yayinlar durumu, /yayinraporu son 28 günün CSV kaydını verir. Gösterim/etkileşimler otomatik okunmaz; X Analytics’ten ekle. API üst sınırı ayrıca 20/gün.`;
+Elle paylaşınca ✅; gecikmeli işaretlediysen 🕒 ile gerçek saati düzelt. /yayinlar durumu, /yayinraporu son 28 günün CSV kaydını verir. Gösterim/etkileşimler otomatik okunmaz; X Analytics’ten ekle.`;

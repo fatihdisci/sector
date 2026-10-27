@@ -7,7 +7,6 @@ import {telegram} from './telegram';
 import twitter from 'twitter-text';
 import type {DraftRow} from './pipeline';
 import type {Env} from './types';
-export const X_LIMIT=20;
 export const xDay=(ms=Date.now())=>new Date(ms+10800000).toISOString().slice(0,10);
 export const xEnabled=(env:Env)=>env.MODE==='telegram_review'&&env.X_PUBLISH_ENABLED==='true';
 export function xDraftEligible(d:{revision:number;state:string;expires_at:number;media_key:string|null;delivery_state:string;verification:string},revision:number,media:string|null,now=Date.now()):boolean{
@@ -25,7 +24,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   text=result.meta.changes?'Plan iptal edildi.':'Plan bulunamadı veya gönderim başladı; X hesabını kontrol et.';
   if(result.meta.changes)await refreshPublicationCard(env,cancel[1]).catch(()=>{});
  }else if(!xEnabled(env))text='X paylaşımı henüz etkin değil.';
- else if(data==='xcount')text=`Bugün kullanılan / ayrılan: ${await xCount(env)}/${X_LIMIT}. Sayaç İstanbul saatiyle 00:00’da yenilenir.`;
+ else if(data==='xcount')text=`Bugün gönderilen, sıradaki veya sonucu belirsiz X işlemi: ${await xCount(env)}. Sayaç İstanbul saatiyle 00:00’da yenilenir.`;
  else {
   const menu=data.match(/^xpost:([a-f\d-]{36}):(\d{1,6})$/),choice=data.match(/^xchoose:(0|15|30|60):([a-f\d-]{36}):(\d{1,6})$/);
   const draftId=menu?.[1]??choice?.[2],revision=Number(menu?.[2]??choice?.[3]);
@@ -45,14 +44,13 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
     const hashes=JSON.stringify(await Promise.all(images.map(bytesHash)));
     const results=await env.DB.batch([
      env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
-      SELECT ?,?,?,?,'queued',?,?,?,? WHERE (SELECT COUNT(*) FROM x_posts WHERE day=? AND state IN ('queued','uploading','posting','sent','uncertain'))<?
-      AND NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')
+      SELECT ?,?,?,?,'queued',?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')
       AND EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND content=? AND media_key=? AND message_id=? AND state='pending' AND delivery_state='sent' AND verification!='needs_review' AND expires_at>?)`)
-      .bind(postId,row.id,revision,day,postText(JSON.parse(row.content)),row.media_key,now,env.TELEGRAM_UPDATE_ID??null,day,X_LIMIT,row.id,row.id,row.id,revision,row.content,row.media_key,messageId,Math.floor(now/1000)),
+      .bind(postId,row.id,revision,day,postText(JSON.parse(row.content)),row.media_key,now,env.TELEGRAM_UPDATE_ID??null,row.id,row.id,row.id,revision,row.content,row.media_key,messageId,Math.floor(now/1000)),
      env.DB.prepare('INSERT INTO x_schedules(post_id,due_at,media_hashes) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM x_posts WHERE id=?)').bind(postId,due,hashes,postId)
     ]);
     if(results[0].meta.changes){text=`Planlandı: ${new Date(due).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'short',timeStyle:'short'})} (Türkiye saati).`;await refreshPublicationCard(env,row.id).catch(()=>{});}
-    else {const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();text=old?.state==='uncertain'?'Önceki gönderim belirsiz; otomatik tekrar yapılmaz.':old?'Bu içerik zaten planlı veya paylaşılmış.':'Plan oluşturulamadı; kartı ve günlük kotayı kontrol et.';}
+    else {const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();text=old?.state==='uncertain'?'Önceki gönderim belirsiz; otomatik tekrar yapılmaz.':old?'Bu içerik zaten planlı veya paylaşılmış.':'Plan oluşturulamadı; kartı ve yayın durumunu kontrol et.';}
    }catch{text='Görsel doğrulanamadı; plan oluşturulmadı.';}
   }
  }
@@ -107,7 +105,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
  const result=await env.DB.prepare('SELECT state,remote_id,error FROM x_posts WHERE id=?').bind(row.id).first<{state:string;remote_id:string;error:string}>();
  if(result?.state==='sent')await refreshPublicationCard(env,row.draft_id).catch(()=>{});
  const count=await xCount(env);
- const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_long_post_capability_required'?'Bu metin uzun gönderi gerektiriyor. Hesap yetkisi açıkça yapılandırılmadan görsel yüklenmedi veya gönderim yapılmadı.':result?.error==='x_long_post_media_unsupported'?'Uzun gönderi yolu bu bağlantıda yalnız tek görsel destekliyor; yükleme veya gönderim yapılmadı.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
+ const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count} X işlemi.\nhttps://x.com/endeks_haber/status/${result.remote_id}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_long_post_capability_required'?'Bu metin uzun gönderi gerektiriyor. Hesap yetkisi açıkça yapılandırılmadan görsel yüklenmedi veya gönderim yapılmadı.':result?.error==='x_long_post_media_unsupported'?'Uzun gönderi yolu bu bağlantıda yalnız tek görsel destekliyor; yükleme veya gönderim yapılmadı.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
  await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text})).catch(()=>{});
 }
 
