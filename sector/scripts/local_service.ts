@@ -145,7 +145,7 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
  await cleanupSourceArtifacts().catch(()=>0);lastArtifactCleanup=Date.now();
  if(!await awaitActivation(directory,process.env.SECTOR_RELEASE_ID,()=>stopping()))return;
  // Never replay requests accepted by an earlier publisher after activation.
- await env.DB.prepare("UPDATE x_posts SET state='expired',error='publisher_restart' WHERE state='queued'").run();
+ await env.DB.prepare("UPDATE x_posts SET state='expired',error='publisher_restart' WHERE state='queued' AND NOT EXISTS (SELECT 1 FROM x_schedules s WHERE s.post_id=x_posts.id)").run();
  if(process.argv.includes('--prepare-once')){await tick(env);console.log('Sources scanned and model jobs prepared.');return;}
  if(process.argv.includes('--model-once')){ // run one fully checked job for commissioning
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);

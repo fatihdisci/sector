@@ -4,7 +4,7 @@ const id=(i:number)=>'aaaaaaaa-aaaa-4aaa-aaaa-'+String(i).padStart(12,'0');
 async function setup(){const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));const env={DB,MODE:'telegram_review',X_PUBLISH_ENABLED:'true',MEDIA:{get:async()=>({arrayBuffer:async()=>new Uint8Array([137,80,78,71,13,10,26,10]).buffer})}} as unknown as Env;
  for(let i=0;i<25;i++)await DB.prepare('INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,message_id,media_key,delivery_state) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(id(i),'e'+i,'f',JSON.stringify({headline:'Başlık',body:'Metin',hashtags:['#BIST']}),'[]','verified',1,9999999999,100+i,'drafts/'+id(i)+'/1.png','sent').run();
  const api:XTransport={identity:async()=>({id:'335502216',username:'endeks_haber'}),upload:async()=>'123',post:async()=>'456'};return {env,api};}
-const click=(env:Env,i=0)=>requestX(env,`xpost:${id(i)}:1`,100+i,'cb');
+const click=(env:Env,i=0)=>requestX(env,`xchoose:0:${id(i)}:1`,100+i,'cb');
 test('Istanbul daily rollover is midnight UTC+3',()=>{assert.equal(xDay(Date.parse('2026-10-22T20:59:59Z')),'2026-10-22');assert.equal(xDay(Date.parse('2026-10-22T21:00:00Z')),'2026-10-23');});
 test('parallel clicks enforce 20 reservations and deduplicate draft',async()=>{const {env}=await setup();await Promise.all(Array.from({length:25},(_,i)=>click(env,i)));assert.equal(await xCount(env),20);await click(env);assert.equal(await xCount(env),20);});
 test('explicit click publishes text and image once',async()=>{const {env,api}=await setup();let sends=0;api.post=async(text,media)=>{assert.match(text,/Başlık/);assert.equal(media,'123');sends++;return '456';};await click(env);await publishX(env,api);await click(env);await publishX(env,api);assert.equal(sends,1);assert.equal(await xCount(env),1);});
@@ -57,3 +57,34 @@ test('sanitized create diagnostic and uploaded IDs survive failure without repla
 
 test('long-post preflight failure makes no identity, upload, or post call',async()=>{const {env,api}=await setup();let calls=0;api.preflight=()=>{throw Error('x_long_post_capability_required')};api.identity=async()=>{calls++;throw Error('unexpected')};api.upload=async()=>{calls++;return '1'};api.post=async()=>{calls++;return '1'};await click(env);await publishX(env,api);assert.equal(calls,0);assert.equal((await env.DB.prepare('SELECT state,error FROM x_posts').first<any>()).error,'x_long_post_capability_required');});
 test('raw long URL rejected by real local preflight makes zero external calls',async()=>{const {postingRoute}=await import('../scripts/tweetkit_client');const {env,api}=await setup();await env.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify({headline:'Başlık',body:Array(10).fill('https://example.com/'+'a'.repeat(2900)).join(' '),hashtags:[]}),id(0)).run();let calls=0;api.preflight=(text,n)=>{postingRoute(text,n,true)};api.identity=async()=>{calls++;throw Error('unexpected')};api.upload=async()=>{calls++;return '1'};api.post=async()=>{calls++;return '1'};await click(env);await publishX(env,api);assert.equal(calls,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'failed');});
+
+
+test('scheduled publication waits until due and survives a fresh consumer',async()=>{
+ const {env,api}=await setup();let sends=0;api.post=async()=>{sends++;return '456'};
+ await requestX(env,`xchoose:15:${id(0)}:1`,100,'cb');
+ const r=await env.DB.prepare('SELECT s.due_at FROM x_posts x JOIN x_schedules s ON s.post_id=x.id').first<any>();
+ await publishX(env,api,()=>r.due_at-1);assert.equal(sends,0);await publishX(env,api,()=>r.due_at);assert.equal(sends,1);await publishX(env,api,()=>r.due_at+1);assert.equal(sends,1);
+});
+test('duplicate scheduling is idempotent and cancellation wins before claim',async()=>{
+ const {env,api}=await setup();let sends=0;api.post=async()=>{sends++;return '456'};
+ await Promise.all([requestX(env,`xchoose:30:${id(0)}:1`,100,'a'),requestX(env,`xchoose:30:${id(0)}:1`,100,'b')]);
+ assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM x_posts').first<any>()).n,1);
+ await requestX(env,`xcancel:${id(0)}:1`,100,'c');await publishX(env,api,()=>Date.now()+31*60_000);assert.equal(sends,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'cancelled');
+});
+test('late plans and changed media fail closed without upload',async()=>{
+ for(const late of [true,false]){const {env,api}=await setup();let uploads=0;api.upload=async()=>{uploads++;return '123'};
+ await requestX(env,`xchoose:15:${id(0)}:1`,100,'cb');const row=await env.DB.prepare('SELECT due_at FROM x_schedules').first<any>();
+ if(!late)env.MEDIA.get=async()=>({arrayBuffer:async()=>new Uint8Array([137,80,78,71,13,10,26,11]).buffer} as any);
+ await publishX(env,api,()=>row.due_at+(late?300001:0));assert.equal(uploads,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,late?'expired':'failed');}
+});
+test('cancellation after consumer claim does not permit replay',async()=>{
+ const {env,api}=await setup();let sends=0;await requestX(env,`xchoose:0:${id(0)}:1`,100,'cb');
+ api.upload=async()=>{await requestX(env,`xcancel:${id(0)}:1`,100,'cancel');return '123'};api.post=async()=>{sends++;return '456'};
+ await publishX(env,api);await publishX(env,api);assert.equal(sends,1);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'sent');
+});
+test('opening the time picker does not enqueue a publication',async()=>{
+ const {env}=await setup();const original=globalThis.fetch;const calls:{method:string;body:URLSearchParams}[]=[];
+ globalThis.fetch=async(input,init)=>{calls.push({method:String(input).split('/').pop()!,body:init?.body as URLSearchParams});return Response.json({ok:true,result:{message_id:100}})};
+ env.TELEGRAM_BOT_TOKEN='123:test';env.TELEGRAM_VERIFIED_BOT_ID='123';env.TELEGRAM_CHAT_ID='7';
+ try{await requestX(env,`xpost:${id(0)}:1`,100,'cb');assert.equal(await xCount(env),0);const markup=JSON.parse(String(calls.find(c=>c.method==='editMessageReplyMarkup')?.body.get('reply_markup')));assert.deepEqual(markup.inline_keyboard[0].map((b:any)=>b.text),['Hemen','15 dakika sonra','30 dakika sonra','60 dakika sonra']);}finally{globalThis.fetch=original;}
+});

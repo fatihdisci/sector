@@ -84,6 +84,9 @@ CREATE TABLE IF NOT EXISTS x_posts (
  day TEXT NOT NULL,state TEXT NOT NULL,content TEXT NOT NULL,media_key TEXT NOT NULL,
  created_at INTEGER NOT NULL,started_at INTEGER,finished_at INTEGER,remote_id TEXT,error TEXT,update_id INTEGER UNIQUE
 );
+CREATE TABLE IF NOT EXISTS x_schedules (
+ post_id TEXT PRIMARY KEY REFERENCES x_posts(id), due_at INTEGER NOT NULL, media_hashes TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS x_posts_day ON x_posts(day,state);
 CREATE UNIQUE INDEX IF NOT EXISTS x_posts_once ON x_posts(draft_id) WHERE state IN ('queued','uploading','posting','sent','uncertain');
 -- Manual publication declarations; API receipts remain in x_posts.

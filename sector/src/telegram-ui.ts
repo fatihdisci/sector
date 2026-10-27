@@ -4,19 +4,19 @@ import {CARD_LAYOUTS} from './card-layout';
 export type Button={text:string;callback_data?:string;url?:string};
 export type Markup={inline_keyboard:Button[][]};
 export type DraftView='main'|'more'|'layouts';
-export type PublicationState={published?:boolean;deferred?:boolean;manual?:boolean;api?:string;published_at?:number|null};
+export type PublicationState={published?:boolean;deferred?:boolean;manual?:boolean;api?:string;published_at?:number|null;due_at?:number|null};
 export const sourceButton=(docs:Document[]):Button=>{const value=docs[0]?.url;if(!value)throw Error('source_url_missing');const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)throw Error('source_url_invalid');return {text:'Kaynağı aç',url:value};};
 export async function publicationState(env:Env,id:string):Promise<PublicationState>{
  const mark=await env.DB.prepare('SELECT state,published_at FROM publication_marks WHERE draft_id=?').bind(id).first<{state:string;published_at:number|null}>();
- const api=await env.DB.prepare("SELECT state,finished_at FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain') ORDER BY CASE WHEN state='sent' THEN 0 ELSE 1 END,created_at DESC LIMIT 1").bind(id).first<{state:string;finished_at:number|null}>();
- return {published:api?.state==='sent'||mark?.state==='published',deferred:mark?.state==='deferred',manual:mark?.state==='published'&&api?.state!=='sent',api:api?.state,published_at:api?.state==='sent'?api.finished_at:mark?.published_at};
+ const api=await env.DB.prepare("SELECT x.state,x.finished_at,s.due_at FROM x_posts x LEFT JOIN x_schedules s ON s.post_id=x.id WHERE x.draft_id=? AND x.state IN ('queued','uploading','posting','sent','uncertain') ORDER BY CASE WHEN x.state='sent' THEN 0 ELSE 1 END,x.created_at DESC LIMIT 1").bind(id).first<{state:string;finished_at:number|null;due_at:number|null}>();
+ return {published:api?.state==='sent'||mark?.state==='published',deferred:mark?.state==='deferred',manual:mark?.state==='published'&&api?.state!=='sent',api:api?.state,due_at:api?.due_at,published_at:api?.state==='sent'?api.finished_at:mark?.published_at};
 }
 export function draftKeyboard(id:string,revision:number,docs:Document[],publish:boolean,draft?:Draft,state:PublicationState={},view:DraftView='main',editable=true):Markup{
  for(const doc of docs)sourceButton([doc]);sourceButton(docs);
  const menu=(action:string,text:string):Button=>({text,callback_data:`dm:${action}:${id}:${revision}`});
  const pub=(action:string,text:string):Button=>({text,callback_data:`dp:${action}:${id}:${revision}`});
  const more=menu('more','Diğer'),back=menu('main','Geri'),locked=state.published||!!state.api;
- if(view==='main')return {inline_keyboard:[locked?[menu('summary','Yayın özeti'),more]:state.deferred?[pub('undo','Hazıra al'),more]:[...(publish&&editable?[{text:'X’te paylaş',callback_data:`xpost:${id}:${revision}`}]:[]),...(editable?[{text:'Düzenle',callback_data:callback('edit',id,revision)}]:[]),more]]};
+ if(view==='main')return {inline_keyboard:[state.api==='queued'?[{text:state.due_at?`İptal · ${new Date(state.due_at).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'short',timeStyle:'short'})}`:'Paylaşımı iptal et',callback_data:`xcancel:${id}:${revision}`},more]:locked?[menu('summary','Yayın özeti'),more]:state.deferred?[pub('undo','Hazıra al'),more]:[...(publish&&editable?[{text:'X’te paylaş',callback_data:`xpost:${id}:${revision}`}]:[]),...(editable?[{text:'Düzenle',callback_data:callback('edit',id,revision)}]:[]),more]]};
  const layouts=editable&&!locked&&draft?.template!=='circuit'&&!draft?.card_data?.report&&!draft?.card_data?.overview;
  if(view==='layouts'&&layouts)return {inline_keyboard:[[{text:'Rastgele tasarım',callback_data:`design:${id}:${revision}`}],...CARD_LAYOUTS.map(l=>[{text:({editorial:'Standart',frame:'Çerçeveli',rail:'Sol şeritli',masthead:'Başlık bloğu',center:'Ortalanmış',brief:'Kısa haber'})[l],callback_data:`design:${id}:${revision}:${l}`}]),[back]]};
  const rows:Button[][]=[[sourceButton(docs)]];

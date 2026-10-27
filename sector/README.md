@@ -226,9 +226,11 @@ Elle iletilen kurum/AKD/takas içeriklerinde Telegram’ın ilk mesaj zamanı İ
 
 ### Telegram üzerinden X paylaşımı
 
-Yerel Mac servisinde Paylaş düğmesi, ayrı `tweetkit-endeks-haber` / `endeks_haber` Keychain kaydını kullanır; eski `x-credentials.json` okunmaz ve ücretli X API yoluna geri dönüş yoktur. Dağıtımdan önce yalnız bu servis için Python ortamı `~/Library/Application Support/sector-haber/tweetkit-venv` konumunda hazırlanmalı ve `requirements-tweetkit.txt` kurulmalıdır. Paket kaynağı `vendor/tweetkit` altında sabitlenmiştir. Ortam kurulması veya servis yeniden başlatılması tek başına gönderi yapmaz; her servis başlangıcında bekleyen eski gönderi istekleri geçersizleştirilir ve yeni Paylaş tıklaması gerekir.
+Yerel Mac servisinde Paylaş düğmesi, ayrı `tweetkit-endeks-haber` / `endeks_haber` Keychain kaydını kullanır; eski `x-credentials.json` okunmaz ve ücretli X API yoluna geri dönüş yoktur. Dağıtımdan önce yalnız bu servis için Python ortamı `~/Library/Application Support/sector-haber/tweetkit-venv` konumunda hazırlanmalı ve `requirements-tweetkit.txt` kurulmalıdır. Paket kaynağı `vendor/tweetkit` altında sabitlenmiştir. Ortam kurulması veya servis yeniden başlatılması tek başına gönderi yapmaz; servis başlangıcında eski plansız gönderi istekleri geçersizleştirilir; yeni planlar kalıcı olarak korunur.
 
 Yalnız kayıtlı Telegram sahibi Paylaş düğmesine basabilir. Metin ve 1–4 PNG, önceki onaylı karttan alınır. Keychain oturumundaki ID ve salt okunur profil, `@endeks_haber` / `335502216` ile eşleşmelidir. Profil ve yerel oturum ID eşleşmesi, X sunucusundan bağımsız oturum sahibi doğrulaması değildir. tweetkit X'in resmî API'si dışındaki web oturumunu kullanır; X kısıtları ve hesap riski geçerlidir.
+
+Paylaş düğmesinden Hemen, 15, 30 veya 60 dakika seçilir. Plan Türkiye saatiyle gösterilir ve gönderim başlamadan iptal edilebilir. Planlanan metin ve görsel özetleri sabitlenir; kart veya görseller değişirse gönderilmez. Servis kapalıysa plan ancak yeniden açıldığında çalışabilir; beş dakikadan fazla gecikmiş planlar gönderilmez.
 
 Her istek bir kez gönderilir; kesinti veya gönderi sonrası doğrulama başarısızlığı `uncertain` olarak tutulur ve otomatik tekrarlanmaz. Dönen gönderi ID'si, mevcutsa, kontrol için saklanır. Başarı yalnız X'ten aynı ID, yazar, metin ve fotoğraf sayısı geri okunduktan sonra kaydedilir. Günlük 20 rezervasyon ve kart revizyonu kontrolleri korunur. Yerel sınır uzun gönderi erişimini garanti etmez; metin kesilmez veya otomatik zincire çevrilmez.
 

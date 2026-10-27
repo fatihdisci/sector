@@ -16,27 +16,44 @@ export function xDraftEligible(d:{revision:number;state:string;expires_at:number
 export async function xCount(env:Env,day=xDay()){
  return (await env.DB.prepare("SELECT COUNT(*) n FROM x_posts WHERE day=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(day).first<{n:number}>())!.n;
 }
+const MAX_SCHEDULE_LATE=5*60_000;
 export async function requestX(env:Env,data:string,messageId:number,callbackId:string){
  let text='';
- if(!xEnabled(env))text='X paylaşımı henüz etkin değil.';
+ const cancel=data.match(/^xcancel:([a-f\d-]{36}):(\d{1,6})$/);
+ if(cancel){
+  const result=await env.DB.prepare("UPDATE x_posts SET state='cancelled',finished_at=? WHERE draft_id=? AND revision=? AND state='queued' AND EXISTS(SELECT 1 FROM drafts d WHERE d.id=x_posts.draft_id AND d.message_id=?)").bind(Date.now(),cancel[1],Number(cancel[2]),messageId).run();
+  text=result.meta.changes?'Plan iptal edildi.':'Plan bulunamadı veya gönderim başladı; X hesabını kontrol et.';
+  if(result.meta.changes)await refreshPublicationCard(env,cancel[1]).catch(()=>{});
+ }else if(!xEnabled(env))text='X paylaşımı henüz etkin değil.';
  else if(data==='xcount')text=`Bugün kullanılan / ayrılan: ${await xCount(env)}/${X_LIMIT}. Sayaç İstanbul saatiyle 00:00’da yenilenir.`;
  else {
-  const match=data.match(/^xpost:([a-f\d-]{36}):(\d{1,6})$/);
-  const row=match?await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(match[1]).first<DraftRow&{delivery_state:string}>():null;
-  if(!row||row.message_id!==messageId||!xDraftEligible(row,Number(match![2]),row.media_key))text='Kart güncellenmiş, süresi dolmuş veya paylaşılabilir değil. Güncel kartı kullan.';
-  else if(!xTextValid(postText(JSON.parse(row.content))))text='Metin 25.000 karakterlik uzun gönderi sınırını aşıyor veya geçersiz karakter içeriyor. Metin kesilmedi; otomatik zincir oluşturulmaz.';
+  const menu=data.match(/^xpost:([a-f\d-]{36}):(\d{1,6})$/),choice=data.match(/^xchoose:(0|15|30|60):([a-f\d-]{36}):(\d{1,6})$/);
+  const draftId=menu?.[1]??choice?.[2],revision=Number(menu?.[2]??choice?.[3]);
+  const row=draftId?await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(draftId).first<DraftRow&{delivery_state:string}>():null;
+  if(!row||row.message_id!==messageId||!xDraftEligible(row,revision,row.media_key))text='Kart güncellenmiş, süresi dolmuş veya paylaşılabilir değil. Güncel kartı kullan.';
+  else if(menu){
+   const buttons=[['Hemen',0],['15 dakika sonra',15],['30 dakika sonra',30],['60 dakika sonra',60]] as const;
+   await telegram(env,'editMessageReplyMarkup',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(messageId),reply_markup:JSON.stringify({inline_keyboard:[buttons.map(([label,n])=>({text:label,callback_data:`xchoose:${n}:${row.id}:${revision}`})),[{text:'Geri',callback_data:`dm:main:${row.id}:${revision}`}]]})}));
+   text='Paylaşım zamanını seç.';
+  }else if(!choice)text='Geçersiz seçim.';
+  else if(!xTextValid(postText(JSON.parse(row.content))))text='Metin geçersiz veya 25.000 karakter sınırını aşıyor. Metin kesilmedi; otomatik zincir oluşturulmaz.';
   else {
-   const result=await env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
-    SELECT ?,?,?,?,'queued',?,?,?,? WHERE
-    (SELECT COUNT(*) FROM x_posts WHERE day=? AND state IN ('queued','uploading','posting','sent','uncertain'))<?
-    AND NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')`)
-    .bind(crypto.randomUUID(),row.id,row.revision,xDay(),postText(JSON.parse(row.content)),row.media_key,Date.now(),env.TELEGRAM_UPDATE_ID??null,xDay(),X_LIMIT,row.id,row.id).run();
-   if(result.meta.changes){const s=await publicationSummary(env);text=`Sıraya alındı. X ${await xCount(env)}/${X_LIMIT}. ${s.note}`;}
-   else {
-    const manual=await env.DB.prepare("SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published'").bind(row.id).first();
-    const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();
-    text=manual?'Bu içerik elle paylaşıldı olarak işaretli. Tekrar gönderilmedi.':old?old.state==='sent'?'Bu içerik X’te zaten paylaşıldı.':old.state==='uncertain'?'Önceki gönderimin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmiyor; X hesabını kontrol et.':'Bu içerik zaten paylaşım sırasında.':`Günlük paylaşım bütçesi doldu (${X_LIMIT}/${X_LIMIT}). Yarın 00:00’a kadar paylaşım durduruldu.`;
-   }
+   const now=Date.now(),due=now+Number(choice[1])*60_000,day=xDay(due),postId=crypto.randomUUID();
+   try{
+    const {images}=await readMedia(env,row.media_key!,row.content);
+    if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
+    const hashes=JSON.stringify(await Promise.all(images.map(bytesHash)));
+    const results=await env.DB.batch([
+     env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
+      SELECT ?,?,?,?,'queued',?,?,?,? WHERE (SELECT COUNT(*) FROM x_posts WHERE day=? AND state IN ('queued','uploading','posting','sent','uncertain'))<?
+      AND NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')
+      AND EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND content=? AND media_key=? AND message_id=? AND state='pending' AND delivery_state='sent' AND verification!='needs_review' AND expires_at>?)`)
+      .bind(postId,row.id,revision,day,postText(JSON.parse(row.content)),row.media_key,now,env.TELEGRAM_UPDATE_ID??null,day,X_LIMIT,row.id,row.id,row.id,revision,row.content,row.media_key,messageId,Math.floor(now/1000)),
+     env.DB.prepare('INSERT INTO x_schedules(post_id,due_at,media_hashes) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM x_posts WHERE id=?)').bind(postId,due,hashes,postId)
+    ]);
+    if(results[0].meta.changes){text=`Planlandı: ${new Date(due).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'short',timeStyle:'short'})} (Türkiye saati).`;await refreshPublicationCard(env,row.id).catch(()=>{});}
+    else {const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();text=old?.state==='uncertain'?'Önceki gönderim belirsiz; otomatik tekrar yapılmaz.':old?'Bu içerik zaten planlı veya paylaşılmış.':'Plan oluşturulamadı; kartı ve günlük kotayı kontrol et.';}
+   }catch{text='Görsel doğrulanamadı; plan oluşturulmadı.';}
   }
  }
  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:callbackId,text,show_alert:'true'})).catch(()=>{});
@@ -51,8 +68,9 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
  if(!xEnabled(env))return;
  await env.DB.prepare("UPDATE x_posts SET state='uncertain',error='interrupted_post' WHERE state='posting' AND started_at<?").bind(clock()-180000).run();
  await env.DB.prepare("UPDATE x_posts SET state='failed',error='interrupted_upload' WHERE state='uploading' AND started_at<?").bind(clock()-180000).run();
- await env.DB.prepare("UPDATE x_posts SET state='expired',error='day_changed' WHERE state='queued' AND day!=?").bind(xDay(clock())).run();
- const row=await env.DB.prepare("SELECT * FROM x_posts WHERE state='queued' ORDER BY created_at LIMIT 1").first<{id:string;draft_id:string;revision:number;content:string;media_key:string;day:string}>();if(!row)return;
+ await env.DB.prepare("UPDATE x_posts SET state='expired',error='schedule_late' WHERE state='queued' AND EXISTS(SELECT 1 FROM x_schedules s WHERE s.post_id=x_posts.id AND s.due_at<?)").bind(clock()-MAX_SCHEDULE_LATE).run();
+ await env.DB.prepare("UPDATE x_posts SET state='expired',error='day_changed' WHERE state='queued' AND day!=? AND NOT EXISTS(SELECT 1 FROM x_schedules s WHERE s.post_id=x_posts.id AND s.due_at>?)").bind(xDay(clock()),clock()).run();
+ const row=await env.DB.prepare("SELECT x_posts.*,s.media_hashes FROM x_posts LEFT JOIN x_schedules s ON s.post_id=x_posts.id WHERE state='queued' AND (s.due_at IS NULL OR s.due_at<=?) ORDER BY COALESCE(s.due_at,created_at) LIMIT 1").bind(clock()).first<{id:string;draft_id:string;revision:number;content:string;media_key:string;day:string;media_hashes:string|null}>();if(!row)return;
  const claimed=await env.DB.prepare("UPDATE x_posts SET state='uploading',started_at=? WHERE id=? AND state='queued'").bind(clock(),row.id).run();if(!claimed.meta.changes)return;
  let posting=false,remote:string|null=null;const mediaIds:string[]=[];
  try{
@@ -60,6 +78,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
   const {images}=await readMedia(env,row.media_key,draft.content);
+  if(row.media_hashes&&JSON.stringify(await Promise.all(images.map(bytesHash)))!==row.media_hashes)throw Error('x_image_changed');
   api.preflight?.(row.content,images.length);
   const identity=await api.identity();if(identity.username.toLowerCase()!=='endeks_haber'||identity.id!=='335502216')throw Error('x_wrong_account');
   if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');

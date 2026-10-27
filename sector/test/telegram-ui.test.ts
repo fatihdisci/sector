@@ -17,7 +17,8 @@ test('preview and ready main menus contain only the requested actions; contextua
  for(const template of ['circuit','info'] as const){const d={...draft,template,card_data:template==='info'?{report:{rows:[],footer:'',general:{day:'2026-10-23',time:'12:30',companies:0,lots:'0',amount:'0',missing:0,rows:[]}}}:{tickers:['ABCD']}};const m=draftKeyboard(id,1,docs,true,d,{},'more');assert(!labels(m).includes('Tasarımı değiştir'));assert(!labels(m).includes('Hücre düzelt'));assert.equal(labels(m).includes('CSV indir'),template==='info');}
 });
 test('published, API in-flight, manual and deferred menus never expose an inappropriate publish or manual correction',()=>{
- for(const state of [{published:true,api:'sent'},{api:'uncertain'},{api:'queued'},{published:true,manual:true}]){assert.deepEqual(labels(draftKeyboard(id,1,docs,true,draft,state)),['Yayın özeti','Diğer']);assert(!labels(draftKeyboard(id,1,docs,true,draft,state, 'more')).includes('Elle paylaştım'));}
+ for(const state of [{published:true,api:'sent'},{api:'uncertain'},{published:true,manual:true}]){assert.deepEqual(labels(draftKeyboard(id,1,docs,true,draft,state)),['Yayın özeti','Diğer']);assert(!labels(draftKeyboard(id,1,docs,true,draft,state, 'more')).includes('Elle paylaştım'));}
+ assert.deepEqual(labels(draftKeyboard(id,1,docs,true,draft,{api:'queued'})),['Paylaşımı iptal et','Diğer']);
  assert(labels(draftKeyboard(id,1,docs,true,draft,{published:true,manual:true},'more')).includes('Manuel saati düzelt'));assert(!labels(draftKeyboard(id,1,docs,true,draft,{published:true,api:'sent'},'more')).includes('İşareti geri al'));
  assert.deepEqual(labels(draftKeyboard(id,1,docs,true,draft,{deferred:true})),['Hazıra al','Diğer']);
 });
