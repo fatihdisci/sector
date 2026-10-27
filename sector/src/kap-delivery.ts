@@ -2,11 +2,12 @@ import {kapIndexMembership} from './kap/index-tags';
 // KAP -> complete evidence -> shared audited model -> existing single-photo sender.
 // No metadata-only messages. Collector and external delivery remain independent.
 import {KapStore} from './kap/store';
-import {scopedDecision,circuitOptOut} from './kap/rules';
+import {scopedDecision,circuitOptOut,TOPICS} from './kap/rules';
 import type {Disclosure,Indices} from './kap/parser';
 import {focusedDisclosureTickers} from './kap/ticker-scope';
 import {enqueueEvidence} from './ingest';
 import {quota} from './pipeline';
+import {telegram} from './telegram';
 import {retryKapModel} from './model-recovery';
 import type {Document,Env} from './types';
 export class KapDelivery {
@@ -33,7 +34,10 @@ export class KapDelivery {
  }
  async run():Promise<{state:string;id?:string}> {
   if(this.env.MODE!=='telegram_review')return {state:'disabled'};
-  const s=this.store,now=this.clock();s.set('telegram_delivery',{enabled:true,heartbeatAt:now});
+  const s=this.store,now=this.clock();
+  if(s.get<number>('selection_activation')===null)s.set('selection_activation',now);
+  const activation=s.get<number>('selection_activation')!;
+  s.set('telegram_delivery',{enabled:true,heartbeatAt:now});
   // A completed AI job is not a delivery receipt. Wait for the photo sender.
   for(const pending of s.rows<{queue_id:string;job_id:string}>("SELECT m.queue_id,m.job_id FROM kap_model_jobs m JOIN queue q ON q.id=m.queue_id WHERE q.state IN ('model_queued','needs_review','suppressed')")){
    const job=await this.env.DB.prepare('SELECT state,error,result_draft FROM model_jobs WHERE id=?').bind(pending.job_id).first<{state:string;error:string|null;result_draft:string|null}>();
@@ -48,7 +52,7 @@ export class KapDelivery {
   const row=s.transaction(()=>{
    s.run("UPDATE queue SET state='ready' WHERE state='preparing' AND id IN (SELECT queue_id FROM kap_model_jobs WHERE lease_until<?)",now);
    for(let i=0;i<100;i++){
-    const r=s.row<{id:string;metadata:string;kind:string}>(`SELECT q.id,q.kind,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 ORDER BY (julianday(d.published_at)*1440+CASE json_extract(d.decision,'$.indexTier') WHEN 30 THEN 8 WHEN 100 THEN 4 ELSE 0 END) DESC,q.id LIMIT 1`,now);
+    const r=s.row<{id:string;metadata:string;kind:string;created_at:number}>(`SELECT q.id,q.kind,q.created_at,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 ORDER BY q.available_at ASC,q.id LIMIT 1`,now);
     if(!r)return null;const d=JSON.parse(r.metadata) as Disclosure;
     if(this.gate(r.id,r.kind)!=='allow')continue;
     s.run("UPDATE queue SET state='preparing' WHERE id=?",r.id);
@@ -66,6 +70,34 @@ export class KapDelivery {
    return {state:s.row<{n:number}>("SELECT COUNT(*) n FROM queue WHERE state='needs_review'")!.n?'needs_review':'idle'};
   }
   try{
+   if(row.created_at>activation){
+   let preview=await this.env.DB.prepare('SELECT id,state FROM kap_previews WHERE queue_id=?').bind(row.id).first<{id:string;state:string}>();
+   const topics=s.get<unknown>('selection_auto_topics')??[];
+   if(!Array.isArray(topics)||topics.some(t=>!TOPICS.includes(t))||new Set(topics).size!==topics.length)throw Error('kap_auto_topics_invalid');
+   if(!preview&&topics.length&&this.members(row.id).every(d=>scopedDecision(d,s.prefs(),s.get<Indices>('indices'),now).topics.some(t=>topics.includes(t)))){
+    await this.env.DB.prepare("INSERT OR IGNORE INTO kap_previews(queue_id,id,state,selected_at) VALUES(?,?,'selected',?)").bind(row.id,crypto.randomUUID(),now).run();
+    preview=await this.env.DB.prepare('SELECT id,state FROM kap_previews WHERE queue_id=?').bind(row.id).first<{id:string;state:string}>();
+   }
+   if(!preview){
+    const id=crypto.randomUUID();
+    const claim=await this.env.DB.prepare("INSERT OR IGNORE INTO kap_previews(queue_id,id,state) VALUES(?,?,'sending')").bind(row.id,id).run();
+    if(claim.meta.changes){
+     const members=this.members(row.id);
+     const lines=members.map(d=>`${d.company||'Şirket belirtilmemiş'}\n${d.title}\n${d.url}`).join('\n\n');
+     if(members.some(d=>!/^https:\/\/www\.kap\.org\.tr\/tr\/Bildirim\/\d+$/.test(d.url)))throw Error('kap_source_invalid');
+     try{
+      const sent=await telegram(this.env,'sendMessage',new URLSearchParams({chat_id:this.env.TELEGRAM_CHAT_ID!,text:lines,reply_markup:JSON.stringify({inline_keyboard:[[{text:'Hazırla',callback_data:`kap:prepare:${id}`}]]})}));
+      if(!Number.isSafeInteger(sent.message_id))throw Error('kap_preview_uncertain');
+      await this.env.DB.prepare("UPDATE kap_previews SET state='sent',message_id=? WHERE id=? AND state='sending'").bind(Number(sent.message_id),id).run();
+     }catch(e){await this.env.DB.prepare("UPDATE kap_previews SET state='uncertain' WHERE id=? AND state='sending'").bind(id).run();}
+    }
+    preview=await this.env.DB.prepare('SELECT id,state FROM kap_previews WHERE queue_id=?').bind(row.id).first<{id:string;state:string}>();
+   }
+   if(preview?.state!=='selected'){
+    s.run("UPDATE queue SET state='ready',available_at=? WHERE id=? AND state='preparing'",now+5000,row.id);
+    return {state:['uncertain','sending'].includes(preview?.state??'')?'needs_review':'awaiting_selection',id:row.id};
+   }
+   }
    // A frozen circuit group is one event. Read every member from the official
    // full-text reader; metadata is never substituted for missing evidence.
    const members=this.members(row.id).filter(d=>this.allowed(d,row.kind)),docs:Document[]=[];
@@ -85,7 +117,7 @@ export class KapDelivery {
    const eligibility=this.gate(row.id,row.kind);if(eligibility!=='allow')return{state:eligibility==='hold'?'policy_review':'suppressed',id:row.id};if(s.row<{state:string}>('SELECT state FROM queue WHERE id=?',row.id)?.state==='suppressed')return{state:'suppressed',id:row.id};
    if(row.kind==='circuit'&&members.some(d=>!docs.some(doc=>doc.official&&doc.source_id==='kap'&&doc.url===d.url)))throw Error('kap_group_evidence_missing');
    if(!await quota(this.env,'kap-ai-budget')){s.run("UPDATE queue SET state='ready',available_at=? WHERE id=?",now+1800_000,row.id);return {state:'budget_wait',id:row.id};}
-   const jobId=await enqueueEvidence(this.env,docs,'kap');
+   const jobId=await enqueueEvidence(this.env,docs,'kap','',row.created_at>activation?row.id:undefined);
    s.transaction(()=>{s.run('UPDATE kap_model_jobs SET job_id=?,lease_until=0,last_error=NULL WHERE queue_id=?',jobId,row.id);s.run("UPDATE queue SET state='model_queued' WHERE id=? AND state='preparing'",row.id);});
    return {state:'model_queued',id:row.id};
   }catch(e){

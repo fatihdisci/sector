@@ -46,6 +46,13 @@ async function webhook(request:Request,env:Env):Promise<Response> {
  }
  const cb=update.callback_query as {id:string;data:string;from:{id:number};message?:{message_id:number;chat:{id:number;type:string}}}|undefined;
  if(!cb||!cb.message||!isOwner(env,String(cb.from?.id),String(cb.message.chat?.id),cb.message.chat?.type))return json({ok:true});
+ const kapPrepare=cb.data?.match(/^kap:prepare:([a-f0-9-]{36})$/);
+ if(kapPrepare){
+  const changed=await env.DB.prepare("UPDATE kap_previews SET state='selected',selected_at=? WHERE id=? AND message_id=? AND state='sent'").bind(Date.now(),kapPrepare[1],cb.message.message_id).run();
+  const prior=await env.DB.prepare("SELECT state FROM kap_previews WHERE id=? AND message_id=?").bind(kapPrepare[1],cb.message.message_id).first<{state:string}>();
+  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:changed.meta.changes||prior?.state==='selected'?'Hazırlama isteği alındı.':'Bu düğme kullanılamıyor.'})).catch(()=>{});
+  return json({ok:true});
+ }
  const menu=await cardMenuCallback(env,cb.data,cb.message.message_id);if(menu!==null){await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,...(menu?{text:menu}:{})}));return json({ok:true});}
  const publication=cb.data?.match(/^dp:(mark|undo|defer|time):([a-f0-9-]{36}):(\d{1,6})$/);
  if(publication){

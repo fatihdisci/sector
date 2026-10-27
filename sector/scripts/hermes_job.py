@@ -4,6 +4,7 @@ Run with the existing Hermes virtualenv Python. Secrets never cross into
 Cloudflare: only the resulting draft and audit are returned to our bridge.
 """
 import contextlib, inspect, io, json, os, pathlib, sys, time, subprocess, base64, re
+from usage_metrics import instrument_agent
 
 def runtime(home):
     profile=pathlib.Path(home).resolve()
@@ -50,6 +51,7 @@ def call(job,instructions,payload):
         request_overrides={'max_output_tokens':8000})
     if agent.model!=job['model'] or agent.provider!='openai-codex' or getattr(agent,'tools',[]) or getattr(agent,'_fallback_chain',[]) or getattr(agent,'_credential_pool',None) or getattr(agent,'compression_enabled',True):raise RuntimeError('unsafe_agent_configuration')
     if hasattr(agent.client,'with_options'):agent.client=agent.client.with_options(max_retries=0)
+    instrument_agent(agent, job)
     history=[]
     images=[p for d in job.get('documents',[]) for p in d.get('images',[])]
     if len(images)>20:raise RuntimeError('source_image_limit')
@@ -121,18 +123,18 @@ def prepare_draft(draft,documents):
 def main(job):
     if job.get('provider')!='openai-codex' or job.get('model')!='gpt-6-luna' or job.get('effort')!='high' or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
     instructions=job['prompt']+'\nYalnız aşağıdaki şemaya uyan JSON nesnesini döndür, başka çıktı yazma.\n'+json.dumps(job['schema'],ensure_ascii=False)
-    draft=call(job,instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_validation_issues':job.get('previous_validation_issues',[])})
+    draft=call({**job,'metric_stage':'generate'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_validation_issues':job.get('previous_validation_issues',[])})
     draft=prepare_draft(draft,job['documents'])
     if job.get('deadline',0)<time.time():raise RuntimeError('job_expired')
-    audit=call(job,job['audit_prompt'],{'documents':job['documents'],'draft':draft})
+    audit=call({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
     calls=2
     layout_issues=presentation_issues(draft,job.get('editorial_policy'))+deterministic_issues(draft,job['documents'])
     if layout_issues:audit={'supported':False,'issues':list(audit.get('issues',[]))+layout_issues}
     if audit.get('supported') is not True or audit.get('issues'):
         if job.get('deadline',0)<time.time()+90:raise RuntimeError('repair_budget_expired')
-        draft=call(job,instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_draft':draft,'required_corrections':audit.get('issues',[])})
+        draft=call({**job,'metric_stage':'repair'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_draft':draft,'required_corrections':audit.get('issues',[])})
         draft=prepare_draft(draft,job['documents'])
-        audit=call(job,job['audit_prompt'],{'documents':job['documents'],'draft':draft})
+        audit=call({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
         calls=4
         layout_issues=presentation_issues(draft,job.get('editorial_policy'))+deterministic_issues(draft,job['documents'])
         if layout_issues:audit={'supported':False,'issues':list(audit.get('issues',[]))+layout_issues}
