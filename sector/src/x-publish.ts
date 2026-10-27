@@ -4,6 +4,7 @@ import {preparePublication,snapshotStatement} from './publication-snapshot';
 import {refreshPublicationCard,publicationSummary} from './publication-assistant';
 import {postText} from './editorial';
 import {telegram} from './telegram';
+import twitter from 'twitter-text';
 import type {DraftRow} from './pipeline';
 import type {Env} from './types';
 export const X_LIMIT=20;
@@ -40,9 +41,11 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
  }
  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:callbackId,text,show_alert:'true'})).catch(()=>{});
 }
-export interface XTransport {identity():Promise<{id:string;username:string}>;upload(png:Uint8Array):Promise<string>;post(text:string,mediaId:string|string[]):Promise<string>;}
-export class XPostUncertain extends Error {constructor(public remoteId:string){super('x_post_uncertain');}}
-export class XHttpError extends Error {constructor(public status:number,public reason?:'long_text_rejected'){super(reason?'x_'+reason:'x_http_'+status);}}
+export interface XTransport {preflight?(text:string,imageCount:number):void;identity():Promise<{id:string;username:string}>;upload(png:Uint8Array):Promise<string>;post(text:string,mediaId:string|string[]):Promise<string>;}
+export interface XDiagnostic {stage:'create'|'readback'|'pre_submit';http_status?:number;codes?:number[];categories?:string[];shape?:Record<string,boolean>;media_ids?:string[];weighted_length?:number;}
+export class XPostUncertain extends Error {constructor(public remoteId:string,public diagnostic?:XDiagnostic){super('x_post_uncertain');}}
+export class XHttpError extends Error {constructor(public status:number,public reason?:'long_text_rejected',public diagnostic?:XDiagnostic){super(reason?'x_'+reason:'x_http_'+status);}}
+export class XBridgeError extends Error {constructor(message:string,public diagnostic?:XDiagnostic){super(message);}}
 // Must be called by a separate consumer. An interrupted POST is never replayed.
 export async function publishX(env:Env,api:XTransport,clock=Date.now){
  if(!xEnabled(env))return;
@@ -51,15 +54,16 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
  await env.DB.prepare("UPDATE x_posts SET state='expired',error='day_changed' WHERE state='queued' AND day!=?").bind(xDay(clock())).run();
  const row=await env.DB.prepare("SELECT * FROM x_posts WHERE state='queued' ORDER BY created_at LIMIT 1").first<{id:string;draft_id:string;revision:number;content:string;media_key:string;day:string}>();if(!row)return;
  const claimed=await env.DB.prepare("UPDATE x_posts SET state='uploading',started_at=? WHERE id=? AND state='queued'").bind(clock(),row.id).run();if(!claimed.meta.changes)return;
- let posting=false,remote:string|null=null;
+ let posting=false,remote:string|null=null;const mediaIds:string[]=[];
  try{
   const draft=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
-  const identity=await api.identity();if(identity.username.toLowerCase()!=='endeks_haber'||identity.id!=='335502216')throw Error('x_wrong_account');
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
   const {images}=await readMedia(env,row.media_key,draft.content);
+  api.preflight?.(row.content,images.length);
+  const identity=await api.identity();if(identity.username.toLowerCase()!=='endeks_haber'||identity.id!=='335502216')throw Error('x_wrong_account');
   if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
-  const hashes=await Promise.all(images.map(bytesHash)),snapshot=await preparePublication(env,row.draft_id,row.revision),mediaIds:string[]=[];
+  const hashes=await Promise.all(images.map(bytesHash)),snapshot=await preparePublication(env,row.draft_id,row.revision);
   for(const image of images){const mediaId=await api.upload(image);if(!/^\d+$/.test(mediaId)||mediaIds.includes(mediaId))throw Error('x_media_response_invalid');mediaIds.push(mediaId);}
   const latest=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!latest||!xDraftEligible(latest,row.revision,row.media_key,clock())||xDay(clock())!==row.day)throw Error('x_stale_draft');
@@ -75,11 +79,16 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const uncertain=posting&&!(e instanceof XHttpError&&[400,401,402,403,404,413,422,429].includes(e.status));
   const error=e instanceof XHttpError?e.message:e instanceof Error&&/^x_[a-z_]+$/.test(e.message)?e.message:'x_request_failed';
   await env.DB.prepare('UPDATE x_posts SET state=?,error=?,finished_at=?,remote_id=? WHERE id=?').bind(uncertain?'uncertain':'failed',error,clock(),e instanceof XPostUncertain?e.remoteId:remote,row.id).run();
+  const supplied=e instanceof XHttpError||e instanceof XPostUncertain||e instanceof XBridgeError?e.diagnostic:undefined;
+  const diagnostic:XDiagnostic=supplied??{stage:posting?'create':'pre_submit',categories:[error==='x_bridge_timeout'?'timeout':'unavailable']};
+  diagnostic.media_ids=mediaIds;
+  diagnostic.weighted_length=twitter.parseTweet(row.content).weightedLength;
+  await env.DB.prepare("INSERT INTO system_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('x_diagnostic:'+row.id,JSON.stringify(diagnostic)).run().catch(()=>{});
  }
  const result=await env.DB.prepare('SELECT state,remote_id,error FROM x_posts WHERE id=?').bind(row.id).first<{state:string;remote_id:string;error:string}>();
  if(result?.state==='sent')await refreshPublicationCard(env,row.draft_id).catch(()=>{});
  const count=await xCount(env);
- const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
+ const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_long_post_capability_required'?'Bu metin uzun gönderi gerektiriyor. Hesap yetkisi açıkça yapılandırılmadan görsel yüklenmedi veya gönderim yapılmadı.':result?.error==='x_long_post_media_unsupported'?'Uzun gönderi yolu bu bağlantıda yalnız tek görsel destekliyor; yükleme veya gönderim yapılmadı.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
  await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text})).catch(()=>{});
 }
 

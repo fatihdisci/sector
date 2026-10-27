@@ -30,6 +30,7 @@ export interface Env {
   KAP_REPORT?:(kind:'circuit'|'buyback'|'general_buyback',at:number,preferences?:OutputPreferences)=>Promise<{draft:Draft;documents:Document[]}>;
   RENDER_REPORT?:(svg:string)=>Promise<Uint8Array>;
   X_PUBLISH_ENABLED?:string;
+  X_LONG_NOTE_ENABLED?:string;
   DB:D1Database; MEDIA:R2Bucket;
   MODE:'dry_run'|'telegram_review';
   ADMIN_TOKEN?:string; BRIDGE_TOKEN?:string; AI_MODEL:string; AI_EFFORT:'low';

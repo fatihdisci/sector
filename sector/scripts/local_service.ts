@@ -106,7 +106,7 @@ async function xAccountReportLoop(){let nextPoll=0;while(!stopping()){
 }}
 async function designLoop(){while(!stopping()){try{await redesignOne(env,png);}catch(e){await status('design_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(1000);}}
 async function xLoop(){while(!stopping()){try{
- if(await tweetkitReady()){env.X_PUBLISH_ENABLED='true';await publishX(env,tweetkitClient());await refreshXButton(env);}else env.X_PUBLISH_ENABLED=undefined;
+ if(await tweetkitReady()){env.X_PUBLISH_ENABLED='true';await publishX(env,tweetkitClient({longNotesEnabled:process.env.X_LONG_NOTE_ENABLED==='true'}));await refreshXButton(env);}else env.X_PUBLISH_ENABLED=undefined;
  }catch{env.X_PUBLISH_ENABLED=undefined;}await pause(2000);}}
 async function deliveryLoop(){while(!stopping()){try{await deliver(env);}catch(e){await status('delivery_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function kapLoop(){
