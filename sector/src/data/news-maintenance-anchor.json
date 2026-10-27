@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery. Follow-up owner report: 18:11 Taslak doğrulanamadı, Yine hata var. Scope: preserve alphanumeric broker identities and safe model failure-stage diagnostics, no forced production retry. Owner follow-up: Yine olmadı. Verified submit failure UNIQUE drafts.event_key for same-day market snapshots; preserve snapshot identity and existing idempotency. Recover only the owner-requested audited failed close, with no new model call or X publication. Follow-up direct owner request: SermayeBorsası messages and especially theoretical matching must arrive sooner. Scope: 15-second discovery, immediate single-message previews and serialized channel delivery; no filter, digest, KAP or model preference change. Follow-up direct owner request: change Endeks Haber model and visual evidence analysis to gpt-6.1-terra with low reasoning, retaining existing Hermes profile and safeguards.",
-  "recorded_at": 1793057011077,
+  "approval_source": "Owner live-transition approval relayed from conversation 01a16797-9b60-72ba-879f-e236fd1d3028: Sentinel_a5ed74cb32408191b71851a8c71909ee — son konuşmalara da bak codexteki. sonra canlıya alabiliriz. Scope: latest reviewed 518-test market-summary design and channel programme for subsequent content only; no historical content replay or test delivery. Existing filter/digest/KAP and photo work preserved. Follow-up direct owner request in this chat: yine hata verdi 17:00 mesajının içerik oluşturma isteği ama sanırım o sırada canlıya alınmamıştı daha kontrol et. Includes evidenced legacy-reader compatibility and graph-axis context clarification; no forced retry or test delivery. Follow-up owner report: 18:11 Taslak doğrulanamadı, Yine hata var. Scope: preserve alphanumeric broker identities and safe model failure-stage diagnostics, no forced production retry. Owner follow-up: Yine olmadı. Verified submit failure UNIQUE drafts.event_key for same-day market snapshots; preserve snapshot identity and existing idempotency. Recover only the owner-requested audited failed close, with no new model call or X publication. Follow-up direct owner request: SermayeBorsası messages and especially theoretical matching must arrive sooner. Scope: 15-second discovery, immediate single-message previews and serialized channel delivery; no filter, digest, KAP or model preference change. Follow-up direct owner request: change Endeks Haber model and visual evidence analysis to gpt-6.1-terra with low reasoning, retaining existing Hermes profile and safeguards. Direct owner request in this conversation: çöz bunu daha bir sürü ieçrik oluşturacağız bu şekilde; sırayı temizle. sırada gereksiz bir bekleme var şu an. Bunları çözmen lazım. Scope: channel request revision, reliable processing and feedback; preserve active filter, schedule, KAP, X policy and other existing preferences.",
+  "recorded_at": 1793085350839,
   "rule": "investor-v6",
   "catalog": "kap-equities-2026-10-25-v3-d35b3b466e3b",
   "scope": "2e6c4b19777387da469a60d6cfa411d4a4d09b6411e2b8a16c0ee1fb58473056",
@@ -22,7 +22,8 @@
   },
   "parent_state_hash": "2ac447bef85fd05ac6500c74c393419a985a63dce2f8d69c5531f457f1a6288c",
   "runtime_files": {
-    "src/channel-market-preview.ts": "3b6a312363d7c4082e2a28084a182800b08bfed8051acf80ab5db7a50bfdf72f",
+    "src/dedupe.ts": "b666a1523e1540dd35105e3caeffcc33d018fec724d9e5962c19a0a0a6e3df39",
+    "src/channel-market-preview.ts": "29aa7b5f347371fb834a9746f8772ad6a45ae80836a4ab59ab17869c47739b23",
     "src/channel-programme.ts": "b6e587e61c049e114334996262c55ce7e91017c056db30dcdb06ae67e1bef45c",
     "src/market-overview.ts": "b989f0f0c17f708427c29a64025f90863fee44510adc9b2987099451a90f9ac3",
     "src/market-overview-types.ts": "8f925f6d552c1276f23621d42d127f2deca75b467bd1caad0ef16605624da0af",
@@ -32,7 +33,7 @@
     "src/card-redesign.ts": "78ca7e2aea5b771f562c5b980dd1b8624be63348947ce80bbf200a2251019a52",
     "src/editor-tools.ts": "e5ab690277b0de30a4795da8aab2e104c6ec9e9ef08b58dfbd14f1f7e3e2c3c6",
     "src/telegram-ui.ts": "cd6308f3830767db5745325563e8c41f11b73f760418e4fbf3dd50c11910d0cc",
-    "scripts/image_vision.py": "933edb3c5030fa1a5775b1fde324bcc46ec6a1da5f2b0f7170562d84ff04ece4",
+    "scripts/image_vision.py": "9abb836ba1534f8e17f36f692d1129aead5550166ac39b3d2c1bbd42c04f3a31",
     "src/news-routing.ts": "8789adfc4c1ddca4b784b7d68e155c7ae3aca6eec294f176aa394f974a802361",
     "src/news-company-catalog.ts": "55f8d6545506ad75af30f1d04a6efdedb1d89d75b54ad38410e3f2aab7a832f2",
     "src/newsroom.ts": "0a0740dcbe47d1a6d9e2ea4ace552fccd558c48697c699d0e98d0f01116db65d",
@@ -44,8 +45,8 @@
     "src/article.ts": "997687f537f7a1864065a04219eeb078bd8994e3b0ed8ed508045a22e267b3db",
     "src/gallery-range.ts": "feda2b615823b2f703ffc9886165f48fcae466d9941c938fb0ccd12416923a2c",
     "src/gallery-save.ts": "4df703ea294874c8299ed32d678d18a3a975a683c427b8b26fd02db1f275f823",
-    "src/pipeline.ts": "9259d5358b48ea5d66aca96b89fd35a2eee64912307ef24957f9006cfc3caa42",
-    "src/news-inbox.ts": "344a5473832d51924aa04a6ec3e7dde96b43b636f0d1d3f16c459d70dcc39267",
+    "src/pipeline.ts": "93e4ed860d6a05e685dfb2159fcb447ef353c8d9ba5bb117bc2480eb158a4b37",
+    "src/news-inbox.ts": "0b1c55bdb19f805a9672a874173594f9449ac5cc954c71010b817e1f2c794912",
     "src/report-card.ts": "032510e21be79bf04710889e9c42352ff61d25609c51850ccc9746815fe8a4c2",
     "src/types.ts": "a19262015d3a697506317cd6eba6e5c33d78bae29a7339b8434a499811b4939a",
     "src/market-time.ts": "91e48c07859004f470e7436120b58c4b65d3f6229f6f94fdf8ada9a43679ad56",
@@ -57,7 +58,6 @@
     "src/bridge.ts": "231afadd176eb5efda6e98956890e366d40f9f4c677b70449d4fc29d7bc6cfd3",
     "src/telegram-channel.ts": "c0340435691652f4f82daedc88e993d5ca30631dfe0b06a319d51938ebcde718",
     "scripts/telegram_channel.py": "5f99b1cc66a638429fbcf6234263ffac7df2b7d5ad2d4e806a73233e0ab88f62",
-    "src/data/bist-equity-session-2026.json": "7b513388a0bf8448995d81ea47a17a1594981cd7e5ccfade04c3c47426d86c37",
-    "src/dedupe.ts": "b666a1523e1540dd35105e3caeffcc33d018fec724d9e5962c19a0a0a6e3df39"
+    "src/data/bist-equity-session-2026.json": "7b513388a0bf8448995d81ea47a17a1594981cd7e5ccfade04c3c47426d86c37"
   }
 }
