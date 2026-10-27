@@ -89,6 +89,14 @@ class StagedInstallerTests(unittest.TestCase):
             receipt=__import__('json').loads((i.backup/'rollback.json').read_text())
             self.assertTrue(any(x['live'].endswith('/tweetkit-venv') and x['existed'] for x in receipt['paths']))
 
+    def test_news_plist_enables_established_long_posts(self):
+        import plistlib
+        if self.__class__.__name__ == 'CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));i.install(update=True)
+            env=plistlib.loads(i.plist.read_bytes())['EnvironmentVariables']
+            self.assertEqual(env.get('X_LONG_NOTE_ENABLED'),'true')
+
     def test_normal_install_refuses_existing_service_before_preparing(self):
         with tempfile.TemporaryDirectory() as tmp:
             i=self.setup_installer(Path(tmp))
@@ -114,6 +122,7 @@ class CollectorInstallerTests(StagedInstallerTests):
             i=self.setup_installer(Path(tmp));i.install(update=True)
             plist=plistlib.loads(i.plist.read_bytes())
             self.assertEqual(plist['Label'],'com.sectorhaber.kap')
+            self.assertNotIn('X_LONG_NOTE_ENABLED',plist['EnvironmentVariables'])
             self.assertTrue(plist['ProgramArguments'][-1].endswith('/app/scripts/kap_service.ts'))
             self.assertEqual((i.runtime/'bin/pdf-ocr').read_text(),'old OCR')
             self.assertFalse(any(event.startswith('/usr/bin/xcrun') for event in i.events))

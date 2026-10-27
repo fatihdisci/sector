@@ -87,6 +87,8 @@ class Installer:
           'WorkingDirectory':str(self.runtime/'app'),'RunAtLoad':True,'KeepAlive':True,'ThrottleInterval':30,'ExitTimeOut':600,
           'EnvironmentVariables':{'HOME':str(pathlib.Path.home()),'PATH':str(pathlib.Path(self.node).parent)+':/opt/homebrew/bin:/usr/bin:/bin','NODE_NO_WARNINGS':'1','SECTOR_RELEASE_ID':self.release_id},
           'StandardOutPath':str(logs/'service.log'),'StandardErrorPath':str(logs/'service.error.log')}
+        # The owner's established long-post capability must survive news-service updates.
+        if not self.collector:payload['EnvironmentVariables']['X_LONG_NOTE_ENABLED']='true'
         (self.release/'service.plist').write_bytes(plistlib.dumps(payload))
     def record(self,state):
         self.backup.mkdir(parents=True,exist_ok=True,mode=0o700)
