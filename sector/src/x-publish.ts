@@ -7,7 +7,6 @@ import {telegram} from './telegram';
 import twitter from 'twitter-text';
 import type {DraftRow} from './pipeline';
 import type {Env} from './types';
-export const X_LIMIT=20;
 export const xDay=(ms=Date.now())=>new Date(ms+10800000).toISOString().slice(0,10);
 export const xEnabled=(env:Env)=>env.MODE==='telegram_review'&&env.X_PUBLISH_ENABLED==='true';
 export function xDraftEligible(d:{revision:number;state:string;expires_at:number;media_key:string|null;delivery_state:string;verification:string},revision:number,media:string|null,now=Date.now()):boolean{
@@ -19,7 +18,7 @@ export async function xCount(env:Env,day=xDay()){
 export async function requestX(env:Env,data:string,messageId:number,callbackId:string){
  let text='';
  if(!xEnabled(env))text='X paylaşımı henüz etkin değil.';
- else if(data==='xcount')text=`Bugün kullanılan / ayrılan: ${await xCount(env)}/${X_LIMIT}. Sayaç İstanbul saatiyle 00:00’da yenilenir.`;
+ else if(data==='xcount')text=`Bugün gönderilen, sıradaki veya sonucu belirsiz X işlemi: ${await xCount(env)}. Sayaç İstanbul saatiyle 00:00’da yenilenir.`;
  else {
   const match=data.match(/^xpost:([a-f\d-]{36}):(\d{1,6})$/);
   const row=match?await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(match[1]).first<DraftRow&{delivery_state:string}>():null;
@@ -28,14 +27,13 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   else {
    const result=await env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
     SELECT ?,?,?,?,'queued',?,?,?,? WHERE
-    (SELECT COUNT(*) FROM x_posts WHERE day=? AND state IN ('queued','uploading','posting','sent','uncertain'))<?
-    AND NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')`)
-    .bind(crypto.randomUUID(),row.id,row.revision,xDay(),postText(JSON.parse(row.content)),row.media_key,Date.now(),env.TELEGRAM_UPDATE_ID??null,xDay(),X_LIMIT,row.id,row.id).run();
-   if(result.meta.changes){const s=await publicationSummary(env);text=`Sıraya alındı. X ${await xCount(env)}/${X_LIMIT}. ${s.note}`;}
+    NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')`)
+    .bind(crypto.randomUUID(),row.id,row.revision,xDay(),postText(JSON.parse(row.content)),row.media_key,Date.now(),env.TELEGRAM_UPDATE_ID??null,row.id,row.id).run();
+   if(result.meta.changes){const s=await publicationSummary(env);text=`Sıraya alındı. Bugünkü X işlemleri: ${await xCount(env)}. ${s.note}`;}
    else {
     const manual=await env.DB.prepare("SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published'").bind(row.id).first();
     const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();
-    text=manual?'Bu içerik elle paylaşıldı olarak işaretli. Tekrar gönderilmedi.':old?old.state==='sent'?'Bu içerik X’te zaten paylaşıldı.':old.state==='uncertain'?'Önceki gönderimin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmiyor; X hesabını kontrol et.':'Bu içerik zaten paylaşım sırasında.':`Günlük paylaşım bütçesi doldu (${X_LIMIT}/${X_LIMIT}). Yarın 00:00’a kadar paylaşım durduruldu.`;
+    text=manual?'Bu içerik elle paylaşıldı olarak işaretli. Tekrar gönderilmedi.':old?old.state==='sent'?'Bu içerik X’te zaten paylaşıldı.':old.state==='uncertain'?'Önceki gönderimin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmiyor; X hesabını kontrol et.':'Bu içerik zaten paylaşım sırasında.':'Bu paylaşım isteği daha önce işlenmiş; yeni bir işlem başlatılmadı.';
    }
   }
  }
@@ -88,7 +86,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
  const result=await env.DB.prepare('SELECT state,remote_id,error FROM x_posts WHERE id=?').bind(row.id).first<{state:string;remote_id:string;error:string}>();
  if(result?.state==='sent')await refreshPublicationCard(env,row.draft_id).catch(()=>{});
  const count=await xCount(env);
- const text=result?.state==='sent'?`X’te paylaşıldı. Bugün ${count}/${X_LIMIT}.\nhttps://x.com/endeks_haber/status/${result.remote_id}${count>=X_LIMIT?'\nGünlük paylaşım bütçesi doldu. Yeni paylaşım yarın 00:00’da açılır.':''}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_long_post_capability_required'?'Bu metin uzun gönderi gerektiriyor. Hesap yetkisi açıkça yapılandırılmadan görsel yüklenmedi veya gönderim yapılmadı.':result?.error==='x_long_post_media_unsupported'?'Uzun gönderi yolu bu bağlantıda yalnız tek görsel destekliyor; yükleme veya gönderim yapılmadı.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Kota kullanılmadı; sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
+ const text=result?.state==='sent'?`X’te paylaşıldı. Bugünkü X işlemleri: ${count}.\nhttps://x.com/endeks_haber/status/${result.remote_id}`:result?.state==='uncertain'?`X gönderiminin sonucu belirsiz. Çift paylaşımı önlemek için tekrar gönderilmeyecek; hesabını kontrol et.${result.remote_id?' https://x.com/endeks_haber/status/'+result.remote_id:''}`:result?.error==='x_long_text_rejected'?'X bu hesap/API erişimi için uzun metni kabul etmedi. Metin kesilmedi veya zincire çevrilmedi. Uzun gönderi abonelik/erişim hakkını kontrol et; otomatik tekrar yapılmayacak.':result?.error==='x_http_402'?'X kredi bakiyesi yetersiz. Kredi yükledikten sonra Paylaş düğmesine yeniden basabilirsin.':result?.error==='x_long_post_capability_required'?'Bu metin uzun gönderi gerektiriyor. Hesap yetkisi açıkça yapılandırılmadan görsel yüklenmedi veya gönderim yapılmadı.':result?.error==='x_long_post_media_unsupported'?'Uzun gönderi yolu bu bağlantıda yalnız tek görsel destekliyor; yükleme veya gönderim yapılmadı.':result?.error==='x_keychain_unavailable'||result?.error==='x_keychain_invalid'?'Ana X hesabının Keychain oturumu kullanılamıyor. Oturum erişimini kontrol et; resmî API kullanılmadı.':result?.error==='x_wrong_account'||result?.error==='x_identity_unverified'?'Ana X hesabının kimliği doğrulanamadı; paylaşım yapılmadı.':`X paylaşımı yapılamadı (${result?.error}). Sorunu giderdikten sonra yeniden Paylaş’a basabilirsin.`;
  await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text})).catch(()=>{});
 }
 
