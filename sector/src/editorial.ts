@@ -1,3 +1,4 @@
+import {akdProse} from './akd-tweet';
 import twitter from 'twitter-text';
 import {hashtagTickers,circuitWithoutRepeatedTickers} from './tweet-tickers';
 import {outputView,tweetListLimit} from './output-preferences';
@@ -273,7 +274,8 @@ function formattedPostText(d:Draft):string {
  if(clean.template!=='circuit'&&codes.length===1&&title.startsWith(codes[0]+' '))title=title.slice(codes[0].length+1).replace(/^./u,c=>c.toLocaleUpperCase('tr-TR'));
  const tags=new Set(codes.map(c=>'#'+c));
  if(clean.template==='circuit')title=circuitWithoutRepeatedTickers(title,allCodes);
- const body=clean.template==='circuit'?circuitWithoutRepeatedTickers(clean.body,allCodes):clean.body;
+ if(clean.template==='akd'&&clean.tweet_style==='akd_single_ticker'&&codes.length===1)title=akdProse(title,codes[0]);
+ const body=clean.template==='circuit'?circuitWithoutRepeatedTickers(clean.body,allCodes):clean.template==='akd'&&clean.tweet_style==='akd_single_ticker'&&codes.length===1?akdProse(clean.body,codes[0]):clean.body;
  return [(leading?.[1]??'🚨')+' '+[...tags].join(' ')+'\n'+title,body,hashtagLine(clean.hashtags.filter(t=>!allCodes.some(c=>t.toUpperCase()==='#'+c)))].filter(Boolean).join('\n\n');
 }
 

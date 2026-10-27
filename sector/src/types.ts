@@ -18,6 +18,7 @@ export interface Claim {text:string;evidence:Evidence[];}
 export interface CardRow {label:string;value:string;}
 export interface CardData {overview?:import('./market-overview-types').MarketOverview;report?:{kind?:'range';circuit?:import('./circuit-selection').CircuitSelection;events?:{id:number;tickers:string[];published_at:string}[];buyback?:import('./buyback-types').BuybackTable;rows:CardRow[];footer:string;general?:{day:string;time:string;companies:number;lots:string;amount:string;missing:number;partial?:boolean;rows:{ticker:string;lots:string;price:string;amount:string;urls:string}[]}};buy_broker?:string;sell_broker?:string;broker?:string;ticker?:string;tickers?:string[];as_of?:string;buy?:CardRow[];sell?:CardRow[];holdings?:CardRow[];metrics?:CardRow[];}
 export interface Draft {
+  tweet_style?:'akd_single_ticker';
   output_preferences?:OutputPreferences;
   card_data?:CardData;
   headline:string;body:string;hashtags:string[];category:Category;importance:number;
