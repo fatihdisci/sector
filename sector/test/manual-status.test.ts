@@ -19,7 +19,7 @@ test('manual acknowledgement is sent once and delivery replaces the same message
   await e.DB.prepare("INSERT INTO articles(id,source_id,url,title,summary,published_at,first_seen) VALUES('a','s','https://www.ekonomim.com/test','Haber','','',?)").bind(now).run();
   await e.DB.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state,result_draft) VALUES('j','a','[]','h',?,'manual','complete','d')").bind(now).run();
   await e.DB.prepare("UPDATE manual_requests SET job_id='j',state='model_queued' WHERE update_id=10").run();
-  await e.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,state,created_at,expires_at,media_key) VALUES('d','e','f',?,?,'single','pending',?,?,'x.png')").bind(JSON.stringify(draft),JSON.stringify([{url:message.text}]),now,now+3600).run();
+  await e.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,state,created_at,expires_at,media_key) VALUES('d','e','f',?,?,'single','pending',?,?,'drafts/aaa/1.png')").bind(JSON.stringify(draft),JSON.stringify([{url:message.text}]),now,now+3600).run();
   await deliver(e);assert.deepEqual(calls.map(c=>c.method),['sendMessage','editMessageMedia']);assert.equal(calls[1].body.get('message_id'),'99');
   await runManual(e);assert.equal(calls.length,2);assert.equal((await e.DB.prepare('SELECT state FROM manual_requests WHERE update_id=10').first<{state:string}>())!.state,'complete');
  }finally{globalThis.fetch=original;}

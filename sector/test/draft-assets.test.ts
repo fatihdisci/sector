@@ -11,7 +11,7 @@ const docs=[{url:'https://example.com/news'}] as Document[];
 const draft={headline:'📢 Şirket yatırımını açıkladı',body:'A < B & C `metin` '.repeat(25),hashtags:['#Borsa','#BIST']} as Draft;
 async function fixture(){
  const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));
- await DB.prepare('INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,message_id,media_key) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,'e','f',JSON.stringify(draft),JSON.stringify(docs),'official',1,2,100,'draft.png').run();
+ await DB.prepare('INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,message_id,media_key) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,'e','f',JSON.stringify(draft),JSON.stringify(docs),'official',1,2,100,'drafts/aaa/1.png').run();
  return {DB,MODE:'telegram_review',TELEGRAM_USER_ID:'1',TELEGRAM_CHAT_ID:'1',TELEGRAM_BOT_TOKEN:'123:test',TELEGRAM_VERIFIED_BOT_ID:'123',TELEGRAM_WEBHOOK_SECRET:'test',MEDIA:{get:async()=>({arrayBuffer:async()=>new Uint8Array([137,80,78,71]).buffer})}} as unknown as Env;
 }
 async function press(env:Env,kind='text',update=1,user=1,revision=1,message=100){

@@ -7,13 +7,15 @@ export interface MediaSet {version:1;content_hash:string;pages:{key:string;sha25
 // read-only panel. The full nonce hash prevents competing jobs sharing a path.
 export async function revisionMediaKey(id:string,revision:number,nonce:string){return `drafts/${id}/${revision}${BigInt('0x'+await sha256(nonce)).toString().padStart(78,'0')}.png`;}
 export const bytesHash=async(b:Uint8Array)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b as BufferSource)),x=>x.toString(16).padStart(2,'0')).join('');
+const validMediaKey=(key:string)=>/^drafts\/[a-f0-9-]+\/[a-zA-Z0-9.-]+\.png$/.test(key);
 export async function mediaSet(env:Env,key:string,content?:string):Promise<MediaSet|null>{
  const r=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind('draft_media:'+key).first<{value:string}>();if(!r)return null;
  const s=JSON.parse(r.value) as MediaSet;
- if(s.version!==1||!Array.isArray(s.pages)||s.pages.length<1||s.pages.length>MAX_CARDS||s.pages[0].key!==key||new Set(s.pages.map(p=>p.key)).size!==s.pages.length||s.pages.some(p=>!/^drafts\/[a-f0-9-]+\/[a-zA-Z0-9.-]+\.png$/.test(p.key)||!/^[a-f0-9]{64}$/.test(p.sha256))||content!==undefined&&s.content_hash!==await sha256(content))throw Error('media_set_invalid');
+ if(s.version!==1||!Array.isArray(s.pages)||s.pages.length<1||s.pages.length>MAX_CARDS||s.pages[0].key!==key||new Set(s.pages.map(p=>p.key)).size!==s.pages.length||s.pages.some(p=>!validMediaKey(p.key)||!/^[a-f0-9]{64}$/.test(p.sha256))||content!==undefined&&s.content_hash!==await sha256(content))throw Error('media_set_invalid');
  return s;
 }
 export async function readMedia(env:Env,key:string,content?:string){
+ if(!validMediaKey(key))throw Error('media_set_invalid');
  const set=await mediaSet(env,key,content),images:Uint8Array[]=[];
  for(const page of set?.pages??[{key,sha256:''}]){const o=await env.MEDIA.get(page.key);if(!o)throw Error('draft_media_missing');const b=new Uint8Array(await o.arrayBuffer());if(set&&(b.length>5_000_000||b[0]!==137||b[1]!==80||await bytesHash(b)!==page.sha256))throw Error('media_set_invalid');images.push(b);}
  return {set,images};
