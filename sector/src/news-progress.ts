@@ -32,7 +32,7 @@ export function newsFailureNote(row:NewsProgress):string {
  let issues:string[]=[];try{const parsed=JSON.parse(row.review_issues??'[]');if(Array.isArray(parsed))issues=parsed.filter(x=>typeof x==='string');}catch{}
  if(sourceFailure){
   if(code==='owner_cancelled')return 'İstek durduruldu; içerik hazırlanmadı. Aynı düğmeyle yeniden isteyebilirsin.';
-  if(code==='image_vision_incomplete'||code==='image_vision_unverified')return 'Görseldeki veriler eksiksiz ve güvenilir okunamadı; içerik hazırlanmadı. Daha net bir görselle yeniden deneyebilirsin.';
+  if(code==='image_vision_incomplete'||code==='image_vision_unverified')return 'Görsel analizi veya veri doğrulaması tamamlanamadı; içerik hazırlanmadı. İstek durduruldu; aynı düğmeyle yeniden deneyebilirsin.';
   if(code.startsWith('gallery_'))return 'Galerinin sayfa ve tablo bütünlüğü doğrulanamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi. Kaynak düzeltildikten sonra yeniden deneyebilirsin.';
   return 'Kaynak metni veya görseli eksiksiz okunamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi.';
  }

@@ -1,5 +1,5 @@
 """Read owner-forwarded images without treating OCR or a bot as an official feed."""
-import hashlib,json,pathlib,re,subprocess,sys
+import hashlib,json,pathlib,re,subprocess,sys,time
 from decimal import Decimal
 from PIL import Image,ImageOps,ImageChops,ImageStat
 from read_pdf import ocr_text
@@ -25,7 +25,7 @@ def lot_value(raw):
     if not re.fullmatch(r'[-+]?(?:\d{1,3}(?:\.\d{3})+|\d+)',raw):raise ValueError('image_market_number_ambiguous')
     return raw+' lot'
 
-def recover_labels(blocks,image,ocr):
+def recover_labels(blocks,image,ocr,deadline=None):
     """Retry unread short cells using their real header pixels as OCR context.
 
     This adds no dictionary guesses. The original whole image remains the
@@ -56,14 +56,16 @@ def recover_labels(blocks,image,ocr):
             strip=Image.new('RGB',(sum(p.width for p in parts)+32,100),original.getpixel((0,0))[:3]);left=8
             for part in parts:strip.paste(part,(left,10));left+=part.width+8
             path=image.parent/f'label-{len(recovered)}.png';strip.save(path);path.chmod(0o600)
-        retry=subprocess.run([str(ocr),str(path)],capture_output=True,text=True,timeout=10,check=True)
+        remaining=10 if deadline is None else deadline-time.monotonic()
+        if remaining<=0:break
+        retry=subprocess.run([str(ocr),str(path)],capture_output=True,text=True,timeout=min(10,remaining),check=True)
         result=json.loads(retry.stdout);text=' '.join(b['text'] for b in result).strip()
         if text.upper().startswith('KURUM'):
             name=text[5:].strip()
             if re.fullmatch(r'[^\W\d_][\w .&’\'-]{0,59}',name):recovered.append({'text':name,'x':x[0],'y':y,'width':cuts[0]-x[0],'height':max(c['height'] for c in cells),'confidence':min(b['confidence'] for b in result)})
     return blocks+recovered
 
-def recover_numeric_cells(blocks,image,ocr):
+def recover_numeric_cells(blocks,image,ocr,deadline=None):
     """Re-read malformed AKD numeric cells from pixels, never strip OCR letters.
 
     Two enlarged crops must independently agree. Valid original values are not
@@ -92,7 +94,9 @@ def recover_numeric_cells(blocks,image,ocr):
                 crop=original.crop((0,int(hi*max(0,y-.008)),w,int(hi*min(1,y+.036)))).convert('RGB')
                 for scale in (3,4):
                     path=image.parent/f'numeric-{attempts}-{scale}.png';crop.resize((crop.width*scale,crop.height*scale),Image.Resampling.LANCZOS).save(path);path.chmod(0o600)
-                    retry=subprocess.run([str(ocr),str(path)],capture_output=True,text=True,timeout=10,check=True)
+                    remaining=10 if deadline is None else deadline-time.monotonic()
+                    if remaining<=0:return result
+                    retry=subprocess.run([str(ocr),str(path)],capture_output=True,text=True,timeout=min(10,remaining),check=True)
                     output=json.loads(retry.stdout);value=' '.join(b['text'] for b in sorted(output,key=lambda b:b.get('x',0)) if sum(b.get('x',0)>=v for v in cuts)==col).strip()
                     try:validate(value);candidates.append(value)
                     except ValueError:pass
@@ -205,18 +209,23 @@ def read_image(path,root,ocr):
     with Image.open(path) as original:original.convert('RGB').save(image)
     image.chmod(0o600)
     if image.stat().st_size>8_000_000:raise ValueError('image_size_limit')
+    deadline=time.monotonic()+6
     try:
-        raw=subprocess.run([str(ocr),str(image)],capture_output=True,text=True,timeout=45,check=True)
+        raw=subprocess.run([str(ocr),str(image)],capture_output=True,text=True,timeout=6,check=True)
         blocks=json.loads(raw.stdout)
     except (subprocess.SubprocessError, OSError, ValueError):
         blocks=[] # Pixel analysis can still read an image when OCR is unavailable.
     raw_text=ocr_text(blocks)
     layout=source_layout(blocks)
-    blocks=recover_labels(blocks,image,ocr)
-    blocks=recover_numeric_cells(blocks,image,ocr)
+    try:
+        blocks=recover_labels(blocks,image,ocr,deadline)
+        blocks=recover_numeric_cells(blocks,image,ocr,deadline)
+    except (subprocess.SubprocessError,OSError,ValueError):
+        pass # OCR repair is optional; pixel extraction still has the original.
     text=ocr_text(blocks)
     if len(text)>100_000:raise ValueError('image_text_limit')
-    parsed=institutional_passages(blocks) or market_passages(blocks)
+    try:parsed=institutional_passages(blocks) or market_passages(blocks)
+    except ValueError:parsed=None # Never let an OCR parse error veto visual reading.
     original={'id':'image_ocr_raw','text':'Yardımcı OCR metni; görseldeki konum ve etiket ilişkileri doğrudan görüntüden doğrulanmalıdır:\n'+raw_text}
     market,passages=parsed if parsed else (None,[original])
     body='\n\n'.join(p['text'] for p in passages)

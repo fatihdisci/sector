@@ -43,7 +43,7 @@ export function overviewPresentation(value:Draft,documents:Document[]):Draft{
  const index=documents.findIndex(isFullOverview);if(index<0||!['market','volume'].includes(value.template))return value;const o=parseMarketOverview(documents[index]),period=documents[index].market_editorial_context?.label;
  let headline='📊 '+(period==='Gün ortası'?'Gün ortasında BIST 100':period?period+' — BIST 100':'BIST 100')+': '+o.percent+' '+(o.direction==='down'?'ekside':'artıda');
  let body=`Endeks ${o.level} puanda. Hacim ${o.volume}.\n${o.breadth.up} hisse yükseldi, ${o.breadth.down} hisse geriledi.`;
- if(o.view==='opening'){headline='📊 Borsa güne '+(o.direction==='down'?'düşüşle':'yükselişle')+' başladı';body=`BIST 100, güne ${o.percent} ${o.direction==='down'?'düşüşle':'yükselişle'} ${o.level} puandan başladı. Puan farkı ${o.points} puan.`;}
+ if(o.view==='opening'){headline='📊 Borsa açılışı — BIST 100';body=`BIST 100: ${o.level} puan; ${o.percent} ${o.direction==='down'?'düşüş':'yükseliş'}. Puan farkı ${o.points} puan.`;}
  if(o.view==='first_moves'){headline='📊 Açılışın ilk anları';body='Yükselenler, düşenler ve hacim liderleri.';}
  if(o.view==='close')headline='📊 Gün sonu — BIST 100: '+o.percent+' '+(o.direction==='down'?'ekside':'artıda');
  const claims=overviewEvidence(o).map(p=>({text:p.text,evidence:[{document:index,passage:p.id,quote:p.text}]}));

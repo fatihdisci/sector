@@ -78,7 +78,7 @@ test('channel programme selects only opening metrics, first moves or close from 
   const ds=withOverviewEvidence(withMarketEditorialContext([d])),out=repairDraftStyle(raw,ds),o=out.card_data!.overview!;
   assert.equal(o.view,view);assert.deepEqual(marketTimeIssues(out,ds),[]);assert.deepEqual(numericIssues(out,ds),[]);assert.equal(validateDraft(out,ds).verification,'single_source_attributed');assert(twitter.parseTweet(postText(out)).valid);
   const svg=draftCards(out)[0];assert((await png(svg)).length>15000);assert(!svg.includes('Diğer'));assert(!svg.includes('20:00'));
-  if(view==='opening'){assert.equal(o.panels.length,0);assert.equal(o.brokers.length,0);assert(!svg.includes('HACİM'));assert(postText(out).includes('güne %1,01 düşüşle 11.004,37 puandan başladı'));}
+  if(view==='opening'){assert.equal(o.panels.length,0);assert.equal(o.brokers.length,0);assert(!svg.includes('HACİM'));assert(!svg.includes('BAŞLADI'));assert(!svg.includes('AÇILIŞ SEVİYESİ'));assert(postText(out).includes('11.004,37 puan; %1,01 düşüş'));assert(!/güne.*başladı/u.test(postText(out)));}
   if(view==='first_moves'){assert.deepEqual(o.panels.map(p=>p.key),['gainers','losers','volume']);assert.equal(o.brokers.length,0);for(const p of o.panels)for(const r of p.rows){assert(svg.includes('#'+r.label));assert(postText(out).includes('#'+r.label));}}
   if(view==='close'){assert.equal(out.card_headline,'Gün sonu');assert(!svg.includes('YÜKSELENLER'));assert(!svg.includes('DÜŞENLER'));}
  }

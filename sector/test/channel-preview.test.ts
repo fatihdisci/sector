@@ -1,6 +1,18 @@
 import{sha256}from'../src/utils/text';import test from'node:test';import assert from'node:assert/strict';import{readFile}from'node:fs/promises';import{localDatabase}from'../src/local-adapters';import{announceNews}from'../src/news-inbox';import{selectionRows}from'../src/newsroom';import{channelMarketPreviewSQL}from'../src/channel-market-preview';import type{Env}from'../src/types';
 async function fixture(){const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));const env={DB,MODE:'telegram_review',TELEGRAM_BOT_TOKEN:'123:test',TELEGRAM_VERIFIED_BOT_ID:'123',TELEGRAM_CHAT_ID:'1',TELEGRAM_USER_ID:'1'}as Env;await DB.prepare('insert into sources(id,config,enabled)values(?,?,1)').bind('sermaye-telegram',JSON.stringify({id:'sermaye-telegram',name:'Sermaye Borsası',official:false,minimum_score:999})).run();return env;}
 async function add(env:Env,id:string,caption:string,base=id,at=Date.now(),media='image',peer=2426639373){const articleUrl='https://t.me/SermayeBorsasi/'+base+'?v='+id,articleId=await sha256(articleUrl);const d={version:1,channel:'SermayeBorsasi',peer_id:peer,url:'https://t.me/SermayeBorsasi/'+base,captured_at:at,messages:[{text:caption,media}]};await env.DB.prepare('insert into articles(id,source_id,url,title,summary,published_at,first_seen,document)values(?,?,?,?,?,?,?,?)').bind(articleId,'sermaye-telegram',articleUrl,caption,'Borsa İstanbul piyasa tablosu. Değerler henüz okunmadı.',new Date().toISOString(),Math.floor(Date.now()/1000),JSON.stringify(d)).run();return articleId;}
+test('each channel table message has its own preview; only edits of the same message are suppressed',async()=>{
+ const env=await fixture(),old=globalThis.fetch;let sends=0;
+ globalThis.fetch=async()=>Response.json({ok:true,result:{message_id:++sends}});
+ try{
+  for(const [id,caption]of [['501','Teorik Eşleşme — 09:52'],['502','Piyasa Raporu — 09:55'],['503','Kurum AKD Özeti — 10:01'],['504','BIST 100 — 10:01'],['505','BIST 100 — 10:01']]){
+   await add(env,id,caption,id,Date.now()-1000);await announceNews(env,true);
+  }
+  assert.equal(sends,5);
+  await add(env,'504-edit','BIST 100 — 10:01','504');await announceNews(env,true);assert.equal(sends,5);
+  assert.equal((await env.DB.prepare('select count(*) n from news_cards where state=\'sent\'').first<any>()).n,5);
+ }finally{globalThis.fetch=old;}
+});
 test('recurring channel images deliver editor previews despite digest route; latest version only, no model/X, no digest duplicate or restart replay',async()=>{const env=await fixture(),old=globalThis.fetch,calls:URLSearchParams[]=[];
  await add(env,'old','📈 BIST 100 — 12:00','26421',Date.now()-1000);const fresh=await add(env,'new','📈 BIST 100 — 12:00','26421'),broker=await add(env,'broker','🏦 Kurum AKD Özeti — 12:01');
  globalThis.fetch=async(url,init)=>{assert.match(String(url),/sendMessage$/);calls.push(init!.body as URLSearchParams);return Response.json({ok:true,result:{message_id:100+calls.length}});};

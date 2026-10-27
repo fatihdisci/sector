@@ -93,4 +93,21 @@ class ImageReaderTests(unittest.TestCase):
         _,passages=market_passages(table()+[block('21 Ekim 2026',.2,.1)])
         self.assertIn('21 Ekim 2026',passages[0]['text']);self.assertNotIn('tarihi ve saati belirtilmemiş',passages[0]['text'])
 
+    def test_ocr_times_out_after_six_seconds_and_preserves_pixels_for_vision(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);p=root/'source.png';Image.new('RGB',(900,1080),'black').save(p)
+            with patch('read_image.subprocess.run',side_effect=subprocess.TimeoutExpired('ocr',6)) as run:
+                result=read_image(p,root/'evidence',root/'ocr')
+            self.assertEqual(run.call_args.kwargs['timeout'],6)
+            self.assertTrue(result['coverage']['complete']);self.assertTrue(pathlib.Path(result['images'][0]).exists())
+            self.assertNotIn('market_data',result)
+    def test_ocr_table_parse_failure_falls_back_to_original_visual(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);p=root/'source.png';Image.new('RGB',(900,1080),'black').save(p)
+            response=type('Result',(),{'stdout':'[]'})
+            with patch('read_image.subprocess.run',return_value=response),patch('read_image.institutional_passages',side_effect=ValueError('image_market_table_incomplete')):
+                result=read_image(p,root/'evidence',root/'ocr')
+            self.assertNotIn('market_data',result);self.assertTrue(pathlib.Path(result['images'][0]).exists())
+
 if __name__=='__main__':unittest.main()
