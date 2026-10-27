@@ -19,6 +19,8 @@ export function newsProgressNote(row:NewsProgress,paused=false,context:ProgressC
   return row.job_state==='retry_pending'?'Kontrollü yeniden deneme sırada; işleyicinin alması bekleniyor.':'İsteğin kaydedildi; işleyicinin alması bekleniyor.';
  }
  if(row.status==='needs_review')return newsFailureNote(row);
+ if(row.status==='queued'&&row.error==='bot_query_busy')return 'Telegram kaynak okuyucusu meşgul; istek kısa süre sonra yeniden denenecek.';
+ if(row.status==='queued'&&row.error==='channel_message_changed')return 'Kanal mesajı değişti; en güncel sürüm için kısa süre sonra yeniden denenecek.';
  if(row.status==='queued'&&row.error)return 'Kaynak okuma hatası oluştu; sınırlı yeniden deneme bekleniyor.';
  if(longWait)return 'Kaynak okuma beklenenden uzun sürdü; istek korunuyor. Tam metin veya görsel okuma sonucu bekleniyor.';
  return 'Haberin tam metni okunuyor.';
@@ -29,6 +31,8 @@ export function newsFailureNote(row:NewsProgress):string {
  // Use issue contents only for classification. They are never shown verbatim.
  let issues:string[]=[];try{const parsed=JSON.parse(row.review_issues??'[]');if(Array.isArray(parsed))issues=parsed.filter(x=>typeof x==='string');}catch{}
  if(sourceFailure){
+  if(code==='owner_cancelled')return 'İstek durduruldu; içerik hazırlanmadı. Aynı düğmeyle yeniden isteyebilirsin.';
+  if(code==='image_vision_incomplete'||code==='image_vision_unverified')return 'Görseldeki veriler eksiksiz ve güvenilir okunamadı; içerik hazırlanmadı. Daha net bir görselle yeniden deneyebilirsin.';
   if(code.startsWith('gallery_'))return 'Galerinin sayfa ve tablo bütünlüğü doğrulanamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi. Kaynak düzeltildikten sonra yeniden deneyebilirsin.';
   return 'Kaynak metni veya görseli eksiksiz okunamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi.';
  }
@@ -42,5 +46,6 @@ export function newsFailureNote(row:NewsProgress):string {
  if(row.status==='needs_review'||/^(?:source_|article_|pdf_|image_|channel_|vision_|empty_document)/.test(code))return 'Kaynak metni veya görseli eksiksiz okunamadı. Eksik veriden içerik üretilmedi; kaynak incelemesi gerekiyor.';
  if(['hermes_job_failed','subscription_turn_failed','JSONDecodeError','repair_budget_expired'].includes(code))return 'Model işlemi tamamlanamadı. İçerik gönderilmedi; aynı düğmeyle kontrollü yeniden deneyebilirsin.';
  if(['invented_evidence','missing_evidence','semantic_review_failed','unsupported_entity'].includes(code))return 'Taslağın kaynak dayanağı doğrulanamadı. İçerik gönderilmedi; aynı düğmeyle kontrollü yeniden deneyebilirsin.';
+ if(code==='incomplete_draft')return 'Model eksik taslak üretti; içerik gönderilmedi. Aynı düğmeyle kontrollü yeniden deneyebilirsin.';
  return 'Taslak doğrulanamadı. Aynı düğmeyle kontrollü yeniden deneyebilirsin.';
 }

@@ -55,6 +55,17 @@ test('edit during source read schedules a short retry and the next run follows t
  assert.equal(failed.error,'channel_message_changed');assert.equal(failed.status,'queued');assert.equal(failed.attempts,1);assert(failed.next_try>=before+20&&failed.next_try<=before+21);
  await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,latest);
 });
+test('busy reader retries briefly while an unreadable image stops with an actionable failure',async()=>{
+ const {prepare}=await import('../src/pipeline');
+ for(const [code,expected] of [['bot_query_busy','queued'],['image_vision_incomplete','needs_review']] as const){
+  const env=await fixture(),a=await add(env,code,'Piyasa Raporu — 09:55',code);
+  await env.DB.prepare("insert into news_cards(id,article_id,state,created_at,requested_at) values('card',?,'requested',1,1)").bind(a).run();
+  env.READ_TELEGRAM_CHANNEL=async()=>{throw Error(code);};const before=Math.floor(Date.now()/1000);await prepare(env);
+  const row=await env.DB.prepare('select status,error,attempts,next_try from articles where id=?').bind(a).first<any>();
+  assert.equal(row.status,expected);assert.equal(row.error,code);assert.equal(row.attempts,1);
+  if(code==='bot_query_busy')assert(row.next_try>=before+20&&row.next_try<=before+21);
+ }
+});
 
 test('fast channel lane excludes RSS and serializes simultaneous discovery/RSS callers across edited versions',async()=>{
  const env=await fixture(),old=globalThis.fetch;let calls=0,release!:()=>void,entered!:()=>void;

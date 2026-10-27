@@ -31,3 +31,13 @@ class VisualEvidenceTests(unittest.TestCase):
   out=extract({'images':['original.png']},invoke)
   self.assertEqual(len(calls),4);self.assertEqual(out['body'],'Net kâr: -100 milyon TL')
   self.assertEqual(calls[2]['audit_issues'],['Tabloda eksi işareti var'])
+ def test_incomplete_read_gets_one_correction_and_independent_audit(self):
+  answers=iter([{'complete':False,'facts':['BIST: 100'],'issues':['Hacim okunamadı']},{'complete':True,'facts':['BIST: 100','Hacim: 20'],'issues':[]},{'supported':True,'issues':[]}]);calls=[]
+  def invoke(job,prompt,payload):calls.append(payload);return next(answers)
+  out=extract({'images':['original.png']},invoke)
+  self.assertEqual(calls[1]['audit_issues'],['Hacim okunamadı']);self.assertEqual(len(calls),3);self.assertIn('Hacim: 20',out['body'])
+ def test_second_incomplete_read_is_rejected(self):
+  calls=[]
+  def invoke(*args):calls.append(1);return {'complete':False,'facts':[],'issues':['Okunamıyor']}
+  with self.assertRaisesRegex(RuntimeError,'image_vision_unverified'):extract({},invoke)
+  self.assertEqual(len(calls),2)

@@ -119,9 +119,9 @@ export async function prepare(env:Env):Promise<void> {
     env.DB.prepare("UPDATE news_cards SET state='model_queued' WHERE article_id=? AND state='requested'").bind(article.id)
    ]);
   } catch(e) {
-   const count=article.attempts+1,permanent=/^gallery_/.test(errorCode(e));
-   const changed=errorCode(e)==='channel_message_changed';
-   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(permanent||count>=3?'needs_review':'queued',count,time+(changed?20:Math.min(3600,120*2**count)),errorCode(e),article.id).run();
+   const code=errorCode(e),count=article.attempts+1,permanent=/^gallery_/.test(code)||['image_vision_incomplete','image_vision_unverified'].includes(code);
+   const transient=['channel_message_changed','bot_query_busy'].includes(code);
+   await env.DB.prepare('UPDATE articles SET lease_until=0,status=?,attempts=?,next_try=?,error=? WHERE id=?').bind(permanent||count>=3?'needs_review':'queued',count,time+(transient?20:Math.min(3600,120*2**count)),code,article.id).run();
   }
  }
 }
