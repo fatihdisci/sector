@@ -44,7 +44,7 @@ def checked_layout(value,facts):
         if any(not re.search(r'(?<![A-Z0-9])'+re.escape(s)+r'(?![A-Z0-9])',joined)for s in symbols):raise RuntimeError('image_vision_incomplete')
     return {'kind':kind,'panels':[next(p for p in panels if p['name']==n)for n in names],'minimum_rows':sum(len(p['symbols'])for p in panels)}
 def extract(evidence,invoke=call):
-    job={'id':'image-evidence','profile':str(pathlib.Path.home()/'.hermes/profiles/sectorhaber'),'model':'gpt-6.1-terra','effort':'low','documents':[evidence]}
+    job={'id':'image-evidence','profile':str(pathlib.Path.home()/'.hermes/profiles/sectorhaber'),'model':'gpt-6-luna','effort':'high','documents':[evidence]}
     payload={'auxiliary_ocr':evidence.get('body',''),'source_layout':evidence.get('source_layout')}
     for attempt in range(2):
         result=invoke(job,PROMPT,payload)
