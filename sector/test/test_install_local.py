@@ -77,6 +77,18 @@ class StagedInstallerTests(unittest.TestCase):
             self.assertTrue((i.release/'active').is_file());self.assertTrue((i.runtime/'app').is_symlink());self.assertFalse((i.runtime/'app/removed.ts').exists())
             self.assertTrue((i.runtime/'app/src').is_dir());self.assertEqual((i.backup/'0/removed.ts').read_text(),'must not survive update')
             self.assertLess(i.events.index('npm run build'),i.events.index('stop'))
+    def test_tweetkit_release_is_staged_and_swapped_only_for_news(self):
+        if self.__class__.__name__ == 'CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));old=i.runtime/'tweetkit-venv';old.mkdir();(old/'marker').write_text('previous')
+            i.install(update=True)
+            self.assertTrue((i.release/'app/vendor/tweetkit/tweetkit_x/client.py').is_file())
+            self.assertTrue((i.release/'app/requirements-tweetkit.txt').is_file())
+            self.assertTrue((i.runtime/'tweetkit-venv').is_symlink())
+            self.assertTrue(any(event.endswith('-m pip') and 'tweetkit-venv' in event for event in i.events))
+            receipt=__import__('json').loads((i.backup/'rollback.json').read_text())
+            self.assertTrue(any(x['live'].endswith('/tweetkit-venv') and x['existed'] for x in receipt['paths']))
+
     def test_normal_install_refuses_existing_service_before_preparing(self):
         with tempfile.TemporaryDirectory() as tmp:
             i=self.setup_installer(Path(tmp))

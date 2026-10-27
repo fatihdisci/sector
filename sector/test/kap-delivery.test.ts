@@ -139,7 +139,7 @@ test('closing a KAP topic while AI runs blocks the final photo, retains the evid
   await env.DB.prepare("UPDATE model_jobs SET state='leased'").run();
   s.configure({...s.prefs(),priorityIndices:false,otherCompanies:'off'});
   const sec=Math.floor(NOW/1000);
-  await env.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,media_key) VALUES('closed','e','f',?,?,'official',?,?,'card.png')").bind(JSON.stringify({headline:'📢 Yeni iş',body:'Sözleşme açıklandı.',hashtags:['#Borsa','#BIST']}),JSON.stringify(docs),sec,sec+3600).run();
+  await env.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,media_key) VALUES('closed','e','f',?,?,'official',?,?,'drafts/aaa/1.png')").bind(JSON.stringify({headline:'📢 Yeni iş',body:'Sözleşme açıklandı.',hashtags:['#Borsa','#BIST']}),JSON.stringify(docs),sec,sec+3600).run();
   await env.DB.prepare("UPDATE model_jobs SET state='complete',result_draft='closed'").run();
   Object.assign(env,{TELEGRAM_BOT_TOKEN:'123:test',TELEGRAM_VERIFIED_BOT_ID:'123',MEDIA:{get:async()=>({arrayBuffer:async()=>new Uint8Array([1]).buffer})},KAP_DELIVERY_CHECK:(documents:Document[])=>consumer.deliveryDecision(documents)});
   globalThis.fetch=async()=>{sends++;return Response.json({ok:true,result:{message_id:88}});};

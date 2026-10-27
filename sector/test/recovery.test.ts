@@ -15,7 +15,7 @@ export async function fixture(){
 const card='11111111-1111-1111-1111-111111111111';
 async function prepared(){
  const {env,doc}=await fixture(),id=await enqueueEvidence(env,[doc],'manual'),time=Math.floor(Date.now()/1000);
- await env.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,media_key,delivery_state) VALUES('d','e','f',?,?,'official',?,?,'card.png','uncertain')").bind(JSON.stringify({headline:'📢 Yeni sözleşme',body:doc.body,hashtags:['#Şirket','#Ekonomi']}),JSON.stringify([doc]),time,time+3600).run();
+ await env.DB.prepare("INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,media_key,delivery_state) VALUES('d','e','f',?,?,'official',?,?,'drafts/aaa/1.png','uncertain')").bind(JSON.stringify({headline:'📢 Yeni sözleşme',body:doc.body,hashtags:['#Şirket','#Ekonomi']}),JSON.stringify([doc]),time,time+3600).run();
  await env.DB.prepare("UPDATE model_jobs SET state='complete',result_draft='d',documents='[]' WHERE id=?").bind(id).run();
  await env.DB.prepare("UPDATE articles SET status='prepared',draft_id='d'").run();
  await env.DB.prepare("INSERT INTO news_cards(id,article_id,state,message_id,created_at) SELECT ?,id,'model_queued',100,? FROM articles").bind(card,time).run();
