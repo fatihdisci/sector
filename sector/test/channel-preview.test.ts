@@ -22,6 +22,40 @@ test('late edit does not send a second preview; explicit unprepared request bind
 });
 test('late edit cannot bypass uncertain preview delivery',async()=>{const env=await fixture(),old=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('network_unknown');};try{await add(env,'u1','Teorik Eşleşme — 09:52','901',Date.now()-1000);await announceNews(env);await add(env,'u2','Teorik Eşleşme — 09:52','901');await announceNews(env);assert.equal(calls,1);assert.equal((await env.DB.prepare('select state from news_cards').first<any>()).state,'uncertain');}finally{globalThis.fetch=old;}});
 
+test('a pending request follows the newest suitable edit even while the old read is in backoff',async()=>{
+ const {retargetChannelRequests}=await import('../src/pipeline');const env=await fixture(),at=Date.now(),old=await add(env,'r1','Piyasa Raporu — 09:55','26488',at-2000);
+ await env.DB.prepare("insert into news_cards(id,article_id,state,created_at,requested_at) values('card',?,'requested',1,1)").bind(old).run();
+ await env.DB.prepare("update articles set error='channel_message_changed',attempts=1,next_try=9999999999 where id=?").bind(old).run();
+ await add(env,'r2','Piyasa Raporu — 09:55','26488',at-1000);const latest=await add(env,'r3','Piyasa Raporu — 09:55','26488',at);
+ await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,latest);
+ assert.equal((await env.DB.prepare('select count(*) n from news_cards').first<any>()).n,1);assert.equal((await env.DB.prepare('select count(*) n from model_jobs').first<any>()).n,0);
+});
+test('pending request never moves to an unsuitable newest edit or across an active job',async()=>{
+ const {retargetChannelRequests}=await import('../src/pipeline');const env=await fixture(),at=Date.now(),old=await add(env,'safe1','Piyasa Raporu — 09:55','10',at-2000);
+ await env.DB.prepare("insert into news_cards(id,article_id,state,created_at) values('card',?,'requested',1)").bind(old).run();
+ const valid=await add(env,'safe2','Piyasa Raporu — 09:55','10',at-1000);const invalid=await add(env,'safe3','Başka içerik','10',at);
+ await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,old);
+ await env.DB.prepare('delete from articles where id=?').bind(invalid).run();
+ await env.DB.prepare("insert into model_jobs(id,article_id,documents,input_hash,created_at,state) values('job',?,'[]','hash',1,'leased')").bind(valid).run();
+ await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,old);
+});
+test('ordinary channel news also follows edits without another preview',async()=>{
+ const {retargetChannelRequests}=await import('../src/pipeline');const env=await fixture(),at=Date.now(),old=await add(env,'n1','Yeni sözleşme açıklandı','11',at-1000);
+ await env.DB.prepare("insert into news_cards(id,article_id,state,created_at) values('card',?,'requested',1)").bind(old).run();
+ const latest=await add(env,'n2','Sözleşme tutarı güncellendi','11',at);
+ await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,latest);
+ await announceNews(env);assert.equal((await env.DB.prepare('select count(*) n from news_cards').first<any>()).n,1);
+});
+test('edit during source read schedules a short retry and the next run follows the captured edit',async()=>{
+ const {prepare,retargetChannelRequests}=await import('../src/pipeline');const env=await fixture(),at=Date.now(),old=await add(env,'race1','Piyasa Raporu — 09:55','12',at-1000);
+ await env.DB.prepare("insert into news_cards(id,article_id,state,created_at,requested_at) values('card',?,'requested',1,1)").bind(old).run();
+ let latest='';env.READ_TELEGRAM_CHANNEL=async()=>{latest=await add(env,'race2','Piyasa Raporu — 09:55','12',Date.now());throw Error('channel_message_changed');};
+ const before=Math.floor(Date.now()/1000);await prepare(env);
+ const failed=await env.DB.prepare('select status,attempts,error,next_try from articles where id=?').bind(old).first<any>();
+ assert.equal(failed.error,'channel_message_changed');assert.equal(failed.status,'queued');assert.equal(failed.attempts,1);assert(failed.next_try>=before+20&&failed.next_try<=before+21);
+ await retargetChannelRequests(env);assert.equal((await env.DB.prepare("select article_id from news_cards where id='card'").first<any>()).article_id,latest);
+});
+
 test('fast channel lane excludes RSS and serializes simultaneous discovery/RSS callers across edited versions',async()=>{
  const env=await fixture(),old=globalThis.fetch;let calls=0,release!:()=>void,entered!:()=>void;
  const started=new Promise<void>(r=>entered=r),held=new Promise<void>(r=>release=r);
