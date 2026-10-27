@@ -10,7 +10,7 @@ test('company notifications require a current official BIST 30/100 member',()=>{
  for(const x of [null,{...idx,sourceSha256:undefined},{...idx,source:'unverified'},{...idx,checkedAt:new Date(now-37*3600000).toISOString()},{...idx,bist100:pool.slice(0,99)}])assert.equal(scopedDecision(d(),p,x,now).reason,'index_unavailable');
 });
 test('only actual new relationship and contract subjects bypass index membership',()=>{
- for(const title of ['Yeni İş İlişkisi','YENİ İŞ İLİŞKİSİ','Yeni Sözleşme','Sözleşme İmzalanması']){const item=d({title});assert(newBusinessException(item),title);assert.equal(scopedDecision(item,p,idx,now).action,'instant');assert.equal(scopedDecision(item,p,null,now).action,'instant');}
+ for(const title of ['Yeni İş İlişkisi','YENİ İŞ İLİŞKİSİ','Yeni Sözleşme','Yeni Bir Sözleşmenin İmzalanması','Yeni Bir İş İlişkisi','Sözleşme İmzalanması']){const item=d({title});assert(newBusinessException(item),title);assert.equal(scopedDecision(item,p,idx,now).action,'instant');assert.equal(scopedDecision(item,p,null,now).action,'instant');}
  const general=d({title:'Özel Durum Açıklaması (Genel)',summary:'Yeni iş ilişkisi kurulması'});assert.equal(scopedDecision(general,p,idx,now).action,'instant');
  for(const title of ['Esas Sözleşme Değişikliği','Kredi Sözleşmesi','İhale Sonucu','Yeni yatırım','Sözleşme süresinin uzatılması'])assert(!newBusinessException(d({title})),title);
 });

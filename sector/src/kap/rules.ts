@@ -27,7 +27,7 @@ export function classify(d:Disclosure):Topic[] {
  if(/GERI ALIM|GERI ALIN|GERI SATIM|GERI SATIS|GERI SATIL/.test(t))result.push('buyback');
  if(/FINANSAL (RAPOR|TABLO|SONUC)|FINANSALLAR|BILANCO|FAALIYET RAPOR/.test(t))result.push('financial');
  if(/SERMAYE ART|SERMAYE AZAL|BEDELLI|BEDELSIZ/.test(t))result.push('capital');
- if(/YENI IS(?:LER| |$)|SOZLESME|IHALE|SIPARIS|ANLASMA/.test(t)&&!/BORSA DISI|FON IHRAC SOZLESMESI/.test(t))result.push('business');
+ if(/YENI (?:BIR )?IS(?:LER| |$)|SOZLESME|IHALE|SIPARIS|ANLASMA/.test(t)&&!/BORSA DISI|FON IHRAC SOZLESMESI/.test(t))result.push('business');
  if(/PAY(?:LARIN)? (ALIM|SATIM|ALIS|SATIS|ALIN|SATIL)/.test(t)&&!result.includes('buyback'))result.push('share_trade');
  if(normalize(d.title+' '+(d.summary??'')).includes('DEVRE KESICI'))result.push('circuit');
  return result.length?result:['other'];
@@ -94,7 +94,7 @@ export function decide(d:Disclosure,p:Preferences,indices:Indices|null):Decision
 export function newBusinessException(d:Disclosure):boolean {
  const title=normalize(d.title),t=subject(d);
  if(/ESAS\s+SOZLESME|FON IHRAC SOZLESMESI/.test(title))return false;
- return /(?:^|[^A-Z0-9])YENI IS ILISK(?:ISI|ISINE|ISININ|ILERI)?(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])YENI SOZLESME(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])SOZLESME(?:NIN)? IMZALAN(?:MASI|DI|MISTIR|ACAK)(?:$|[^A-Z0-9])/.test(t);
+ return /(?:^|[^A-Z0-9])YENI (?:BIR )?IS ILISK(?:ISI|ISINE|ISININ|ILERI)?(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])YENI (?:BIR )?SOZLESME(?:NIN|SI|SININ|YE|YI)?(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])SOZLESME(?:NIN)? IMZALAN(?:MASI|DI|MISTIR|ACAK)(?:$|[^A-Z0-9])/.test(t);
 }
 export function matchingFund(d:Disclosure):boolean {
  if(!d.isFund)return false;
