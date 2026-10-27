@@ -24,7 +24,7 @@ export function marketTimeContext(documents:Document[]){
   const forwarded=verified?cp!.forwarded:c.forwarded;
   let session=equitySessionLabel(verified?publish:null);
   const programme=verified?channelProgramme(publish!,typeof c.caption==='string'?c.caption:d.title,d.source_layout?.kind,forwarded):null;
-  if(programme&&['opening','first_moves','close'].includes(programme.kind))session={...session,label:programme.label,reason:'owner_channel_programme'};
+  if(programme&&['opening','first_moves','summary','close'].includes(programme.kind))session={...session,label:programme.label,reason:'owner_channel_programme'};
   if(invalid_date||source_data_days.length||explicitTimes.length)session={...session,label:null,reason:'explicit_source_time_precedes_publication'};
   if(forwarded===true)session={...session,label:null,reason:'forwarded_source'};
   const graph=d.passages.find(p=>/^Grafik\s*:/iu.test(p.text)||/\bGrafikte saat etiketleri\b/iu.test(p.text))?.text??'';
@@ -61,7 +61,7 @@ export function applyMarketEditorialHeader(draft:Draft,documents:Document[]):Dra
  if(!['market','volume'].includes(draft.template))return draft;
  const contexts=marketTimeContext(documents);if(contexts.length!==1)return draft;
  const c=contexts[0],label=c.editorial_session.label;
- const change=(title:string)=>{if(typeof title!=='string'||!title.trim())return title;const emoji=/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u.exec(title)?.[0]??'',plain=title.slice(emoji.length),folded=plain.toLocaleLowerCase('tr-TR'),old=/^(?:güne başlarken|açılışın ilk dakikaları(?:nda)?|gün ortası(?:nda)?|kapanışa doğru|kapanışta)(?:\s*[—–:-]\s*|\s+|$)/u.exec(folded);let rest=old?plain.slice(old[0].length):plain;
+ const change=(title:string)=>{if(typeof title!=='string'||!title.trim())return title;const emoji=/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u.exec(title)?.[0]??'',plain=title.slice(emoji.length),folded=plain.toLocaleLowerCase('tr-TR'),old=/^(?:güne başlarken|açılış öncesi görünüm|açılışın ilk anları|açılışın ilk dakikaları(?:nda)?|ilk saatin ardından|gün ortası(?:nda)?|öğleden sonra|kapanışa iki saat kala|kapanışa doğru|kapanışta|gün sonu)(?:\s*[—–:-]\s*|\s+|$)/u.exec(folded);let rest=old?plain.slice(old[0].length):plain;
   if(label)rest=rest.replace(/^kaynak tablosunda(?:\s*[—–:-]\s*|\s+)/iu,'');
   return emoji+(label?label+' — '+rest:old?'Piyasa özeti — '+rest:rest);
  };

@@ -19,7 +19,7 @@ test('public cached reader fixture becomes a substantive dashboard and tweet, wi
  const text=postText(draft);assert(!/kaynak tablos|görselde|belirtiliyor/iu.test(text));assert(text.includes('11.004,37'));assert(text.includes('49,7 milyar TL'));assert(text.includes('163 hisse yükseldi, 449 hisse geriledi'));
  assert.equal(twitter.parseTweet(text).valid,true);assert.equal((text.match(/#[A-Z][A-Z0-9]{3,4}\b/g)??[]).filter(c=>c!=='#BIST').length,10);
  assert(text.includes('Pozitif katkı: #ASTOR #FROTO #CVKMD #TCKRC #RYSAS'));assert(text.includes('Negatif katkı: #ASELS #EREGL #ISCTR #GUBRF #TUPRS'));
- assert.equal(draft.card_headline,'Gün ortası');assert.equal(draft.card_data!.overview!.panels.flatMap(p=>p.rows).length,15);assert.equal(tableView(draft,docs).length,25);
+ assert.equal(draft.card_headline,'Öğleden sonra');assert.equal(draft.card_data!.overview!.panels.flatMap(p=>p.rows).length,15);assert.equal(tableView(draft,docs).length,25);
  assert(draft.source_notes!.includes(raw.source_notes![0]));assert.deepEqual(repairDraftStyle(draft,docs),draft);assert.deepEqual(withOverviewEvidence(docs),docs);assert.deepEqual(marketTimeIssues(draft,docs),[]);
 });
 test('decimal punctuation, negative contribution and missing currency preserve source meaning',()=>{
@@ -49,7 +49,7 @@ test('dated uncertainty stays editor-visible and unbound original timestamps nev
 });
 test('all authorized day-part labels remain editorial headers, without claiming a measurement time',async()=>{
  const {withMarketEditorialContext}=await import('../src/market-time');
- for(const [at,label]of [['2026-10-26T06:45:00Z','Güne başlarken'],['2026-10-26T07:30:00Z','Açılışın ilk dakikaları'],['2026-10-26T12:30:00Z','Kapanışa doğru'],['2026-10-26T15:05:00Z','Kapanışta']]as const){const d=structuredClone(source);d.channel_publication!.posted_at=at;const docs=withOverviewEvidence(withMarketEditorialContext([d])),out=repairDraftStyle(raw,docs);assert.equal(out.card_headline,label);assert.deepEqual(marketTimeIssues(out,docs),[]);assert.equal(validateDraft(out,docs).verification,'single_source_attributed');}
+ for(const [at,label]of [['2026-10-26T06:45:00Z','Güne başlarken'],['2026-10-26T07:30:00Z','Açılışın ilk dakikaları'],['2026-10-26T12:30:00Z','Öğleden sonra'],['2026-10-26T15:05:00Z','Kapanışta']]as const){const d=structuredClone(source);d.channel_publication!.posted_at=at;const docs=withOverviewEvidence(withMarketEditorialContext([d])),out=repairDraftStyle(raw,docs);assert.equal(out.card_headline,label);assert.deepEqual(marketTimeIssues(out,docs),[]);assert.equal(validateDraft(out,docs).verification,'single_source_attributed');}
 });
 test('complete dashboard reaches the existing independent audit and unsupported UI actions stay hidden',async()=>{
  const {acceptHermes}=await import('../src/ai'),{draftKeyboard}=await import('../src/telegram-ui');
@@ -105,3 +105,10 @@ test('legacy 17:00 reader format preserves signed percent, combined contribution
  const svg=draftCards(out)[0];assert(svg.includes('>A1</text>'));assert((await png(svg)).length>20000);
  const broken=structuredClone(d);for(const p of broken.passages)p.text=p.text.replace(/A1:/g,':');assert.throws(()=>parseMarketOverview(broken),/broker_coverage/);
  });
+
+ test('eight owner channel slots carry the same period into tweet and card',async()=>{
+ const {withMarketEditorialContext}=await import('../src/market-time');
+ for(const [time,label]of [['09:55','Açılış öncesi görünüm'],['10:01','Açılışın ilk anları'],['11:00','İlk saatin ardından'],['12:00','Gün ortası'],['14:00','Öğleden sonra'],['16:00','Kapanışa iki saat kala'],['17:00','Kapanışa doğru'],['18:11','Gün sonu']]as const){
+  const d=structuredClone(source);d.channel_publication!.posted_at='2026-10-26T'+time+':00+03:00';const ds=withOverviewEvidence(withMarketEditorialContext([d])),out=repairDraftStyle(raw,ds);assert.equal(out.card_headline,label,time);assert(out.headline.includes(label),time);assert.deepEqual(marketTimeIssues(out,ds),[],time);assert.equal(validateDraft(out,ds).verification,'single_source_attributed',time);
+ }
+});

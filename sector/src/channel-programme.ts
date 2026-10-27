@@ -18,9 +18,13 @@ export function channelProgramme(at:string,caption:string,layout?:string,forward
  }
  if(layout==='institution_summary'||/kurum akd ozeti/.test(text))return result('institution_summary','Kurum AKD özeti');
  if(layout!=='market_overview'&&!/bist\s*100|piyasa raporu|genel piyasa ozeti/.test(text))return null;
- if(minute>=595&&minute<600)return result('opening','Borsa açılışı');
+ if(minute>=595&&minute<600)return result('opening','Açılış öncesi görünüm');
  if(minute>=600&&minute<610)return result('first_moves','Açılışın ilk anları');
  if(session.kind==='full'&&minute>=1091&&minute<1110)return result('close','Gün sonu');
+ if(session.kind==='full'&&minute>=660&&minute<1080){
+  const label=minute<720?'İlk saatin ardından':minute<840?'Gün ortası':minute<960?'Öğleden sonra':minute<1020?'Kapanışa iki saat kala':'Kapanışa doğru';
+  return result('summary',label);
+ }
  return result('summary',session.label??'Piyasa özeti');
 }
 export function documentProgramme(d:Document):ChannelProgramme|null{

@@ -1,4 +1,5 @@
 import {documentProgramme} from './channel-programme';
+import {marketTimeContext} from './market-time';
 import type{Document,Draft}from'./types';import type{MarketOverview,OverviewPanel}from'./market-overview-types';
 const fold=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const number=(s:string)=>{s=s.replace(/−/g,'-').replace(/[.,]+$/,'');return !s.includes(',')&&/^[-+]?\d+\.\d{1,2}$/.test(s)?s.replace('.',','):s;};
@@ -40,12 +41,12 @@ export function overviewEvidence(o:MarketOverview):{id:string;text:string}[]{
 }
 export function withOverviewEvidence(documents:Document[]):Document[]{return documents.map(d=>{if(!isFullOverview(d))return d;const o=parseMarketOverview(d),passages=overviewEvidence(o),old=d.passages.find(p=>p.id==='overview_numbers_v1'),block=passages.map(p=>p.text).join('\n'),body=old&&d.body.endsWith('\n\n'+old.text)?d.body.slice(0,-old.text.length-2):d.body;return{...d,body:body+'\n\n'+block,passages:[...d.passages.filter(p=>!p.id.startsWith('overview_')),...passages,{id:'overview_numbers_v1',text:block}]};});}
 export function overviewPresentation(value:Draft,documents:Document[]):Draft{
- const index=documents.findIndex(isFullOverview);if(index<0||!['market','volume'].includes(value.template))return value;const o=parseMarketOverview(documents[index]),period=documents[index].market_editorial_context?.label;
- let headline='📊 '+(period==='Gün ortası'?'Gün ortasında BIST 100':period?period+' — BIST 100':'BIST 100')+': '+o.percent+' '+(o.direction==='down'?'ekside':'artıda');
+ const index=documents.findIndex(isFullOverview);if(index<0||!['market','volume'].includes(value.template))return value;const o=parseMarketOverview(documents[index]),period=marketTimeContext([documents[index]])[0]?.editorial_session.label;
+ let headline='📊 '+(period?period+' — BIST 100':'BIST 100')+': '+o.percent+' '+(o.direction==='down'?'ekside':'artıda');
  let body=`Endeks ${o.level} puanda. Hacim ${o.volume}.\n${o.breadth.up} hisse yükseldi, ${o.breadth.down} hisse geriledi.`;
- if(o.view==='opening'){headline='📊 Borsa açılışı — BIST 100';body=`BIST 100: ${o.level} puan; ${o.percent} ${o.direction==='down'?'düşüş':'yükseliş'}. Puan farkı ${o.points} puan.`;}
+ if(o.view==='opening'){headline='📊 Açılış öncesi görünüm — BIST 100';body=`BIST 100: ${o.level} puan; ${o.percent} ${o.direction==='down'?'düşüş':'yükseliş'}. Puan farkı ${o.points} puan.`;}
  if(o.view==='first_moves'){headline='📊 Açılışın ilk anları';body='Yükselenler, düşenler ve hacim liderleri.';}
  if(o.view==='close')headline='📊 Gün sonu — BIST 100: '+o.percent+' '+(o.direction==='down'?'ekside':'artıda');
  const claims=overviewEvidence(o).map(p=>({text:p.text,evidence:[{document:index,passage:p.id,quote:p.text}]}));
- return{...value,headline,body,card_headline:o.view==='opening'?'Borsa açılışı':o.view==='first_moves'?'Açılışın ilk anları':o.view==='close'?'Gün sonu':period??'BIST 100',card_body:'BIST 100 piyasa özeti',template:'market',card_data:{overview:o},hashtags:['#Borsa','#BIST'],claims,source_notes:[...(value.source_notes??[]).filter(n=>!n.startsWith('Piyasa tablosu: ')),'Piyasa tablosu: Kanal programına göre seçilen bölümler korunmuştur; genel özette yükselen/düşen hisse listeleri ve Diğer kurum toplamları kullanıcı tercihiyle gösterilmez. Para birimi belirtilmeyen hacim paneline TL eklenmedi.']};
+ return{...value,headline,body,card_headline:o.view==='opening'?'Açılış öncesi görünüm':o.view==='first_moves'?'Açılışın ilk anları':o.view==='close'?'Gün sonu':period??'BIST 100',card_body:'BIST 100 piyasa özeti',template:'market',card_data:{overview:o},hashtags:['#Borsa','#BIST'],claims,source_notes:[...(value.source_notes??[]).filter(n=>!n.startsWith('Piyasa tablosu: ')),'Piyasa tablosu: Kanal programına göre seçilen bölümler korunmuştur; genel özette yükselen/düşen hisse listeleri ve Diğer kurum toplamları kullanıcı tercihiyle gösterilmez. Para birimi belirtilmeyen hacim paneline TL eklenmedi.']};
 }
