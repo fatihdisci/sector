@@ -27,7 +27,6 @@ import {announceNews,refreshNewsRequests} from '../src/news-inbox';
 import {tick,seed,deliver,errorCode} from '../src/pipeline';
 import {leaseJob,submitJob,ingestOfficial} from '../src/bridge';
 import {telegram} from '../src/telegram';
-import {observeAccountPosts,sendDailyAccountReport} from '../src/nitter-daily-report';
 import {registerTelegramCommands,TELEGRAM_COMMANDS} from '../src/telegram-commands';
 import {KapStore} from '../src/kap/store';
 import {KapDelivery} from '../src/kap-delivery';
@@ -98,12 +97,6 @@ async function buybackLoop(){while(!stopping()){try{
 async function channelLoop(){while(!stopping()){let delay=CHANNEL_POLL_MS;try{const result=await pollChannel(env,channelTransport);if(result.state==='ok')await announceNews(env,true);await status('telegram_channel_health',{ok:true,at:new Date().toISOString(),...result});}catch(e){delay=60_000;await status('telegram_channel_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(delay);}}
 async function fintablesXLoop(){while(!stopping()){try{await pollFintablesX(env);}catch(e){await status('fintables_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function spkXLoop(){while(!stopping()){try{await pollSpkX(env);}catch(e){await status('spk_x_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
-async function xAccountReportLoop(){let nextPoll=0;while(!stopping()){
- const now=Date.now();
- if(now>=nextPoll){try{await observeAccountPosts(env,now);}catch(e){await status('nitter_account_health',{ok:false,at:now,code:errorCode(e)});}nextPoll=Date.now()+5*60_000;}
- try{const result=await sendDailyAccountReport(env,Date.now());if(result.state==='sent')await status('nitter_daily_report_health',{ok:true,at:new Date().toISOString(),state:'sent'});}catch(e){await status('nitter_daily_report_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}
- await pause(15_000);
-}}
 async function designLoop(){while(!stopping()){try{await redesignOne(env,png);}catch(e){await status('design_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(1000);}}
 async function xLoop(){while(!stopping()){try{
  if(await tweetkitReady()){env.X_PUBLISH_ENABLED='true';await publishX(env,tweetkitClient({longNotesEnabled:process.env.X_LONG_NOTE_ENABLED==='true'}));await refreshXButton(env);}else env.X_PUBLISH_ENABLED=undefined;
@@ -151,5 +144,5 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);
   try{await withModelHeartbeat(env,modelLoop);}finally{clearInterval(stopCheck);}return;
  }
- await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),xAccountReportLoop(),newsLoop(),withModelHeartbeat(env,modelLoop),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
+ await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),newsLoop(),withModelHeartbeat(env,modelLoop),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
 });}finally{shutdown.dispose();}

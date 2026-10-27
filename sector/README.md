@@ -260,7 +260,7 @@ Yeni paylaşım mevcut haber önizlemesine gider; kullanıcı isteyince tweet, S
 `fintables-x`, @fintables hesabını SPK ile aynı ücretsiz Nitter okuyucusuyla 10 dakikada bir kontrol eder; durumu `fintables_x_state` anahtarında bağımsız tutulur. İlk tarama eski gönderimleri sessiz kaydeder. Finansal tablo/bilanço, bilanço takvimi, sektör ve uçuş trafik verileri seçilir. Reklam, yayın/konuk duyurusu, eğitim ve bültene yönlendiren salt tanıtım devam mesajları, retweet ve konusu metinden anlaşılamayan görsel paylaşımları seçilmez. Son 20 gönderilik gerçek RSS örneğinde 10 özgün finansal/veri paylaşımı seçildi (22 Ekim 2026).
 
 ### Günlük X paylaşım raporu
-Yerel haber servisi `@endeks_haber` herkese açık Nitter RSS aynalarını 5 dakikada bir okur ve İstanbul takvim gününe ait gönderi kimliklerini SQLite `system_state` içinde biriktirir. Her gün saat 23:00'te (Europe/Istanbul) gerçek Nitter kayıtlarındaki tweet saatleriyle özgün gönderi sayısı, saatler ve ardışık paylaşım aralıkları Telegram'a tek rapor olarak gönderilir; ortalama, medyan, en kısa ve en uzun aralık da hesaplanır. Retweet'ler ayrıca sayılır, özgün gönderi toplamına katılmaz. Bu rapor X API'sini ve elle “paylaşıldı” işaretlerini kullanmaz.
+Gece tweet sayımı ve 23:00 Telegram raporu kullanıcı isteğiyle devre dışıdır. Önceki kayıtlar korunur; yayın kuyruğu ve operasyon kayıtları bu değişiklikten etkilenmez.
 
 Nitter aynaları üçüncü taraf ve kesintiye açık olduğundan kayıtlar gün boyu gözlenir; yalnız son 20 gönderiyi veren RSS penceresi veya servis kesintisi eksik kapsama neden olabilir. Böyle durum raporda açıkça belirtilir; ayna erişilemediğinde “0 tweet” sonucu kesinmiş gibi sunulmaz. Telegram teslimatı belirsiz kalırsa aynı rapor körlemesine yeniden gönderilmez.
 
