@@ -271,7 +271,7 @@ function formattedPostText(d:Draft):string {
  }
  const leading=/^((?:📢|🚨|📊|🏦|🌍|⚡|💻|📈|📉)\uFE0F?)\s+/u.exec(headline);
  let title=(leading?headline.slice(leading[0].length):headline).trim();
- if(clean.template!=='circuit'&&codes.length===1&&title.startsWith(codes[0]+' '))title=title.slice(codes[0].length+1).replace(/^./u,c=>c.toLocaleUpperCase('tr-TR'));
+ if(clean.template!=='circuit'&&clean.tweet_style!=='akd_single_ticker'&&codes.length===1&&title.startsWith(codes[0]+' '))title=title.slice(codes[0].length+1).replace(/^./u,c=>c.toLocaleUpperCase('tr-TR'));
  const tags=new Set(codes.map(c=>'#'+c));
  if(clean.template==='circuit')title=circuitWithoutRepeatedTickers(title,allCodes);
  if(clean.template==='akd'&&clean.tweet_style==='akd_single_ticker'&&codes.length===1)title=akdProse(title,codes[0]);

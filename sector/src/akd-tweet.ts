@@ -7,6 +7,9 @@ export function akdProse(text:string,ticker:string):string{
  return text
   .replace(new RegExp(code+"\\s+dağılımında"+end,'giu'),'Dağılımda')
   .replace(new RegExp(code+"\\s+aracı\\s+kurum"+end,'giu'),'Aracı kurum')
+  .replace(new RegExp(code+"\\s+hissesinde"+end,'giu'),'Hissede')
+  .replace(new RegExp(code+"\\s+hissesinin"+end,'giu'),'Hissenin')
+  .replace(new RegExp(code+"\\s+hissesi"+end,'giu'),'Hisse')
   .replace(new RegExp(code+"['’]?(?:nın|nin|nun|nün|ın|in|un|ün)"+end,'giu'),'Hissenin')
   .replace(new RegExp(code+"['’]?(?:da|de|ta|te)"+end,'giu'),'Hissede')
   .replace(new RegExp(code+"['’]?(?:dan|den|tan|ten)"+end,'giu'),'Hisseden')
