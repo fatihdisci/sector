@@ -13,7 +13,7 @@ import {pollSpkX,spkPostDocuments} from '../src/spk-x';
 import {readImage} from './image_reader';
 import {KapReports} from './kap_reports';
 import {publishX,refreshXButton} from '../src/x-publish';
-import {xClient,validXKeys} from './x_client';
+import {tweetkitClient,tweetkitReady} from './tweetkit_client';
 import {awaitActivation} from './startup_gate';
 import {saveTelegramUpdates,processTelegramUpdates} from '../src/telegram-inbox';
 import {redesignOne} from '../src/card-redesign';
@@ -47,7 +47,7 @@ import type {Env,Document,Draft} from '../src/types';
 const directory=`${homedir()}/Library/Application Support/sector-haber`;
 const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
 const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',await readFile('migrations/0001_sector.sql','utf8')),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
-try{const keys=JSON.parse(await readFile(directory+'/x-credentials.json','utf8'));if(validXKeys(keys))env.X_PUBLISH_ENABLED='true';}catch{/* X stays disabled until credentials are saved locally. */}
+if(await tweetkitReady())env.X_PUBLISH_ENABLED='true';
 env.RENDER_REPORT=png;
 env.READ_SPK_X=async manifest=>{const post=JSON.parse(manifest);return post.cached_documents??(post.url?.startsWith('https://x.com/fintables/status/')?fintablesPostDocuments(post,readPdf,readImage):spkPostDocuments(post,readPdf,readImage));};
 env.READ_TELEGRAM_CHANNEL=async raw=>{const m=JSON.parse(raw);if(Date.now()-m.captured_at>86400000)throw Error('channel_evidence_expired');return m.cached_documents??channelDocuments(raw,channelTransport,readImage,readPdf);};
@@ -106,8 +106,7 @@ async function xAccountReportLoop(){let nextPoll=0;while(!stopping()){
 }}
 async function designLoop(){while(!stopping()){try{await redesignOne(env,png);}catch(e){await status('design_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(1000);}}
 async function xLoop(){while(!stopping()){try{
- const keys=JSON.parse(await readFile(directory+'/x-credentials.json','utf8'));
- if(validXKeys(keys)){env.X_PUBLISH_ENABLED='true';await publishX(env,xClient(keys));await refreshXButton(env);}
+ if(await tweetkitReady()){env.X_PUBLISH_ENABLED='true';await publishX(env,tweetkitClient({longNotesEnabled:process.env.X_LONG_NOTE_ENABLED==='true'}));await refreshXButton(env);}else env.X_PUBLISH_ENABLED=undefined;
  }catch{env.X_PUBLISH_ENABLED=undefined;}await pause(2000);}}
 async function deliveryLoop(){while(!stopping()){try{await deliver(env);}catch(e){await status('delivery_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(10_000);}}
 async function kapLoop(){
@@ -145,6 +144,8 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
  await writeFile(directory+'/service-ready.json',JSON.stringify({pid:process.pid,release:process.env.SECTOR_RELEASE_ID??'',started_at:new Date().toISOString()}),{mode:0o600});
  await cleanupSourceArtifacts().catch(()=>0);lastArtifactCleanup=Date.now();
  if(!await awaitActivation(directory,process.env.SECTOR_RELEASE_ID,()=>stopping()))return;
+ // Never replay requests accepted by an earlier publisher after activation.
+ await env.DB.prepare("UPDATE x_posts SET state='expired',error='publisher_restart' WHERE state='queued'").run();
  if(process.argv.includes('--prepare-once')){await tick(env);console.log('Sources scanned and model jobs prepared.');return;}
  if(process.argv.includes('--model-once')){ // run one fully checked job for commissioning
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);

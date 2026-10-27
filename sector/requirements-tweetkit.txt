@@ -1,0 +1,12 @@
+# tweetkit-x source: vendor/tweetkit, commit d42503a936f80eb0af2e9856a0fbd392cc4a750c
+beautifulsoup4==4.15.0
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+lxml==6.1.3
+requests==2.34.2
+soupsieve==3.0.4
+typing_extensions==4.16.0
+urllib3==2.8.0
+x-client-transaction-id==0.0.1
+XClientTransaction==1.0.3

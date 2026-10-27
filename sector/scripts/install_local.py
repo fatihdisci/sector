@@ -58,6 +58,14 @@ class Installer:
         shutil.copytree(self.source/'miniapp/public',app/'miniapp/public')
         for name in ['sources.json','package.json','package-lock.json','tsconfig.json','requirements-pdf.txt','requirements-telegram.txt','wrangler.toml']:
             shutil.copy2(self.source/name,app/name)
+        if not self.collector:
+            shutil.copytree(self.source/'vendor/tweetkit',app/'vendor/tweetkit',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+            shutil.copy2(self.source/'requirements-tweetkit.txt',app/'requirements-tweetkit.txt')
+            tweetkit=self.release/'tweetkit-venv/bin/python'
+            self.command([sys.executable,'-m','venv',tweetkit.parent.parent])
+            self.command([tweetkit,'-m','pip','install','-r',app/'requirements-tweetkit.txt'])
+            self.command([tweetkit,'-c',"import sys; sys.path.insert(0,'vendor/tweetkit'); import tweetkit_x,requests,bs4,lxml,x_client_transaction"],cwd=app)
+            self.command([tweetkit,'test/tweetkit-bridge-test.py'],cwd=app)
         # Install scripts are disabled, just as in CI. All checks precede bootout.
         self.command(['npm','ci','--ignore-scripts'],cwd=app)
         for check in ['check','test','build']:self.command(['npm','run',check],cwd=app)
@@ -117,6 +125,7 @@ class Installer:
                 self.replace(self.runtime/'app',self.release/'app')
                 if not self.collector:self.replace(self.runtime/'bin/pdf-ocr',self.release/'pdf-ocr')
                 if (self.release/'pdf-venv').exists():self.replace(self.runtime/'pdf-venv',self.release/'pdf-venv')
+                if not self.collector:self.replace(self.runtime/'tweetkit-venv',self.release/'tweetkit-venv')
                 self.replace(self.plist,self.release/'service.plist',symlink=False)
                 (self.runtime/'logs').mkdir(exist_ok=True)
                 self.command(['launchctl','bootstrap',self.domain,self.plist])

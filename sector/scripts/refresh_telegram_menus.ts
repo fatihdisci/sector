@@ -1,10 +1,10 @@
 /** Operator-only, resumable markup migration. No inbox consumer or publishing loop. */
 import {DatabaseSync} from 'node:sqlite';import {readFile,writeFile} from 'node:fs/promises';import {homedir} from 'node:os';import {join} from 'node:path';
-import {menuPlan,refreshMenuItem} from '../src/menu-refresh';import {validXKeys} from './x_client';import {TelegramError} from '../src/telegram';import type {Env} from '../src/types';
+import {menuPlan,refreshMenuItem} from '../src/menu-refresh';import {tweetkitReady} from './tweetkit_client';import {TelegramError} from '../src/telegram';import type {Env} from '../src/types';
 const root=join(homedir(),'Library/Application Support/sector-haber'),out=process.argv[2];if(!out)throw Error('private_receipt_path_required');
 const sql=new DatabaseSync(join(root,'sector-haber.sqlite'),{readOnly:true});class Statement{args:any[]=[];constructor(private text:string){}bind(...args:any[]){const s=new Statement(this.text);s.args=args;return s;}async first(column?:string){const r=sql.prepare(this.text).get(...this.args);return column?r?.[column]??null:r??null;}async all(){return {results:sql.prepare(this.text).all(...this.args)};}async run(){throw Error('menu_migration_db_write_forbidden');}}
 const env={...JSON.parse(await readFile(join(root,'secrets.json'),'utf8')),MODE:'telegram_review',DB:{prepare:(s:string)=>new Statement(s),batch:()=>{throw Error('menu_migration_db_write_forbidden');}}} as unknown as Env;
-try{if(validXKeys(JSON.parse(await readFile(join(root,'x-credentials.json'),'utf8'))))env.X_PUBLISH_ENABLED='true';}catch{}
+if(await tweetkitReady())env.X_PUBLISH_ENABLED='true';
 const actualFetch=globalThis.fetch;globalThis.fetch=async(u,init)=>{if(!String(u).endsWith('/editMessageReplyMarkup'))throw Error('menu_migration_only_markup_allowed');const b=init?.body as URLSearchParams;const markup=JSON.parse(b.get('reply_markup')!);if(markup.inline_keyboard.flat().some((x:any)=>x.copy_text||x.callback_data?.startsWith('asset:text:')))throw Error('copy_button_forbidden');return actualFetch(u,init);};
 const receipt:{items:Record<string,{state:string;kind:string;code?:number}>}={items:{}};try{Object.assign(receipt,JSON.parse(await readFile(out,'utf8')));}catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
 const plan=await menuPlan(env);const save=()=>writeFile(out,JSON.stringify(receipt,null,2),{mode:0o600});
