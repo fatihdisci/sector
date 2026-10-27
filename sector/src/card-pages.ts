@@ -15,6 +15,7 @@ export function balancedPages<T>(rows:readonly T[],capacity:number,pages=Math.ma
 // The selected immutable source is partitioned, never summarized or truncated.
 export function cardPageDrafts(input:Draft):Draft[]{
  const d=structuredClone(outputView(input)),data=d.card_data;if(!data)return [d];
+ if(data.movers)return (['up','down'] as const).map(page=>({...structuredClone(d),card_data:{...structuredClone(data),movers:{...structuredClone(data.movers!),page}}}));
  const fields:{name:string;rows:unknown[];capacity:number;set:(page:Draft,rows:any[])=>void}[]=[];
  const add=(name:string,rows:unknown[]|undefined,capacity:number,set:(p:Draft,r:any[])=>void)=>{if(rows)fields.push({name,rows,capacity,set});};
  if(data.report?.buyback)add('buyback.rows',data.report.buyback.rows,60,(p,r)=>{p.card_data!.report!.buyback!.rows=r;p.card_data!.report!.buyback!.row_count=r.length;});

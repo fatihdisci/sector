@@ -17,7 +17,7 @@ export async function queueManual(env:Env,updateId:number,m:InputMessage):Promis
   return true;
  }
 
- if(text==='/sorgular'||/^\/(?:kurum|akd|takas)(?:@[a-zA-Z0-9_]+)?(?:\s|$)/iu.test(text)){
+ if(text==='/sorgular'||/^\/(?:kurum|akd|takas|piyasayd)(?:@[a-zA-Z0-9_]+)?(?:\s|$)/iu.test(text)){
   // Forwarded commands are source material, never authority to query a bot.
   if(m.forward_origin)return false;
   let query;try{query=botQuery(splitManualText(text).text);}catch{}

@@ -11,6 +11,7 @@ export const TELEGRAM_COMMANDS = [
  {command:'kurum',description:'Kurum özeti veya kurum adıyla analiz'},
  {command:'akd',description:'Hisse aracı kurum dağılımı: /akd ASELS'},
  {command:'takas',description:'Hisse takas dağılımı: /takas THYAO'},
+ {command:'piyasayd',description:'En çok yükselen ve düşen hisseler'},
  {command:'sorgular',description:'Kurum, AKD ve takas komutlarını açıkla'},
  {command:'yayinlar',description:'Yayın sayacı, bütçe ve son paylaşım'},
  {command:'durum',description:'Kaynak, üretim ve teslimat durumu'},

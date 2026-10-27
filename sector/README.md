@@ -93,6 +93,7 @@ Bot, özel sohbetlerde Türkçe komut menüsünü servis açılışında Telegra
 | `/genelgerialim` | Tüm pay geri alımlarının tablosu |
 | `/kurum` | Aracı kurum özeti; kurum adı eklenirse kurum analizi |
 | `/akd TICKER` | Hisse aracı kurum dağılımı, ör. `/akd ASELS` |
+| `/piyasayd` | BoPT metninden en çok yükselen ve düşen 10’ar hisse; iki görsel |
 | `/takas TICKER` | Hisse takas dağılımı, ör. `/takas THYAO` |
 | `/sorgular` | Diğer botlardan alınan piyasa sorguları hakkında yardım |
 

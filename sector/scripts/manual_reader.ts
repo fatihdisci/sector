@@ -2,6 +2,7 @@ import {readMedia} from '../src/media-set';
 import {OUTPUT_LIMIT_MESSAGE} from '../src/output-preferences';
 import {OutputCapacityError,capacityMessage,type CapacityDiagnostic} from '../src/output-capacity';
 import {brokerReport} from '../src/broker-report';
+import {moversReport} from '../src/market-movers';
 import {saveReport} from '../src/kap-report-save';
 import {botDocuments} from './bot_query_reader';
 import {withMarketTiming} from '../src/market-timing';
@@ -99,13 +100,14 @@ export async function runManual(env:Env):Promise<void> {
  try{
   if(row.kind==='kap_report'){if(!env.KAP_REPORT)throw Error('kap_report_unavailable');const input=JSON.parse(row.input);await saveReport(env,row,await env.KAP_REPORT(input.report,input.at,input.preferences));return;}
   const docs=await manualDocuments(env,row.kind,row.input,row.message_id);
+  if(row.kind==='bot_query'&&docs.some(d=>d.market_movers)){await saveReport(env,row,moversReport(docs.find(d=>d.market_movers)!));return;}
   if(row.kind==='bot_query'&&docs.some(d=>d.market_data?.kind==='broker_flow')){await saveReport(env,row,brokerReport(docs));return;}
   const request=JSON.parse(row.input).editor_request??'';
   const job=await enqueueEvidence(env,docs,'manual',request);
   await env.DB.prepare("UPDATE manual_requests SET state='model_queued',job_id=?,lease_until=0,error=NULL WHERE update_id=?").bind(job,row.update_id).run();
  }catch(e){const error=e instanceof Error&&/^[a-z_]{3,70}$/.test(e.message)?e.message:'manual_read_failed';
   if(e instanceof OutputCapacityError)await env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind('manual_capacity:'+row.update_id,JSON.stringify({...e.diagnostic,at:now})).run();
-  const permanent=/circuit_report_indices_unavailable|bot_account_|bot_query_delivery_uncertain|bot_query_ambiguous|bot_query_expired|bot_query_text_incomplete|bot_query_image_unreadable|bot_query_.*mismatch|unsupported|limit|invalid|model_retry_unavailable|manual_market_row_incomplete|image_market_|capacity|coverage_mismatch|caption|subset_requires/.test(error)||row.attempts>=2;
+  const permanent=/circuit_report_indices_unavailable|bot_account_|bot_query_delivery_uncertain|bot_query_ambiguous|bot_query_expired|bot_query_text_incomplete|bot_query_image_unreadable|bot_query_stale|bot_query_time_unverified|bot_query_units_missing|bot_query_order_invalid|bot_query_row_invalid|bot_query_duplicate_section|bot_query_peer_unverified|bot_query_capacity|bot_query_.*mismatch|unsupported|limit|invalid|model_retry_unavailable|manual_market_row_incomplete|image_market_|capacity|coverage_mismatch|caption|subset_requires/.test(error)||(error==='bot_query_timeout'&&/^\/piyasayd(?:@[a-zA-Z0-9_]+)?$/iu.test(JSON.parse(row.input).text??''))||row.attempts>=2;
   await env.DB.prepare('UPDATE manual_requests SET state=?,lease_until=?,error=? WHERE update_id=?').bind(permanent?'needs_review':'queued',now+60,error,row.update_id).run();
  }
 }

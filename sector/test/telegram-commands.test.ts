@@ -12,5 +12,5 @@ test('owner bot registers the active Turkish slash menu for private chats',async
  assert.deepEqual(JSON.parse(body.get('scope')!),{type:'all_private_chats'});
  assert.deepEqual(JSON.parse(body.get('commands')!),TELEGRAM_COMMANDS);
  assert(TELEGRAM_COMMANDS.every(c=>c.command.length<=32&&c.description.length<=256));
- assert.deepEqual(TELEGRAM_COMMANDS.map(c=>c.command),['start','help','devrekesici','gerialim','genelgerialim','kurum','akd','takas','sorgular','yayinlar','durum','secki','arsiv','haberfiltre','golgerapor']);
+ assert.deepEqual(TELEGRAM_COMMANDS.map(c=>c.command),['start','help','devrekesici','gerialim','genelgerialim','kurum','akd','takas','piyasayd','sorgular','yayinlar','durum','secki','arsiv','haberfiltre','golgerapor']);
 });

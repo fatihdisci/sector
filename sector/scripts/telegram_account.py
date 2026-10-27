@@ -12,9 +12,10 @@ def validate_query(value):
     bot=value.get('bot');command=value.get('command','');key=str(value.get('key',''))
     if not re.fullmatch(r'[0-9]{1,20}',key):raise QueryError('bot_query_invalid')
     if bot=='b0pt_bot':
-        if not command.startswith('/kurum '):raise QueryError('bot_query_invalid')
-        arg=command[7:]
-        if not 1<=len(arg)<=80 or not all(c.isalnum() or c in " .&’'()_-" for c in arg):raise QueryError('bot_query_invalid')
+        if command!='/piyasayd':
+            if not command.startswith('/kurum '):raise QueryError('bot_query_invalid')
+            arg=command[7:]
+            if not 1<=len(arg)<=80 or not all(c.isalnum() or c in " .&’'()_-" for c in arg):raise QueryError('bot_query_invalid')
     elif bot=='ucretsizderinlikbot':
         if command!='/kurum' and not re.fullmatch(r'/(?:akd|takas) [A-Z][A-Z0-9]{3,4}',command):raise QueryError('bot_query_invalid')
     else:raise QueryError('bot_query_invalid')
@@ -45,7 +46,42 @@ def candidate_messages(messages,peer,sent):
 def meaningful(messages):
     return any(m.photo or (m.file and (m.file.mime_type or '').startswith('image/')) or re.search(r'net.{0,20}(?:hacim|lot|al[iı]ş|sat[iı]ş)|toplam.{0,20}takas|(?:al[iı]ş|sat[iı]ş).{0,8}hacmi|en çok (?:alınan|satılan)',m.raw_text or '',re.I) and re.search(r'\d',m.raw_text or '') for m in messages)
 
+async def query_movers(client,db,value):
+    # One explicit command and one correlated event; no message polling or
+    # automatic resend after a timeout/uncertain outcome.
+    bot,command,key=validate_query(value);row=resume_state(db,key,bot,command)
+    if row and row['state']=='complete':return json.loads(row['result'])
+    if row:raise QueryError('bot_query_delivery_uncertain')
+    limit=db.execute("SELECT until FROM limits WHERE key='flood'").fetchone()
+    if limit and limit['until']>time.time():raise QueryError('bot_query_rate_limited')
+    peer=await client.get_entity(bot)
+    if not peer.bot or (peer.username or '').lower()!=bot:raise QueryError('bot_query_peer_invalid')
+    bound=db.execute('SELECT peer_id FROM peers WHERE username=?',(bot,)).fetchone()
+    if not bound:raise QueryError('bot_query_peer_unverified')
+    if bound['peer_id']!=peer.id:raise QueryError('bot_query_peer_invalid')
+    pending=db.execute("SELECT key FROM requests WHERE bot=? AND state IN ('sending','sent','uncertain') AND created_at>? LIMIT 1",(bot,time.time()-300)).fetchone()
+    if pending:raise QueryError('bot_query_busy')
+    latest=db.execute('SELECT MAX(created_at) FROM requests WHERE bot=?',(bot,)).fetchone()[0]
+    if latest and time.time()-latest<10:raise QueryError('bot_query_rate_limited')
+    async with client.conversation(peer,timeout=90,exclusive=True) as conversation:
+        db.execute('INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)',(key,bot,command,'sending',peer.id,None,None,time.time()));db.commit()
+        try:sent=await conversation.send_message(command)
+        except Exception as error:
+            seconds=getattr(error,'seconds',None)
+            if isinstance(seconds,int) and seconds>0:db.execute("INSERT OR REPLACE INTO limits VALUES('flood',?)",(time.time()+seconds,))
+            db.execute("UPDATE requests SET state='uncertain' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_delivery_uncertain')
+        db.execute("UPDATE requests SET state='sent',sent_id=? WHERE key=?",(sent.id,key));db.commit()
+        try:message=await conversation.get_reply(sent)
+        except (asyncio.TimeoutError,TimeoutError):
+            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_timeout')
+        if message.sender_id!=peer.id or getattr(message,'reply_to_msg_id',None)!=sent.id or not message.raw_text or len(message.raw_text)>100_000:
+            db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_ambiguous')
+        result={'bot':bot,'command':command,'message_ids':[message.id],'text':message.raw_text,'images':[]}
+        if getattr(message,'date',None):result['received_at']=message.date.isoformat()
+        db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result
+
 async def query(client,db,root,value):
+    if value.get('command')=='/piyasayd':return await query_movers(client,db,value)
     bot,command,key=validate_query(value);row=resume_state(db,key,bot,command)
     if row and row['state']=='complete':return json.loads(row['result'])
     limit=db.execute("SELECT until FROM limits WHERE key='flood'").fetchone()

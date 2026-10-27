@@ -14,9 +14,39 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
     def message(self,id=11,**kwargs):
         return N(**dict(dict(id=id,out=False,sender_id=7,reply_to_msg_id=10,photo=None,document=None,file=None,raw_text='Net hacim: 100 milyon TL',edit_date=None),**kwargs))
     def test_routes_are_allowlisted_and_injected_commands_fail(self):
-        for bot,command in [('b0pt_bot','/kurum Ak Yatırım'),('ucretsizderinlikbot','/kurum'),('ucretsizderinlikbot','/akd ASELS'),('ucretsizderinlikbot','/takas THYAO')]:m.validate_query(dict(self.value,bot=bot,command=command))
+        for bot,command in [('b0pt_bot','/piyasayd'),('b0pt_bot','/kurum Ak Yatırım'),('ucretsizderinlikbot','/kurum'),('ucretsizderinlikbot','/akd ASELS'),('ucretsizderinlikbot','/takas THYAO')]:m.validate_query(dict(self.value,bot=bot,command=command))
         for bot,command in [('evil_bot','/kurum'),('b0pt_bot','/start'),('b0pt_bot','/kurum abc\n/start'),('ucretsizderinlikbot','/akd ASELS;cat')]:
             with self.assertRaises(m.QueryError):m.validate_query(dict(self.value,bot=bot,command=command))
+    async def test_piyasayd_requires_bound_identity_before_send(self):
+        client=N(get_entity=AsyncMock(return_value=self.peer),conversation=unittest.mock.Mock())
+        with self.assertRaisesRegex(m.QueryError,'peer_unverified'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        client.conversation.assert_not_called()
+    def movers_client(self,response):
+        conversation=N(send_message=AsyncMock(return_value=N(id=10)),get_reply=AsyncMock(side_effect=response) if isinstance(response,Exception) else AsyncMock(return_value=response))
+        context=N(__aenter__=AsyncMock(return_value=conversation),__aexit__=AsyncMock(return_value=False))
+        # Special methods are resolved on the class rather than the instance.
+        class Context:
+            async def __aenter__(self):return conversation
+            async def __aexit__(self,*args):return False
+        client=N(get_entity=AsyncMock(return_value=self.peer),conversation=unittest.mock.Mock(return_value=Context()),get_messages=AsyncMock(),download_media=AsyncMock())
+        return client,conversation
+    async def test_piyasayd_waits_for_one_correlated_event_no_polling_and_no_second_send(self):
+        from datetime import datetime,timezone
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        message=self.message(raw_text='En Çok Yükselenler 1. TEST 1 TL +1%\nEn Çok Düşenler 1. EXAM 1 TL -1%',date=datetime(2026,10,27,14,20,tzinfo=timezone.utc))
+        client,conv=self.movers_client(message);value=dict(self.value,command='/piyasayd');result=await m.query(client,self.db,self.root,value)
+        self.assertEqual(result['received_at'],'2026-10-27T14:20:00+00:00');self.assertEqual(result['images'],[]);self.assertEqual(await m.query(client,self.db,self.root,value),result)
+        self.assertEqual(conv.send_message.await_count,1);self.assertEqual(conv.get_reply.await_count,1);client.get_messages.assert_not_awaited();client.download_media.assert_not_awaited()
+    async def test_piyasayd_timeout_and_unrelated_reply_never_resend(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
+        client,conv=self.movers_client(TimeoutError())
+        with self.assertRaisesRegex(m.QueryError,'timeout'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'expired'):await m.query(client,self.db,self.root,value)
+        self.assertEqual(conv.send_message.await_count,1);client.get_messages.assert_not_awaited()
+        self.db.execute('DELETE FROM requests');self.db.commit();client,conv=self.movers_client(self.message(reply_to_msg_id=9))
+        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
+        self.assertEqual(conv.send_message.await_count,1)
     async def test_unknown_send_is_persisted_and_never_resent(self):
         client=N(get_entity=AsyncMock(return_value=self.peer),send_message=AsyncMock(side_effect=TimeoutError()))
         with self.assertRaisesRegex(m.QueryError,'delivery_uncertain'):await m.query(client,self.db,self.root,self.value)

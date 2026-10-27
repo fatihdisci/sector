@@ -1,0 +1,26 @@
+Örnek test verisi
+Saat: 17.20
+En Çok Yükselenler
+Hisse Fiyat (TL) Değişim
+1. GRTHO: 68.25 TL +9.99%
+2. DOGUB: 16.63 TL +9.99%
+3. INTEK: 159.90 TL +9.97%
+4. CRDFA: 10.15 TL +9.97%
+5. EMKEL: 6.18 TL +9.96%
+6. OTTO: 85.60 TL +9.96%
+7. KARTN: 102.20 TL +9.95%
+8. ASTOR: 172.40 TL +9.95%
+9. KAPLM: 103.40 TL +9.94%
+10. ANELE: 9.19 TL +9.93%
+En Çok Düşenler
+Hisse Fiyat (TL) Değişim
+1. MANAS: 2.25 TL -10.00%
+2. TEHOL: 2.07 TL -10.00%
+3. RALYH: 12.88 TL -9.99%
+4. UFUK: 139.70 TL -9.99%
+5. TRHOL: 192.00 TL -9.99%
+6. LYDHO: 21.64 TL -9.98%
+7. TERA: 10.64 TL -9.98%
+8. EFOR: 13.89 TL -9.98%
+9. DSTKF: 116.40 TL -9.98%
+10. SKYLP: 53.70 TL -9.97%

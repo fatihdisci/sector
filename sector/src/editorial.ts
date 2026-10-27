@@ -241,6 +241,7 @@ export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;v
 function formattedPostText(d:Draft):string {
  d=outputView(d);
  const listLimit=tweetListLimit(d,5);
+ if(d.card_data?.movers){const m=d.card_data.movers;return [headlineWithEmoji(d.headline),d.body,'Yükselenler: '+m.up.map(r=>'#'+r.symbol).join(' '),'Düşenler: '+m.down.map(r=>'#'+r.symbol).join(' '),'#Borsa #BIST'].join('\n\n');}
  if(d.card_data?.overview){const o=d.card_data.overview;return [headlineWithEmoji(d.headline),d.body,...o.panels.filter(p=>o.view==='first_moves'||p.key.startsWith('contribution')).map(p=>(p.key==='contribution_up'?'Pozitif katkı':p.key==='contribution_down'?'Negatif katkı':p.title)+': '+p.rows.map(r=>'#'+r.label).join(' ')),d.hashtags.filter(t=>['#Borsa','#BIST'].includes(t)).join(' ')].join('\n\n');}
  if(d.card_data?.report?.circuit)return [d.headline,d.body].filter(Boolean).join('\n\n');
  if(d.card_data?.report?.buyback)return [d.headline,d.body].join('\n\n');

@@ -4,11 +4,12 @@ import {homedir} from 'node:os';
 import {join,resolve,sep} from 'node:path';
 import {botQuery,type BotQuery} from '../src/bot-query';
 import {withMarketText} from '../src/market-input';
+import {parseMovers} from '../src/market-movers';
 import {withMarketTiming} from '../src/market-timing';
 import {readImage,type ImageEvidence} from './image_reader';
 import type {Document} from '../src/types';
 const root=join(homedir(),'Library/Application Support/sector-haber/telegram-account');
-export interface BotReply {bot:string;command:string;text:string;images:string[];message_ids:number[];}
+export interface BotReply {bot:string;command:string;text:string;images:string[];message_ids:number[];received_at?:string;}
 export async function fetchBotReply(query:BotQuery,key:string):Promise<BotReply>{
  try{await stat(join(root,'account.json'));}catch{throw Error('bot_account_not_connected');}
  return new Promise((resolve,reject)=>{
@@ -54,7 +55,9 @@ function validateMarket(query:BotQuery,market:Document[]) {
 export async function botDocuments(text:string,key:string,submittedAt?:number,fetchReply=fetchBotReply,extract=readImage,loadImage=imageBytes):Promise<Document[]>{
  const query=botQuery(text);if(!/^[0-9]{1,20}$/.test(key)||!query)throw Error('bot_query_invalid');
  const result=await fetchReply(query,key),docs:Document[]=[];
+ if(result.bot!==query.bot||result.command!==query.command)throw Error('bot_query_reply_invalid');
  const base={source_id:'manual-input',source_name:'@'+query.bot,family:'telegram-'+query.bot,official:false,url:'https://t.me/'+query.bot+'#endeks-query-'+key,published_at:null,language:'tr'};
+ if(query.kind==='movers'){if(!Array.isArray(result.message_ids)||result.message_ids.length!==1||!Number.isSafeInteger(result.message_ids[0])||result.message_ids[0]<=0)throw Error('bot_query_reply_invalid');const data=parseMovers(result.text,result.received_at);return [{...base,title:'Piyasa yükselen ve düşenler',body:result.text,passages:[{id:'bot_reply',text:result.text}],equity_codes:[...data.up,...data.down].map(r=>r.symbol),market_movers:data}];}
  if(result.text.trim())docs.push(withMarketText({...base,title:result.text.split('\n')[0].slice(0,180),body:result.text,passages:[{id:'bot_reply',text:result.text}]}));
  if(query.kind==='institutional'){
   if(docs.length!==1||!completeInstitutionalText(docs[0]))throw Error('bot_query_text_incomplete');
