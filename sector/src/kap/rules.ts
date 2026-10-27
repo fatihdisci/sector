@@ -1,5 +1,6 @@
 import {EQUITY,normalize,syndicationTitle,type Disclosure,type Indices} from './parser';
 import {focusedDisclosureTickers} from './ticker-scope';
+import {kapIndexMembership} from './index-tags';
 export const TOPICS=['dividend','buyback','financial','capital','business','share_trade','circuit','other'] as const;
 export type Topic=typeof TOPICS[number];
 export interface Preferences {
@@ -87,6 +88,33 @@ export function decide(d:Disclosure,p:Preferences,indices:Indices|null):Decision
  if(p.priorityIndices&&indexTier&&significant)return result(instant,'index_priority');
  if(p.otherCompanies==='important'&&significant||selected)return result(instant,'other_companies');
  return result('off','other_companies_off');
+}
+// Apply the owner's delivery scope independently to funds and companies.
+// Only an explicitly described new commercial relationship or contract bypasses the index check.
+export function newBusinessException(d:Disclosure):boolean {
+ const title=normalize(d.title),t=subject(d);
+ if(/ESAS\s+SOZLESME|FON IHRAC SOZLESMESI/.test(title))return false;
+ return /(?:^|[^A-Z0-9])YENI IS ILISK(?:ISI|ISINE|ISININ|ILERI)?(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])YENI SOZLESME(?:$|[^A-Z0-9])|(?:^|[^A-Z0-9])SOZLESME(?:NIN)? IMZALAN(?:MASI|DI|MISTIR|ACAK)(?:$|[^A-Z0-9])/.test(t);
+}
+export function matchingFund(d:Disclosure):boolean {
+ if(!d.isFund)return false;
+ const text=normalize([d.company,d.title,d.summary,d.issuerRaw,d.fundType].filter(Boolean).join(' '));
+ return /(?:^|[^A-Z0-9])(?:TERA|PUSULA|ATLAS|TASFIYE(?:SI|SININ|SINE|SINI|YE)?)(?=$|[^A-Z0-9])/.test(text);
+}
+export function scopedDecision(d:Disclosure,p:Preferences,indices:Indices|null,now=Date.now()):Decision {
+ const base=decide(d,p,indices);
+ if(d.isFund){
+  if(syndicationTitle(d.title)||mkkSettlement(d))return {...base,store:false,action:'off',reason:'fund_mandatory_mute'};
+  return matchingFund(d)?{...base,store:true,action:'instant',reason:'fund_keyword'}:{...base,store:false,action:'off',reason:'fund_keyword_excluded'};
+ }
+ // Existing explicit title opt-outs and market-wide circuit handling remain in place.
+ if(['syndication_title','circuit_disabled','mandatory_mute','mkk_settlement_excluded','excluded_title'].includes(base.reason))return base;
+ if(newBusinessException(d))return {...base,reason:'new_business_exception'};
+ // Official index data must be current and complete; unknown membership is retried, not guessed.
+ const membership=kapIndexMembership(d.subjectCodes,indices,now);
+ if(!membership||!indices?.sourceSha256||!/^[a-f0-9]{64}$/.test(indices.sourceSha256))return {...base,store:true,action:'off',reason:'index_unavailable'};
+ if(!membership.bist30.length&&!membership.bist100.length)return {...base,action:'off',reason:'index_outside'};
+ return base;
 }
 export function digestAt(now:number,time:string):number {
  const local=new Date(now+3*3600_000);const [h,m]=time.split(':').map(Number);

@@ -2,8 +2,9 @@ import{CIRCUIT_POLICY,CIRCUIT_LIGHT_TTL,CIRCUIT_LIGHT_MAX,circuitSnapshot,circui
 import {DatabaseSync,type SQLInputValue} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
 import type {Disclosure,Indices,Listing} from './parser';
-import {decide,circuitOptOut,digestAt,preferences,DEFAULTS,type Preferences} from './rules';
+import {scopedDecision,circuitOptOut,digestAt,preferences,DEFAULTS,type Preferences} from './rules';
 import {focusedDisclosureTickers} from './ticker-scope';
+import {kapIndexMembership} from './index-tags';
 export type Job='live'|'backfill'|'reconcile'|'discovery'|'indices'|'groups';
 export const CIRCUIT_WINDOW_MS=180_000;
 export interface Lease {job:Job;token:string;cursor:number;ceiling:number|null;failures:number;}
@@ -53,7 +54,8 @@ export class KapStore {
   // Re-evaluate already collected, not-yet-delivered notifications. Keep source
   // records and delivered messages; a preference change must not replay history.
   for(const row of this.rows<{id:string;metadata:string}>("SELECT q.id,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind='instant' AND q.sent_at IS NULL AND q.state IN ('ready','preparing','model_queued','needs_review')")){
-   if(decide(JSON.parse(row.metadata),p,this.get<Indices>('indices')).action!=='instant')this.run("UPDATE queue SET state='suppressed' WHERE id=? AND sent_at IS NULL",row.id);
+   const decision=scopedDecision(JSON.parse(row.metadata),p,this.get<Indices>('indices'),at);
+   if(decision.reason!=='index_unavailable'&&decision.action!=='instant')this.run("UPDATE queue SET state='suppressed' WHERE id=? AND sent_at IS NULL",row.id);
   }
  });}
  private suppressCircuits(){
@@ -103,7 +105,8 @@ export class KapStore {
   if(!this.checked(d.id,now)){
    const policy=this.circuitPolicy(),scope=this.circuit(d,now);
    if(policy&&Date.parse(d.publishedAt)>=policy.activated_at&&scope&&(scope.kind==='review'||scope.kind==='pay'&&!scope.codes.length)){this.light(d.id,d.publishedAt,scope.reason,scope.version,now,scope.kind==='review');if(advance)this.advance(lease,d.id);return;}
-   const p=this.prefs(),decision=decide(d,p,this.get<Indices>('indices'));
+   const p=this.prefs(),decision=scopedDecision(d,p,this.get<Indices>('indices'),now);
+   if(decision.reason==='index_unavailable'&&!(scope?.kind==='market'))throw Error('kap_index_unavailable');
    if(scope&&(scope.kind==='market'||scope.kind==='pay'&&scope.codes.length)){decision.store=true;decision.action=circuitOptOut(d,p)?'off':'circuit';decision.reason=scope.reason;}
    const cutoff=this.get<number>('notification_start');if(cutoff===null)throw new Error('kap_not_bootstrapped');
    const firstSeen=this.row<{first_seen:number}>('SELECT first_seen FROM discovered WHERE id=?',d.id)?.first_seen??now;
@@ -136,7 +139,8 @@ export class KapStore {
    const since=this.get<number>('circuit_since')??0,eligible=(r:{first_seen:number;published_at:string})=>r.first_seen>=since&&Date.parse(r.published_at)>=since;
    const groupEligible=eligible(first);
    const members=this.rows<{disclosure_id:number;codes:string;first_seen:number;published_at:string;metadata:string}>('SELECT c.*,d.published_at,d.metadata FROM circuit_pending c JOIN disclosures d ON d.id=c.disclosure_id WHERE c.first_seen<? ORDER BY c.first_seen,c.disclosure_id',windowEnd).filter(m=>eligible(m)===groupEligible);
-   const indices=this.get<Indices>('indices'),selected=(m:{metadata:string})=>{const d=JSON.parse(m.metadata)as Disclosure,scope=this.circuit(d,now);return scope?.kind==='pay'?scope.codes:scope?[]:focusedDisclosureTickers(d,indices);},scoped=members.filter(m=>selected(m).length>0);
+   const indices=this.get<Indices>('indices');if(!kapIndexMembership([],indices,now)||!indices?.sourceSha256||!/^[a-f0-9]{64}$/.test(indices.sourceSha256)){this.set('circuit_group_review',{at:now,reason:'kap_index_unavailable'});return;}
+   const selected=(m:{metadata:string})=>{const d=JSON.parse(m.metadata)as Disclosure,scope=this.circuit(d,now);if(scope?.kind==='pay')return scope.codes;if(scope)return [];const codes=focusedDisclosureTickers(d,indices);const membership=kapIndexMembership(codes,indices,now);return membership?[...new Set([...membership.bist30,...membership.bist100])]:[];},scoped=members.filter(m=>selected(m).length>0);
    for(const m of members){const scope=this.circuit(JSON.parse(m.metadata),now);if(scope?.kind==='review')this.light(m.disclosure_id,m.published_at,scope.reason,scope.version,now,true);}
    const ids=scoped.map(m=>m.disclosure_id),codes=[...new Set(scoped.flatMap(selected))].sort();
    if(ids.length){const key=`kap:circuit:${ids[0]}`;

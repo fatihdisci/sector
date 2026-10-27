@@ -16,7 +16,7 @@ function page(summary='Açıklama',count=0){const date=new Date(NOW+3*3600_000).
  const basic={disclosureIndex:101,title:'Payların Geri Alınmasına İlişkin Bildirim',companyTitle:'KAPEKS KİMYA A.Ş.',stockCode:'KPEKS',relatedStocks:null,disclosureClass:'ODA',disclosureType:'ODA',disclosureCategory:'ODA',publishDate:date,disclosureId:'a'.repeat(32),relatedDisclosureOid:null,isChanged:null,summary,attachmentCount:count};
  return `<script>self.__next_f.push(${JSON.stringify([1,JSON.stringify({disclosureBasic:basic})])})</script><div class="disclosureScrollableArea"><p>Tam metin işlem hakkında bilgi verir.</p><table><tr><td>İşlem Tarihi</td><td>20.10.2026</td></tr></table></div>`;
 }
-async function setup(){const s=new KapStore(':memory:');const l=s.claim('discovery',NOW)!;s.discover([{id:100,publishedAt:new Date(NOW-5000).toISOString()}],l,NOW-2000);
+async function setup(){const s=new KapStore(':memory:');const codes=['KPEKS','KTLEV','ASTOR',...Array.from({length:97},(_,i)=>'T'+String(i).padStart(3,'0'))];s.set('indices',{bist30:codes.slice(0,30),bist100:codes,checkedAt:new Date(NOW).toISOString(),source:'https://www.kap.org.tr/tr/Endeksler',sourceSha256:'a'.repeat(64)});const l=s.claim('discovery',NOW)!;s.discover([{id:100,publishedAt:new Date(NOW-5000).toISOString()}],l,NOW-2000);
  const d=parseDisclosure(page(),101);s.save(d,s.claim('live',NOW)!,NOW,true);
  const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));const env={DB,MODE:'telegram_review',AI_DAILY_DRAFT_LIMIT:'240',TELEGRAM_USER_ID:'7',TELEGRAM_CHAT_ID:'42'} as Env;
  const docs=await completeKapDocuments(fullText(page(),101),async()=>{throw Error('no attachment');});return {s,env,docs};}
@@ -207,7 +207,7 @@ test('MKK settlement is suppressed before reading and at final delivery without 
 test('KAP model evidence carries verified per-subject membership from the official index snapshot',async()=>{
  const {s,env,docs}=await setup();try{
   const pool=Array.from({length:99},(_,i)=>'A'+String(i).padStart(4,'0'));
-  s.set('indices',{bist30:['KPEKS',...pool.slice(0,29)],bist100:['KPEKS',...pool],checkedAt:new Date(NOW).toISOString(),source:'https://www.kap.org.tr/tr/Endeksler'});
+  s.set('indices',{bist30:['KPEKS',...pool.slice(0,29)],bist100:['KPEKS',...pool],checkedAt:new Date(NOW).toISOString(),source:'https://www.kap.org.tr/tr/Endeksler',sourceSha256:'a'.repeat(64)});
   assert.equal((await new KapDelivery(s,env,async()=>docs,()=>NOW).run()).state,'model_queued');
   const job=await env.DB.prepare('SELECT documents FROM model_jobs').first<{documents:string}>();const loaded=JSON.parse(job!.documents) as Document[];
   assert.deepEqual(loaded[0].index_membership?.bist30,['KPEKS']);assert.deepEqual(loaded[0].index_membership?.bist100,['KPEKS']);

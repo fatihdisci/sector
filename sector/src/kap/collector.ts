@@ -7,7 +7,7 @@ export class KapCollector {
   const lease=this.store.claim(job,this.clock());if(!lease)return false;let interval=30_000;
   try {
    if(job==='discovery'){this.store.discover(await this.source.listing(),lease,this.clock());interval=60_000;}
-   else if(job==='indices'){const data=await this.source.indices();this.store.transaction(()=>{this.store.guard(lease,this.clock());this.store.set('indices',data);try{this.store.refreshCircuitIndex(data,this.clock());}catch(e){this.store.set('circuit_index_block',safeError(e));throw e;}});interval=86400_000;}
+   else if(job==='indices'){const data=await this.source.indices();this.store.transaction(()=>{this.store.guard(lease,this.clock());this.store.set('indices',data);try{this.store.refreshCircuitIndex(data,this.clock());}catch(e){this.store.set('circuit_index_block',safeError(e));}});interval=86400_000;}
    else if(job==='groups'){this.store.freeze(lease,this.clock());interval=CIRCUIT_WINDOW_MS-this.clock()%CIRCUIT_WINDOW_MS;}
    else if(this.store.get('notification_start')===null){interval=5000;}
    else if(job==='reconcile'){for(let n=0;n<3;n++){const id=this.store.nextRepair(this.clock());if(id===null)break;await this.process(id,lease,false);}}

@@ -17,7 +17,7 @@ test('official light title skips detail/attachments/archive/AI without resetting
 });
 test('already pending exact topic is suppressed before full reader and final send; sent/uncertain ledger stays intact',async()=>{
  const s=new KapStore(':memory:'),DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));try{
- s.configure({...DEFAULTS,otherCompanies:'important'},NOW);s.set('notification_start',NOW-60000);s.set('bootstrap',{latest:100});const l=s.claim('live',NOW)!;s.save(d('Kredi Sözleşmesi'),l,NOW,true);
+ const codes=['AKBNK',...Array.from({length:99},(_,i)=>'T'+String(i).padStart(3,'0'))];s.set('indices',{bist30:codes.slice(0,30),bist100:codes,checkedAt:new Date(NOW).toISOString(),source:'https://www.kap.org.tr/tr/Endeksler',sourceSha256:'a'.repeat(64)});s.configure({...DEFAULTS,otherCompanies:'important'},NOW);s.set('notification_start',NOW-60000);s.set('bootstrap',{latest:100});const l=s.claim('live',NOW)!;s.save(d('Kredi Sözleşmesi'),l,NOW,true);
  // Simulate a previously queued exact heading from the preceding release.
  s.run('update disclosures set metadata=? where id=101',JSON.stringify(d()));let reads=0;
  for(const [id,state]of[['old-sent','sent'],['old-uncertain','uncertain']])s.run('insert into queue(id,source_ref,kind,state,created_at,available_at,payload)values(?,?,?,?,?,?,?)',id,id,'instant',state,NOW,NOW,'{}');

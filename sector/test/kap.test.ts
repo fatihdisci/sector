@@ -14,7 +14,7 @@ const NOW=Date.parse('2026-10-21T13:00:00Z');
 const basic=(more:Record<string,unknown>={})=>({disclosureIndex:101,title:'Yeni İş İlişkisi',companyTitle:'TEST SANAYİ A.Ş.',stockCode:'TEST',relatedStocks:null,disclosureClass:'ODA',disclosureType:'ODA',disclosureCategory:'ODA',publishDate:'2026.10.21 16:00:00',disclosureId:'a'.repeat(32),relatedDisclosureOid:null,isChanged:null,summary:'Sözleşme imzalandı.',...more});
 function page(b=basic(),body=''){const data='7:'+JSON.stringify({disclosureBasic:b});const split=23;return `<script>self.__next_f.push(${JSON.stringify([1,data.slice(0,split)])})</script><script>self.__next_f.push(${JSON.stringify([1,data.slice(split)])})</script>${body}`;}
 const item=(id=101,more:Record<string,unknown>={})=>parseDisclosure(page(basic({disclosureIndex:id,...more})),id);
-const setup=()=>{const dir=mkdtempSync(join(tmpdir(),'sector-kap-test-')),path=join(dir,'kap.sqlite'),store=new KapStore(path);const lease=store.claim('discovery',NOW)!;store.discover([{id:100,publishedAt:new Date(NOW-1000).toISOString()}],lease,NOW);store.finish(lease,NOW,60_000);return {store,path,close:()=>{store.close();rmSync(dir,{recursive:true,force:true});}};};
+const setup=()=>{const dir=mkdtempSync(join(tmpdir(),'sector-kap-test-')),path=join(dir,'kap.sqlite'),store=new KapStore(path);const codes=['KPEKS','KTLEV','ASTOR',...Array.from({length:97},(_,i)=>'T'+String(i).padStart(3,'0'))];store.set('indices',{bist30:codes.slice(0,30),bist100:codes,checkedAt:new Date(NOW).toISOString(),source:'https://www.kap.org.tr/tr/Endeksler',sourceSha256:'a'.repeat(64)});const lease=store.claim('discovery',NOW)!;store.discover([{id:100,publishedAt:new Date(NOW-1000).toISOString()}],lease,NOW);store.finish(lease,NOW,60_000);return {store,path,close:()=>{store.close();rmSync(dir,{recursive:true,force:true});}};};
 const pref=(p:Partial<Preferences>={})=>preferences({...structuredClone(DEFAULTS),...p});
 
 test('KAP Flight preserves split chunks, quoted names and nested JSON; scripts never execute',()=>{
@@ -174,8 +174,8 @@ test('KAP bootstrap reconciliation does not accelerate the separate silent backf
 });
 test('KAP digest and correction IDs persist independently; no title-based event merge',()=>{
  const {store,close}=setup();try{store.configure(pref({funds:'digest'}));const l=store.claim('live',NOW)!;
- store.save(item(101,{title:'Fon Duyurusu',disclosureType:'FON'}),l,NOW,true);store.save(item(102,{title:'Fon Duyurusu',disclosureType:'FON',isChanged:'DUZENLENEN',relatedDisclosureOid:'a'.repeat(32)}),l,NOW,true);
- const rows=store.rows<{kind:string;available_at:number}>('SELECT kind,available_at FROM queue');assert.equal(rows.length,2);assert.equal(rows[0].kind,'digest');assert.equal(rows[0].available_at,digestAt(NOW,'19:00'));assert.equal(store.row<{correction:number}>('SELECT correction FROM disclosures WHERE id=102')!.correction,1);
+ store.save(item(101,{title:'Tera Fon Duyurusu',disclosureType:'FON'}),l,NOW,true);store.save(item(102,{title:'Tera Fon Duyurusu',disclosureType:'FON',isChanged:'DUZENLENEN',relatedDisclosureOid:'a'.repeat(32)}),l,NOW,true);
+ const rows=store.rows<{kind:string;available_at:number}>('SELECT kind,available_at FROM queue');assert.equal(rows.length,2);assert.equal(rows[0].kind,'instant');assert.equal(rows[0].available_at,NOW);assert.equal(store.row<{correction:number}>('SELECT correction FROM disclosures WHERE id=102')!.correction,1);
  }finally{close();}
 });
 test('KAP unread HTTP response body is covered by the 12 second timeout',async()=>{

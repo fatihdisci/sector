@@ -1,5 +1,13 @@
 # ENDEKS HABER — ayrı KAP toplama hattı
 
+## Güncel bildirim kapsamı (27 Ekim 2026)
+
+Aşağıdaki kapsam bu dosyadaki eski bildirim kapsamı açıklamalarının önüne geçer. Şirket bildirimleri için KAP Endeksler sayfasından güncel BIST 30 veya BIST 100 üyeliği gerekir. Yeni iş ilişkisi ve yeni sözleşme başlıkları endeks koşulundan muaftır; mevcut açık başlık susturmaları ve konu tercihleri korunur. Genel sözleşme, ihale veya esas sözleşme başlıkları bu istisnaya otomatik girmez. Piyasa geneli ve doğrulanmış BIST 30 devre kesici kuralları ayrıca korunur.
+
+Fonların adı, başlığı, özeti, kodu veya fon türünde Türkçe harf duyarsız sözcük eşleşmesiyle Tera, Pusula, Atlas ya da tasfiye varsa anlık bildirim kapsamındadır; diğer fonlar dışlanır. Bu açık istek önceki fon kapalı/özet terciğinin yerine geçer. Eşleşme KAP liste/detay metaverisinde yapılır; bu aşamada henüz indirilmemiş ekler veya tam metin aranmaz.
+
+Endeksler KAP'ın resmî /tr/Endeksler sayfasından her başarılı yenilemeden 24 saat sonra tekrar çekilir; 30/50/100 sayıları ve altküme ilişkisi doğrulanır. Hatalarda son liste saklanır, ancak 36 saatten eski veya geçersiz listeyle üyelik kararı verilmez: yeni kayıtlar tekrar denenmek üzere bekler, hazır teslimatlar incelemeye alınır. Devre kesiciye özgü sabit dönem kanıtı başarısızsa devre kesici ayrı olarak bekler; bu durum geçerli yeni BIST 100 listesinin kaydedilmesini engellemez. Geçmiş bildirimler yeniden kuyruğa alınmaz.
+
 ## Doğrulanan sözleşme (21 Ekim 2026)
 
 - Resmî ana sayfanın kendi JavaScript dosyaları `GET_NOTIFICATION_DATA_LIGHT = api/disclosure/list/light` yolunu kullanıyor. `GET https://www.kap.org.tr/tr/api/disclosure/list/light` kimliksiz 200 JSON döndürdü. Bu site içi keşif kaynağıdır; lisanslı MKK API bağlantısı veya sürüm garantili API değildir.
