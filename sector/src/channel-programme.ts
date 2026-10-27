@@ -22,7 +22,7 @@ export function channelProgramme(at:string,caption:string,layout?:string,forward
  if(minute>=600&&minute<610)return result('first_moves','Açılışın ilk anları');
  if(session.kind==='full'&&minute>=1091&&minute<1110)return result('close','Gün sonu');
  if(session.kind==='full'&&minute>=660&&minute<1080){
-  const label=minute<720?'İlk saatin ardından':minute<840?'Gün ortası':minute<960?'Öğleden sonra':minute<1020?'Kapanışa iki saat kala':'Kapanışa doğru';
+  const label=minute<720?'İlk saatin ardından':minute<840?'Gün ortası':minute<960?'Öğleden sonra':minute===960?'Kapanışa iki saat kala':'Kapanışa doğru';
   return result('summary',label);
  }
  return result('summary',session.label??'Piyasa özeti');

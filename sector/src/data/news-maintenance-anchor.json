@@ -24,7 +24,7 @@
   "runtime_files": {
     "src/dedupe.ts": "b666a1523e1540dd35105e3caeffcc33d018fec724d9e5962c19a0a0a6e3df39",
     "src/channel-market-preview.ts": "29aa7b5f347371fb834a9746f8772ad6a45ae80836a4ab59ab17869c47739b23",
-    "src/channel-programme.ts": "5bb009d6cbbc099c257af3d5aff795d78cbe646200f336df59480f851d3a6aee",
+    "src/channel-programme.ts": "55d1ba4f01aac5c45a16d96e935163f2a08779572a047960fcb3b65d6ecea8d3",
     "src/market-overview.ts": "48bf8e7e52674b267c95923802db049d9db8b5d296038ebbda3f1ea92cf24592",
     "src/market-overview-types.ts": "8f925f6d552c1276f23621d42d127f2deca75b467bd1caad0ef16605624da0af",
     "src/market-overview-card.ts": "86129d9af36e1537cfa011f7d623f400c635950b639d9ceabafdc03c509747bb",
