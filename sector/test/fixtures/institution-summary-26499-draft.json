@@ -1,0 +1,357 @@
+{
+  "documents": [
+    {
+      "source_layout": {
+        "kind": "institution_summary",
+        "panels": [
+          {
+            "name": "buy",
+            "symbols": [
+              "AKBNK",
+              "Z30KP.F",
+              "THYAO",
+              "YKBNK",
+              "KTLEV"
+            ]
+          },
+          {
+            "name": "sell",
+            "symbols": [
+              "AKBNK",
+              "THYAO",
+              "YKBNK",
+              "GARAN",
+              "ISCTR"
+            ]
+          }
+        ],
+        "minimum_rows": 10
+      },
+      "body": "Konu: Kurum AKD Özeti; saat 12:01.\n\nEn çok alan kurum: Garanti; genel net +357,88 milyon TL.\n\nGaranti üzerinden net alım — AKBNK: net hacim +140,13 milyon; maliyet 63,83  TL.\n\nGaranti üzerinden net alım — Z30KP.F: net hacim +95,04 milyon; maliyet 206,62  TL.\n\nGaranti üzerinden net alım — THYAO: net hacim +34,86 milyon; maliyet 256,39  TL.\n\nGaranti üzerinden net alım — YKBNK: net hacim +29,10 milyon; maliyet 35,03  TL.\n\nGaranti üzerinden net alım — KTLEV: net hacim +20,19 milyon; maliyet 4,30  TL.\n\nEn çok satan kurum: BofA; genel net -1,60 milyar TL.\n\nBofA üzerinden net satış — AKBNK: net hacim -289,09 milyon; maliyet 63,70  TL.\n\nBofA üzerinden net satış — THYAO: net hacim -281,19 milyon; maliyet 256,72  TL.\n\nBofA üzerinden net satış — YKBNK: net hacim -191,47 milyon; maliyet 35,12  TL.\n\nBofA üzerinden net satış — GARAN: net hacim -115,48 milyon; maliyet 126,57  TL.\n\nBofA üzerinden net satış — ISCTR: net hacim -55,24 milyon; maliyet 12,03  TL.\n\nKaynak sınırlamaları (veri tahmini yapılmadı): Görselde tarih belirtilmiyor. Hisse satırlarının net hacim hücrelerinde para birimi belirtilmiyor; maliyet hücrelerinde ₺ gösteriliyor.",
+      "passages": [
+        {
+          "id": "image_visual_1",
+          "text": "Konu: Kurum AKD Özeti; saat 12:01."
+        },
+        {
+          "id": "image_visual_2",
+          "text": "En çok alan kurum: Garanti; genel net +357,88 milyon TL."
+        },
+        {
+          "id": "image_visual_3",
+          "text": "Garanti üzerinden net alım — AKBNK: net hacim +140,13 milyon; maliyet 63,83 ₺."
+        },
+        {
+          "id": "image_visual_4",
+          "text": "Garanti üzerinden net alım — Z30KP.F: net hacim +95,04 milyon; maliyet 206,62 ₺."
+        },
+        {
+          "id": "image_visual_5",
+          "text": "Garanti üzerinden net alım — THYAO: net hacim +34,86 milyon; maliyet 256,39 ₺."
+        },
+        {
+          "id": "image_visual_6",
+          "text": "Garanti üzerinden net alım — YKBNK: net hacim +29,10 milyon; maliyet 35,03 ₺."
+        },
+        {
+          "id": "image_visual_7",
+          "text": "Garanti üzerinden net alım — KTLEV: net hacim +20,19 milyon; maliyet 4,30 ₺."
+        },
+        {
+          "id": "image_visual_8",
+          "text": "En çok satan kurum: BofA; genel net -1,60 milyar TL."
+        },
+        {
+          "id": "image_visual_9",
+          "text": "BofA üzerinden net satış — AKBNK: net hacim -289,09 milyon; maliyet 63,70 ₺."
+        },
+        {
+          "id": "image_visual_10",
+          "text": "BofA üzerinden net satış — THYAO: net hacim -281,19 milyon; maliyet 256,72 ₺."
+        },
+        {
+          "id": "image_visual_11",
+          "text": "BofA üzerinden net satış — YKBNK: net hacim -191,47 milyon; maliyet 35,12 ₺."
+        },
+        {
+          "id": "image_visual_12",
+          "text": "BofA üzerinden net satış — GARAN: net hacim -115,48 milyon; maliyet 126,57 ₺."
+        },
+        {
+          "id": "image_visual_13",
+          "text": "BofA üzerinden net satış — ISCTR: net hacim -55,24 milyon; maliyet 12,03 ₺."
+        },
+        {
+          "id": "image_normalized_1",
+          "text": "Konu: Kurum AKD Özeti; saat 12:01."
+        },
+        {
+          "id": "image_normalized_2",
+          "text": "En çok alan kurum: Garanti; genel net +357,88 milyon TL."
+        },
+        {
+          "id": "image_normalized_3",
+          "text": "Garanti üzerinden net alım — AKBNK: net hacim +140,13 milyon; maliyet 63,83  TL."
+        },
+        {
+          "id": "image_normalized_4",
+          "text": "Garanti üzerinden net alım — Z30KP.F: net hacim +95,04 milyon; maliyet 206,62  TL."
+        },
+        {
+          "id": "image_normalized_5",
+          "text": "Garanti üzerinden net alım — THYAO: net hacim +34,86 milyon; maliyet 256,39  TL."
+        },
+        {
+          "id": "image_normalized_6",
+          "text": "Garanti üzerinden net alım — YKBNK: net hacim +29,10 milyon; maliyet 35,03  TL."
+        },
+        {
+          "id": "image_normalized_7",
+          "text": "Garanti üzerinden net alım — KTLEV: net hacim +20,19 milyon; maliyet 4,30  TL."
+        },
+        {
+          "id": "image_normalized_8",
+          "text": "En çok satan kurum: BofA; genel net -1,60 milyar TL."
+        },
+        {
+          "id": "image_normalized_9",
+          "text": "BofA üzerinden net satış — AKBNK: net hacim -289,09 milyon; maliyet 63,70  TL."
+        },
+        {
+          "id": "image_normalized_10",
+          "text": "BofA üzerinden net satış — THYAO: net hacim -281,19 milyon; maliyet 256,72  TL."
+        },
+        {
+          "id": "image_normalized_11",
+          "text": "BofA üzerinden net satış — YKBNK: net hacim -191,47 milyon; maliyet 35,12  TL."
+        },
+        {
+          "id": "image_normalized_12",
+          "text": "BofA üzerinden net satış — GARAN: net hacim -115,48 milyon; maliyet 126,57  TL."
+        },
+        {
+          "id": "image_normalized_13",
+          "text": "BofA üzerinden net satış — ISCTR: net hacim -55,24 milyon; maliyet 12,03  TL."
+        },
+        {
+          "id": "image_visual_format",
+          "text": "Yalnız biçim eşdeğerleri: Mr=milyar, Mn=milyon, ₺=TL. Yüzde hücresinde ondalık nokta virgüle normalleştirildi; fiyat/miktar binlik noktaları değiştirilmedi. Eksik para birimi eklenmedi."
+        },
+        {
+          "id": "image_source_note_1",
+          "text": "Görselde tarih belirtilmiyor."
+        },
+        {
+          "id": "image_source_note_2",
+          "text": "Hisse satırlarının net hacim hücrelerinde para birimi belirtilmiyor; maliyet hücrelerinde ₺ gösteriliyor."
+        },
+        {
+          "id": "channel_context",
+          "text": "{\"caption\":\"🏦 Kurum AKD Özeti — 12:01\"}"
+        }
+      ],
+      "coverage": {
+        "complete": true,
+        "page_count": 1,
+        "pages": [
+          {
+            "page": 1,
+            "mode": "image_ocr_visual",
+            "characters": 2058,
+            "tables": 0
+          }
+        ]
+      },
+      "source_id": "sermaye-telegram",
+      "source_name": "Sermaye Borsası",
+      "family": "telegram-sermayeborsasi",
+      "official": false,
+      "language": "tr",
+      "url": "https://t.me/SermayeBorsasi/26499",
+      "title": "Sermaye Borsası kaynak görseli",
+      "published_at": "2026-10-27T09:01:06+00:00",
+      "channel_publication": {
+        "channel": "SermayeBorsasi",
+        "peer_id": 2426639373,
+        "message_id": 26499,
+        "posted_at": "2026-10-27T09:01:06+00:00",
+        "edited_at": "2026-10-27T09:01:09+00:00",
+        "version": "3eaf9a91501b40d3e818c257aab97fda6c32980c00b0b17657d906358ef254c0",
+        "forwarded": false,
+        "forwarded_at": null
+      },
+      "equity_codes": [
+        "AKBNK",
+        "THYAO",
+        "YKBNK",
+        "KTLEV",
+        "GARAN",
+        "ISCTR"
+      ]
+    }
+  ],
+  "draft": {
+    "headline": "📊 Garanti ve BofA üzerinden net işlemlerde öne çıkanlar",
+    "body": "En çok net alım yapılan kurum Garanti, en çok net satım yapılan kurum ise BofA oldu.",
+    "card_headline": "Net işlemlerde Garanti ve BofA öne çıktı",
+    "card_body": "Garanti üzerinden net alım, BofA üzerinden net satım listeleri.",
+    "card_data": {
+      "buy_broker": "Garanti",
+      "sell_broker": "BofA",
+      "buy": [
+        {
+          "label": "AKBNK",
+          "value": "+140,13 Mn · maliyet 63,83 ₺"
+        },
+        {
+          "label": "Z30KP.F",
+          "value": "+95,04 Mn · maliyet 206,62 ₺"
+        },
+        {
+          "label": "THYAO",
+          "value": "+34,86 Mn · maliyet 256,39 ₺"
+        },
+        {
+          "label": "YKBNK",
+          "value": "+29,10 Mn · maliyet 35,03 ₺"
+        },
+        {
+          "label": "KTLEV",
+          "value": "+20,19 Mn · maliyet 4,30 ₺"
+        }
+      ],
+      "sell": [
+        {
+          "label": "AKBNK",
+          "value": "-289,09 Mn · maliyet 63,70 ₺"
+        },
+        {
+          "label": "THYAO",
+          "value": "-281,19 Mn · maliyet 256,72 ₺"
+        },
+        {
+          "label": "YKBNK",
+          "value": "-191,47 Mn · maliyet 35,12 ₺"
+        },
+        {
+          "label": "GARAN",
+          "value": "-115,48 Mn · maliyet 126,57 ₺"
+        },
+        {
+          "label": "ISCTR",
+          "value": "-55,24 Mn · maliyet 12,03 ₺"
+        }
+      ]
+    },
+    "hashtags": [
+      "#Borsa",
+      "#BIST",
+      "#AKBNK"
+    ],
+    "category": "bist",
+    "importance": 55,
+    "template": "institutional",
+    "claims": [
+      {
+        "text": "En çok net alım yapılan kurum Garanti, en çok net satım yapılan kurum BofA olarak gösterildi.",
+        "evidence": [
+          {
+            "document": 0,
+            "passage": "image_visual_2",
+            "quote": "En çok alan kurum: Garanti; genel net +357,88 milyon TL."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_8",
+            "quote": "En çok satan kurum: BofA; genel net -1,60 milyar TL."
+          }
+        ]
+      },
+      {
+        "text": "Garanti üzerinden net alım listesinde AKBNK için net hacim +140,13 milyon ve maliyet 63,83 ₺; Z30KP.F için +95,04 milyon ve maliyet 206,62 ₺.",
+        "evidence": [
+          {
+            "document": 0,
+            "passage": "image_visual_3",
+            "quote": "Garanti üzerinden net alım — AKBNK: net hacim +140,13 milyon; maliyet 63,83 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_4",
+            "quote": "Garanti üzerinden net alım — Z30KP.F: net hacim +95,04 milyon; maliyet 206,62 ₺."
+          }
+        ]
+      },
+      {
+        "text": "Garanti üzerinden net alım listesinde THYAO için net hacim +34,86 milyon ve maliyet 256,39 ₺; YKBNK için +29,10 milyon ve maliyet 35,03 ₺; KTLEV için +20,19 milyon ve maliyet 4,30 ₺.",
+        "evidence": [
+          {
+            "document": 0,
+            "passage": "image_visual_5",
+            "quote": "Garanti üzerinden net alım — THYAO: net hacim +34,86 milyon; maliyet 256,39 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_6",
+            "quote": "Garanti üzerinden net alım — YKBNK: net hacim +29,10 milyon; maliyet 35,03 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_7",
+            "quote": "Garanti üzerinden net alım — KTLEV: net hacim +20,19 milyon; maliyet 4,30 ₺."
+          }
+        ]
+      },
+      {
+        "text": "BofA üzerinden net satış listesinde AKBNK için net hacim -289,09 milyon ve maliyet 63,70 ₺; THYAO için -281,19 milyon ve maliyet 256,72 ₺.",
+        "evidence": [
+          {
+            "document": 0,
+            "passage": "image_visual_9",
+            "quote": "BofA üzerinden net satış — AKBNK: net hacim -289,09 milyon; maliyet 63,70 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_10",
+            "quote": "BofA üzerinden net satış — THYAO: net hacim -281,19 milyon; maliyet 256,72 ₺."
+          }
+        ]
+      },
+      {
+        "text": "BofA üzerinden net satış listesinde YKBNK için net hacim -191,47 milyon ve maliyet 35,12 ₺; GARAN için -115,48 milyon ve maliyet 126,57 ₺; ISCTR için -55,24 milyon ve maliyet 12,03 ₺.",
+        "evidence": [
+          {
+            "document": 0,
+            "passage": "image_visual_11",
+            "quote": "BofA üzerinden net satış — YKBNK: net hacim -191,47 milyon; maliyet 35,12 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_12",
+            "quote": "BofA üzerinden net satış — GARAN: net hacim -115,48 milyon; maliyet 126,57 ₺."
+          },
+          {
+            "document": 0,
+            "passage": "image_visual_13",
+            "quote": "BofA üzerinden net satış — ISCTR: net hacim -55,24 milyon; maliyet 12,03 ₺."
+          }
+        ]
+      }
+    ],
+    "entities": [
+      "Garanti",
+      "BofA"
+    ],
+    "event_key": "garanti-bofa-kurum-akd-ozeti-12-01",
+    "uncertainties": [],
+    "source_notes": [
+      "Görselde veri tarihi belirtilmiyor; başlıktaki saat veri ölçüm zamanı olarak kullanılmadı.",
+      "Net hacim hücrelerinde para birimi belirtilmiyor; kaynakta görünen Mn ölçeği korundu. Maliyet hücrelerinde ₺ gösteriliyor.",
+      "Z30KP.F kaynakta yer alan koduyla alım listesinde korundu."
+    ]
+  },
+  "audit": {
+    "supported": true,
+    "issues": []
+  }
+}

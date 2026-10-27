@@ -1,4 +1,4 @@
-import pathlib,sys,unittest
+import pathlib,sys,unittest,json
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'scripts'))
 from image_vision import extract
 class VisualEvidenceTests(unittest.TestCase):
@@ -63,3 +63,17 @@ class VisualEvidenceTests(unittest.TestCase):
    if 'facts'in payload and 'visual_layout'in payload:return {'supported':False,'issues':['Para birimi uydurulmuş']}
    return {'complete':True,'facts':['Hacim: 100 milyon TL'],'notes':['Para birimi yok'],'issues':[]}
   with self.assertRaisesRegex(RuntimeError,'image_vision_unverified'):extract({},invoke)
+
+ def test_real_institution_summary_keeps_row_units_and_two_brokers_separate(self):
+  sample=json.loads((pathlib.Path(__file__).parent/'fixtures/institution-summary-26499.json').read_text())
+  calls=[]
+  def invoke(job,prompt,payload):
+   calls.append((prompt,payload));return sample['extraction'] if len(calls)==1 else sample['audit']
+  out=extract({'images':['source.png'],'body':'OCR: Z3OKP.F'},invoke)
+  self.assertEqual(out['source_layout']['minimum_rows'],10)
+  self.assertIn('Z30KP.F',out['source_layout']['panels'][0]['symbols'])
+  self.assertIn('Garanti',out['body']);self.assertIn('BofA',out['body'])
+  self.assertRegex(out['body'],r'net hacim \+140,13 milyon; maliyet 63,83\s+TL')
+  self.assertNotIn('140,13 milyon TL',out['body'])
+  self.assertIn('panelin toplamına ait para birimini satırlara taşıma',calls[0][0])
+  self.assertIn('genel toplamındaki TL işareti',calls[1][0])
