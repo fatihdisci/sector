@@ -1,0 +1,125 @@
+{
+  "broker": "HSBC",
+  "rows": [
+    {
+      "side": "buy",
+      "symbol": "ASTOR",
+      "volume": "1,4 milyar TL",
+      "rank": 1
+    },
+    {
+      "side": "buy",
+      "symbol": "CCOLA",
+      "volume": "37,5 milyon TL",
+      "rank": 2
+    },
+    {
+      "side": "buy",
+      "symbol": "EREGL",
+      "volume": "29,6 milyon TL",
+      "rank": 3
+    },
+    {
+      "side": "buy",
+      "symbol": "ENKAI",
+      "volume": "23,0 milyon TL",
+      "rank": 4
+    },
+    {
+      "side": "buy",
+      "symbol": "ASELS",
+      "volume": "20,5 milyon TL",
+      "rank": 5
+    },
+    {
+      "side": "buy",
+      "symbol": "MGROS",
+      "volume": "19,2 milyon TL",
+      "rank": 6
+    },
+    {
+      "side": "buy",
+      "symbol": "ENJSA",
+      "volume": "13,0 milyon TL",
+      "rank": 7
+    },
+    {
+      "side": "buy",
+      "symbol": "TABGD",
+      "volume": "12,0 milyon TL",
+      "rank": 8
+    },
+    {
+      "side": "buy",
+      "symbol": "AKSEN",
+      "volume": "11,4 milyon TL",
+      "rank": 9
+    },
+    {
+      "side": "buy",
+      "symbol": "YKBNK",
+      "volume": "10,4 milyon TL",
+      "rank": 10
+    },
+    {
+      "side": "sell",
+      "symbol": "SAHOL",
+      "volume": "101,5 milyon TL",
+      "rank": 1
+    },
+    {
+      "side": "sell",
+      "symbol": "BIMAS",
+      "volume": "28,2 milyon TL",
+      "rank": 2
+    },
+    {
+      "side": "sell",
+      "symbol": "SASA",
+      "volume": "13,5 milyon TL",
+      "rank": 3
+    },
+    {
+      "side": "sell",
+      "symbol": "FROTO",
+      "volume": "11,6 milyon TL",
+      "rank": 4
+    },
+    {
+      "side": "sell",
+      "symbol": "TUPRS",
+      "volume": "7,9 milyon TL",
+      "rank": 5
+    },
+    {
+      "side": "sell",
+      "symbol": "AKSA",
+      "volume": "7,3 milyon TL",
+      "rank": 6
+    },
+    {
+      "side": "sell",
+      "symbol": "TOASO",
+      "volume": "4,9 milyon TL",
+      "rank": 7
+    },
+    {
+      "side": "sell",
+      "symbol": "TRGYO",
+      "volume": "3,1 milyon TL",
+      "rank": 8
+    },
+    {
+      "side": "sell",
+      "symbol": "GESAN",
+      "volume": "3,0 milyon TL",
+      "rank": 9
+    },
+    {
+      "side": "sell",
+      "symbol": "RGYAS",
+      "volume": "1,4 milyon TL",
+      "rank": 10
+    }
+  ]
+}

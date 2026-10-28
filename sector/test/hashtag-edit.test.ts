@@ -78,3 +78,14 @@ test('exact BIST100 screenshot heading request edits cached overview without sou
  const row=await env.DB.prepare('SELECT content,documents,revision FROM drafts').first<any>(),after=JSON.parse(row.content);
  assert.match(after.headline,/Gün sonu/);assert.equal(after.card_headline,'Gün sonu');assert(svg.includes('Gün sonu'));assert.deepEqual({...after,headline:before.headline,card_headline:before.card_headline},before);assert.equal(row.documents,JSON.stringify(docs));assert.equal(row.revision,2);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);
 });
+
+import {deliver} from '../src/pipeline';
+test('owner headings survive final media save and real delivery on half and full session days for all targets',async()=>{
+ const old=globalThis.fetch;globalThis.fetch=async()=>Response.json({ok:true,result:{message_id:900}});try{
+  for(const date of ['2026-10-28T12:00:00+03:00','2026-10-30T12:00:00+03:00'])for(const target of ['tweet başlığını','görselin başlığını','Görselin ve tweetin başlığını']){
+   const {env,d,docs}=await periodFixture();Object.assign(env,{MODE:'telegram_review',TELEGRAM_USER_ID:'1',TELEGRAM_CHAT_ID:'1',TELEGRAM_BOT_TOKEN:'3:fake',TELEGRAM_VERIFIED_BOT_ID:'3'});docs[0].market_data.submitted_at=Date.parse(date)/1000;await env.DB.prepare('UPDATE drafts SET documents=?').bind(JSON.stringify(docs)).run();
+   await enqueueEdit(env,id,1,target+' gün sonu olarak değiştir');const before=await env.DB.prepare('SELECT content,documents,media_key FROM drafts').first<any>();await readMedia(env,before.media_key,before.content);await deliver(env);
+   const after=await env.DB.prepare('SELECT content,documents,delivery_state FROM drafts').first<any>();assert.equal(after.content,before.content);assert.equal(after.documents,JSON.stringify(docs));assert.equal(after.delivery_state,'sent');const out=JSON.parse(after.content);assert.equal(out.body,d.body);assert.equal(out.card_body,d.card_body);assert.deepEqual(out.card_data,d.card_data);if(target!=='görselin başlığını')assert.match(out.headline,/Gün sonu/);else assert.equal(out.headline,d.headline);if(target!=='tweet başlığını')assert.match(out.card_headline,/Gün sonu/);else assert.equal(out.card_headline,d.card_headline);
+  }
+ }finally{globalThis.fetch=old;}
+});

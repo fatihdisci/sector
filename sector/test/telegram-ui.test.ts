@@ -72,3 +72,12 @@ test('published state also rejects old edit, cell and design controls even if th
  const e=await setup(),f=fake();try{await e.DB.prepare("INSERT INTO publication_marks VALUES(?,'published',?,?)").bind(id,now,now).run();for(const [i,data] of [`s:edit:${id}:1`,`ed:correct:${id}:1`,`design:${id}:1`].entries())await press(e,data,100+i);assert(!f.calls.some(c=>c.method==='sendMessage'));for(const table of ['edits','editor_prompts','card_redesigns','model_jobs','x_posts'])assert.equal((await e.DB.prepare('SELECT COUNT(*) n FROM '+table).first<any>()).n,0,table);
  }finally{f.restore();}
 });
+
+test('current manually sourced draft edit opens; stale revision/message and real expiry stay distinct',async()=>{
+ const e=await setup(),m=fake();try{
+  await e.DB.prepare("UPDATE drafts SET verification='single_source_attributed'").run();
+  await press(e,`s:edit:${id}:1`,901);assert.equal((await e.DB.prepare('SELECT prompt_message_id FROM edits').first<any>()).prompt_message_id,99);assert(m.calls.some(c=>c.method==='sendMessage'&&c.body.get('reply_markup').includes('force_reply')));
+  for(const [data,message,reason] of [[`s:edit:${id}:2`,90,'revision_mismatch'],[`s:edit:${id}:1`,91,'message_mismatch']] as const){await press(e,data,902,message);const d=JSON.parse((await e.DB.prepare("SELECT value FROM system_state WHERE key='draft_callback_last_rejection'").first<any>()).value);assert.equal(d.reason,reason);assert(!JSON.stringify(d).includes('fixture'));}
+  await e.DB.prepare('UPDATE drafts SET expires_at=?').bind(now/1000-1).run();await press(e,`s:edit:${id}:1`,903);assert.equal(JSON.parse((await e.DB.prepare("SELECT value FROM system_state WHERE key='draft_callback_last_rejection'").first<any>()).value).reason,'draft_expired');assert(m.calls.at(-1)!.body.get('text').includes('süresi dolmuş'));
+ }finally{m.restore();}
+});

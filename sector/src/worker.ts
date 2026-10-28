@@ -95,10 +95,12 @@ async function webhook(request:Request,env:Env):Promise<Response> {
   return json({ok:true});
  }
  let answer='İşlem tamamlandı.';
+ let callbackContext:Record<string,unknown>={update_id:id};
  try {
   const action=parseCallback(cb.data);
   const row=await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(action.id).first<DraftRow>();
-  if(!row||row.revision!==action.revision||row.message_id!==cb.message.message_id)throw new Error('stale_callback');
+  callbackContext={update_id:id,draft_id:action.id,action:action.action,requested_revision:action.revision,actual_revision:row?.revision??null,requested_message:cb.message.message_id,actual_message:row?.message_id??null};
+  if(!row)throw Error('draft_missing');if(row.revision!==action.revision)throw Error('revision_mismatch');if(row.message_id!==cb.message.message_id)throw Error('message_mismatch');
   const state=transition(row.state as Status,action.action,row.verification,row.expires_at<Math.floor(Date.now()/1000));
   if(action.action==='edit') {
    const publication=await publicationState(env,row.id);if(publication.published||publication.api)throw Error('publication_locked');
@@ -117,7 +119,11 @@ async function webhook(request:Request,env:Env):Promise<Response> {
    }else if(action.action==='defer')answer='1 saat ertelendi.';else answer='Reddedildi.';
    await telegram(env,'editMessageReplyMarkup',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(row.message_id),reply_markup:JSON.stringify({inline_keyboard:sourceKeyboard(JSON.parse(row.documents))})}));
   }
- }catch(e){if(e instanceof TelegramError)throw e;answer='Bu kart güncellenmiş, süresi dolmuş veya işlem daha önce tamamlanmış.';}
+ }catch(e){if(e instanceof TelegramError)throw e;
+  const reason=e instanceof Error&&['invalid_callback','draft_missing','revision_mismatch','message_mismatch','draft_expired','draft_already_resolved','publication_locked'].includes(e.message)?e.message:'callback_operation_failed';
+  await env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind('draft_callback_last_rejection',JSON.stringify({...callbackContext,reason,at:Math.floor(Date.now()/1000)})).run().catch(()=>{});
+  answer=reason==='draft_expired'?'Bu kartın düzenleme süresi dolmuş.':reason==='publication_locked'?'Paylaşılmış veya paylaşımı süren kart düzenlenemez.':['revision_mismatch','message_mismatch','draft_missing'].includes(reason)?'Bu düğme güncel kartla eşleşmiyor; güncel kartı kullan.':reason==='draft_already_resolved'?'Bu kartın işlemi daha önce tamamlanmış.':'Düzenleme açılamadı; teknik hata kaydedildi. Kartın süresi dolduğu doğrulanmadı.';
+ }
  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:answer})).catch(()=>{});
  return json({ok:true});
 }

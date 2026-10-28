@@ -1,9 +1,11 @@
+import {modelCapacityDetails} from './output-capacity';
 import type {Env,Document} from './types';
 import {quota} from './pipeline';
 const RETRYABLE=new Set(['semantic_review_failed','unsupported_number_or_unit','claim_number_mismatch','invented_evidence','missing_market_hashtags','missing_evidence','unsupported_entity','incomplete_draft','subscription_turn_failed','hermes_job_failed','JSONDecodeError','lease_expired','repair_budget_expired']);
 export async function recordModelReview(env:Env,id:string,audit:unknown,time=Math.floor(Date.now()/1000)){
  const a=audit as {issues?:unknown};
  const issues=Array.isArray(a?.issues)?a.issues.filter((i):i is string=>typeof i==='string').slice(0,20).map(i=>i.slice(0,4500)):[];
+ const capacity=modelCapacityDetails(issues);if(capacity.length)await env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind('model_capacity:'+id,JSON.stringify({version:1,job_id:id,at:time,details:capacity})).run();
  await env.DB.prepare('INSERT INTO model_reviews(job_id,issues,next_retry,updated_at) VALUES(?,?,?,?) ON CONFLICT(job_id) DO UPDATE SET issues=excluded.issues,next_retry=MAX(model_reviews.next_retry,excluded.next_retry),updated_at=excluded.updated_at').bind(id,JSON.stringify(issues),time+30,time).run();
 }
 export async function previousModelIssues(env:Env,id:string):Promise<string[]>{
