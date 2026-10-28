@@ -142,6 +142,11 @@ export function repairDraftStyle(value:Draft,documents:Document[],editorRequest?
  if(typeof value.card_headline==='string')value={...value,card_headline:prefix(value.card_headline,!!ownerPeriod&&(!textTarget||cardTarget))};
  if(market?.kind==='institutional'&&market.broker){
   const ranked={...value.card_data,broker:market.broker};
+  // A single source-backed institution is not a two-institution summary.
+  // Remove only redundant aliases; distinct/unsupported institutions still fail validation.
+  if(!documents.some(d=>d.source_layout?.kind==='institution_summary'))for(const key of ['buy_broker','sell_broker'] as const){
+   if(typeof ranked[key]==='string'&&fold(ranked[key]!).replace(/\s+/g,' ').trim()===fold(market.broker).replace(/\s+/g,' ').trim())delete ranked[key];
+  }
   for(const side of ['buy','sell'] as const){
    const sourceRows=market.rows?.filter(r=>r.side===side)??[];
    const order=new Map(sourceRows.map((r,i)=>[r.symbol,r.rank??i+1]));

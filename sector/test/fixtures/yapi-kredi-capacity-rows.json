@@ -1,0 +1,125 @@
+{
+  "broker": "YAPI KREDI",
+  "rows": [
+    {
+      "side": "buy",
+      "symbol": "SAHOL",
+      "volume": "66,9 milyon TL",
+      "rank": 1
+    },
+    {
+      "side": "buy",
+      "symbol": "YKBNK",
+      "volume": "44,6 milyon TL",
+      "rank": 2
+    },
+    {
+      "side": "buy",
+      "symbol": "BRSAN",
+      "volume": "33,0 milyon TL",
+      "rank": 3
+    },
+    {
+      "side": "buy",
+      "symbol": "EKGYO",
+      "volume": "32,6 milyon TL",
+      "rank": 4
+    },
+    {
+      "side": "buy",
+      "symbol": "PETKM",
+      "volume": "21,3 milyon TL",
+      "rank": 5
+    },
+    {
+      "side": "buy",
+      "symbol": "KRDMB",
+      "volume": "21,3 milyon TL",
+      "rank": 6
+    },
+    {
+      "side": "buy",
+      "symbol": "SASA",
+      "volume": "17,2 milyon TL",
+      "rank": 7
+    },
+    {
+      "side": "buy",
+      "symbol": "BIMAS",
+      "volume": "16,9 milyon TL",
+      "rank": 8
+    },
+    {
+      "side": "buy",
+      "symbol": "TRALT",
+      "volume": "16,6 milyon TL",
+      "rank": 9
+    },
+    {
+      "side": "buy",
+      "symbol": "KTLEV",
+      "volume": "11,3 milyon TL",
+      "rank": 10
+    },
+    {
+      "side": "sell",
+      "symbol": "ASTOR",
+      "volume": "266,2 milyon TL",
+      "rank": 1
+    },
+    {
+      "side": "sell",
+      "symbol": "ENKAI",
+      "volume": "41,7 milyon TL",
+      "rank": 2
+    },
+    {
+      "side": "sell",
+      "symbol": "EREGL",
+      "volume": "38,3 milyon TL",
+      "rank": 3
+    },
+    {
+      "side": "sell",
+      "symbol": "TRMET",
+      "volume": "29,0 milyon TL",
+      "rank": 4
+    },
+    {
+      "side": "sell",
+      "symbol": "TOASO",
+      "volume": "24,1 milyon TL",
+      "rank": 5
+    },
+    {
+      "side": "sell",
+      "symbol": "ISCTR",
+      "volume": "22,4 milyon TL",
+      "rank": 6
+    },
+    {
+      "side": "sell",
+      "symbol": "TUPRS",
+      "volume": "20,6 milyon TL",
+      "rank": 7
+    },
+    {
+      "side": "sell",
+      "symbol": "PGSUS",
+      "volume": "19,9 milyon TL",
+      "rank": 8
+    },
+    {
+      "side": "sell",
+      "symbol": "MAVI",
+      "volume": "19,7 milyon TL",
+      "rank": 9
+    },
+    {
+      "side": "sell",
+      "symbol": "GUBRF",
+      "volume": "18,2 milyon TL",
+      "rank": 10
+    }
+  ]
+}

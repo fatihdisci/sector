@@ -15,7 +15,7 @@ const hsbc=JSON.parse(await readFile('test/fixtures/hsbc-capacity-rows.json','ut
 const fact='HSBC üzerinden net alım 1,4 milyar TL olarak aktarıldı.',sourceBody=fact+'\n'+hsbc.rows.map((r:any)=>r.side+' '+r.symbol+' '+r.volume).join('\n');
 const hsbcDoc:Document={source_id:'manual-input',source_name:'HSBC kurum fixture',family:'fixture',official:false,url:'https://example.org/hsbc-fixture',title:'HSBC kurum analizi',body:sourceBody,passages:[{id:'p1',text:sourceBody}],published_at:null,market_data:{kind:'institutional',broker:'HSBC',rows:hsbc.rows}};
 const hsbcDraft:Draft={headline:'📊 HSBC üzerinden öne çıkan hisseler',body:fact,card_headline:'HSBC üzerinden öne çıkan hisseler',card_body:'Kurum üzerinden alım ve satım',template:'institutional',category:'bist',hashtags:['#Borsa','#BIST'],importance:70,entities:['HSBC'],event_key:'hsbc-capacity',uncertainties:[],claims:[{text:fact,evidence:[{document:0,passage:'p1',quote:fact}]}],card_data:{broker:'HSBC',buy:hsbc.rows.filter((r:any)=>r.side==='buy').map((r:any)=>({label:r.symbol,value:r.volume})),sell:hsbc.rows.filter((r:any)=>r.side==='sell').map((r:any)=>({label:r.symbol,value:r.volume}))}};
-function preflight(draft:Draft){const r=spawnSync(process.execPath,['--import','tsx','scripts/validate_draft.ts'],{input:JSON.stringify({draft,documents:[hsbcDoc]}),encoding:'utf8'});assert.equal(r.status,0);return JSON.parse(r.stdout) as string[];}
+function preflight(draft:Draft,documents:Document[]=[hsbcDoc]){const r=spawnSync(process.execPath,['--import','tsx','scripts/validate_draft.ts'],{input:JSON.stringify({draft,documents}),encoding:'utf8'});assert.equal(r.status,0);return JSON.parse(r.stdout) as string[];}
 test('same HSBC source rows fit all six layouts; caption boundary reports only numeric length and limit',()=>{
  for(const layout of CARD_LAYOUTS)assert.equal(draftCards(hsbcDraft,'navy',layout).length,1);
  assert(!preflight(hsbcDraft).includes('output_capacity_exceeded'));
@@ -36,4 +36,20 @@ test('model review persists counts-only capacity details tied to job and never s
  await recordModelReview({DB} as Env,'j',{issues:['output_capacity_exceeded',detail]},100);
  const stored=JSON.parse((await DB.prepare("SELECT value FROM system_state WHERE key='model_capacity:j'").first<any>()).value);assert.deepEqual(stored,{version:1,job_id:'j',at:100,details:[{stage:'caption',code:'caption_too_long',length:1050,limit:1024}]});assert.equal((await DB.prepare("SELECT state FROM model_jobs WHERE id='j'").first<any>()).state,'needs_review');
  assert.deepEqual(modelCapacityDetails(['capacity_detail:not-json','capacity_detail:'+JSON.stringify({stage:'card',layout:'secret',code:'api-key'})]),[]);
+});
+
+import {repairDraftStyle} from '../src/style';import {validateDraft} from '../src/editorial';
+test('exact Yapi Kredi 10+10 source survives redundant same-broker fields without entering the five-row dual summary',async()=>{
+ const f=JSON.parse(await readFile('test/fixtures/yapi-kredi-capacity-rows.json','utf8')),fact='YAPI KREDI üzerinden net satış 225,0 milyon TL olarak aktarıldı.',body=fact+'\n'+f.rows.map((r:any)=>r.side+' '+r.symbol+' '+r.volume).join('\n');
+ const doc:Document={...hsbcDoc,title:'YAPI KREDI kurum analizi',body,passages:[{id:'p1',text:body}],market_data:{kind:'institutional',broker:f.broker,rows:f.rows}};
+ const original:Draft={...hsbcDraft,headline:'📊 YAPI KREDI üzerinden öne çıkan hisseler',card_headline:'YAPI KREDI üzerinden öne çıkan hisseler',body:fact,entities:['YAPI KREDI'],claims:[{text:fact,evidence:[{document:0,passage:'p1',quote:fact}]}],card_data:{broker:f.broker,buy_broker:f.broker,sell_broker:f.broker,buy:f.rows.filter((r:any)=>r.side==='buy').map((r:any)=>({label:r.symbol,value:r.volume})),sell:f.rows.filter((r:any)=>r.side==='sell').map((r:any)=>({label:r.symbol,value:r.volume}))}};
+ const before=JSON.stringify(doc);assert.equal(original.card_data!.buy!.length,10);assert.equal(original.card_data!.sell!.length,10);
+ const failure=modelCapacityDetails(preflight(original,[doc]));assert.equal(failure.length,6);assert(failure.every(x=>x.code==='market_card_capacity_institution_summary'));
+ const out=repairDraftStyle(original,[doc]);assert.equal(out.card_data!.buy_broker,undefined);assert.equal(out.card_data!.sell_broker,undefined);assert.equal(out.card_data!.broker,f.broker);assert.deepEqual(out.card_data!.buy,original.card_data!.buy);assert.deepEqual(out.card_data!.sell,original.card_data!.sell);assert.equal(out.body,original.body);assert.deepEqual(out.claims,original.claims);assert.equal(JSON.stringify(doc),before);
+ assert(!preflight(out,[doc]).includes('output_capacity_exceeded'));validateDraft(out,[doc]);for(const layout of CARD_LAYOUTS){const cards=draftCards(out,'navy',layout);assert.equal(cards.length,1);for(const row of f.rows)assert(cards[0].includes(row.symbol));}
+ const mismatch={...original,card_data:{...original.card_data,buy_broker:'Başka Kurum'}};assert.throws(()=>validateDraft(repairDraftStyle(mismatch,[doc]),[doc]),/unsupported_card_broker/);
+ const summaryDoc={...doc,market_data:undefined,source_layout:{kind:'institution_summary' as const,panels:[],minimum_rows:0}};
+ const realSummary={...original,card_data:{buy_broker:'Kurum A',sell_broker:'Kurum B',buy:original.card_data!.buy!.slice(0,5),sell:original.card_data!.sell!.slice(0,5)}};
+ const preserved=repairDraftStyle(realSummary,[summaryDoc]);assert.equal(preserved.card_data!.buy_broker,'Kurum A');assert.equal(preserved.card_data!.sell_broker,'Kurum B');for(const layout of CARD_LAYOUTS)assert.equal(draftCards(preserved,'navy',layout).length,1);
+ assert.throws(()=>draftCards({...realSummary,card_data:{...realSummary.card_data,buy:original.card_data!.buy}},'navy','editorial'),/market_card_capacity_institution_summary/);
 });

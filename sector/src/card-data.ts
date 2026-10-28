@@ -34,5 +34,7 @@ export function validateCardData(value:unknown,documents:Document[]):void {
  // names themselves were supplied, rather than inferred from arbitrary codes.
  const norm=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/\s+/g,' ');
  for(const key of ['buy_broker','sell_broker']as const)if(data[key]&&!norm(source).includes(norm(data[key]!)))throw Error('unsupported_card_broker');
+ const single=documents.find(d=>d.market_data?.kind==='institutional'&&d.market_data.broker)?.market_data?.broker;
+ if(single&&!documents.some(d=>d.source_layout?.kind==='institution_summary'))for(const key of ['buy_broker','sell_broker'] as const)if(data[key]&&norm(data[key]!)!==norm(single))throw Error('unsupported_card_broker');
  for(const row of [...data.buy??[],...data.sell??[],...data.holdings??[]])if(!norm(source).includes(norm(row.label)))throw Error('unsupported_card_entity');
 }
