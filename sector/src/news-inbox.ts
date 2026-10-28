@@ -1,3 +1,4 @@
+import {notifyEditFailures} from './hashtag-edit';
 import {newsProgressNote,newsFailureNote,type NewsProgress} from './news-progress';
 export {newsProgressNote} from './news-progress';
 import{channelMarketPreviewSQL,latestChannelVersionSQL,channelPreviewUnseenSQL}from'./channel-market-preview';
@@ -126,6 +127,7 @@ async function announceNewsNow(env:Env,channelOnly:boolean):Promise<void> {
  }
 }
 export async function refreshNewsRequests(env:Env):Promise<void>{
+ await notifyEditFailures(env);
  const paused=Number((await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>())?.value??0)>Date.now();
  const rows=await env.DB.prepare(`SELECT c.id,c.message_id,c.state,a.title,a.summary,a.url,a.error,a.status,s.config,c.requested_at,a.lease_until AS article_lease_until,j.lease_until AS job_lease_until,j.error AS job_error,CASE WHEN mr.updated_at>=j.created_at THEN mr.issues ELSE NULL END AS review_issues,j.state AS job_state,d.id AS draft_id,d.message_id AS draft_message_id,d.delivery_state FROM news_cards c JOIN articles a ON a.id=c.article_id JOIN sources s ON s.id=a.source_id LEFT JOIN model_jobs j ON j.article_id=a.id AND j.expected_revision=0 LEFT JOIN model_reviews mr ON mr.job_id=j.id LEFT JOIN drafts d ON d.id=COALESCE(j.result_draft,a.draft_id) WHERE c.state IN ('requested','model_queued')`).all<ProgressCard&{state:string;draft_id:string|null;draft_message_id:number|null}>();
  const time=Math.floor(Date.now()/1000);
