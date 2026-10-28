@@ -43,6 +43,14 @@ def decode(value):
     if not isinstance(data,dict):raise ValueError('json_object_required')
     return data
 
+def provider_failure_code(reason):
+    # Only documented enum values are retained; arbitrary provider text is never logged.
+    return {'rate_limit':'quota_paused','billing':'quota_paused',
+            'auth':'hermes_auth_unavailable','auth_permanent':'hermes_auth_unavailable',
+            'timeout':'provider_timeout','overloaded':'provider_unavailable',
+            'server_error':'provider_unavailable','context_overflow':'provider_request_invalid',
+            'payload_too_large':'provider_request_invalid','format_error':'provider_request_invalid'}.get(reason, 'subscription_turn_failed') if isinstance(reason,str) else 'subscription_turn_failed'
+
 def call(job,instructions,payload):
     AIAgent,credentials=runtime(job['profile'])
     agent=AIAgent(model=job['model'],provider='openai-codex',api_mode='codex_responses',api_key=credentials['api_key'],base_url=credentials['base_url'],
@@ -67,7 +75,7 @@ def call(job,instructions,payload):
     result=agent.run_conversation(user_message=json.dumps(payload,ensure_ascii=False),system_message=instructions,conversation_history=history,task_id=job['id'])
     if result.get('failed') or result.get('completed') is False:
         reason=result.get('failure_reason')
-        raise RuntimeError('quota_paused' if reason in ('rate_limit','billing') else 'subscription_turn_failed')
+        raise RuntimeError(provider_failure_code(reason))
     if result.get('api_calls',1)!=1:raise RuntimeError('unexpected_call_count')
     return decode(result['final_response'])
 
@@ -150,6 +158,6 @@ if __name__=='__main__':
         with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):result=main(job)
         print(json.dumps(result,ensure_ascii=False))
     except Exception as e:
-        code=str(e) if isinstance(e,RuntimeError) and str(e) in ('quota_paused','hermes_auth_unavailable','subscription_turn_failed','repair_budget_expired','unsafe_agent_configuration','subscription_route_required') else type(e).__name__
+        code=str(e) if isinstance(e,RuntimeError) and str(e) in ('quota_paused','hermes_auth_unavailable','subscription_turn_failed','provider_timeout','provider_unavailable','provider_request_invalid','repair_budget_expired','unsafe_agent_configuration','subscription_route_required') else type(e).__name__
         print(json.dumps({'error':code}),file=sys.stderr)
         sys.exit(1)

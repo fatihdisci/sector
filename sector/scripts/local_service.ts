@@ -3,6 +3,8 @@ import {withModelHeartbeat} from './model_heartbeat';
 import{pollChannel,channelDocuments,CHANNEL_POLL_MS}from'../src/telegram-channel';
 import{channelTransport}from'./channel_reader';
 import {newsReviewArtifact} from './news_review_artifact';
+import {newsPreferences} from '../src/news-routing';
+import {maintenanceApproved} from '../src/news-maintenance-request';
 import {COMPANY_CATALOG_VERSION,COMPANY_CATALOG_PROVENANCE,catalogEntities} from '../src/news-company-catalog';
 import {kapDeliveryHealth} from '../src/kap-health';
 import {pollBuybacks} from '../src/buyback-pipeline';
@@ -46,11 +48,9 @@ import type {Env,Document,Draft} from '../src/types';
 const directory=`${homedir()}/Library/Application Support/sector-haber`;
 const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
 const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(await readFile('migrations/0001_sector.sql','utf8'))+'\n'+(await readFile('migrations/0008_kap_previews.sql','utf8'))),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6-luna',AI_EFFORT:'high',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
-if(await tweetkitReady())env.X_PUBLISH_ENABLED='true';
 env.RENDER_REPORT=png;
 env.READ_SPK_X=async manifest=>{const post=JSON.parse(manifest);return post.cached_documents??(post.url?.startsWith('https://x.com/fintables/status/')?fintablesPostDocuments(post,readPdf,readImage):spkPostDocuments(post,readPdf,readImage));};
 env.READ_TELEGRAM_CHANNEL=async raw=>{const m=JSON.parse(raw);if(Date.now()-m.captured_at>86400000)throw Error('channel_evidence_expired');return m.cached_documents??channelDocuments(raw,channelTransport,readImage,readPdf);};
-await seed(env);
 const lockPath=directory+'/service.lock';let lock;
 try{lock=await open(lockPath,'wx',0o600);await lock.writeFile(String(process.pid));}
 catch{try{const pid=Number(await readFile(lockPath,'utf8'));process.kill(pid,0);throw new Error('service_already_running');}catch(e){if((e as NodeJS.ErrnoException).code!=='ESRCH')throw e;await unlink(lockPath);lock=await open(lockPath,'wx',0o600);await lock.writeFile(String(process.pid));}}
@@ -76,13 +76,13 @@ async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof 
   stage='generate';const output=await new Promise<string>((resolve,reject)=>{
    const child=spawn(`${homedir()}/.hermes/hermes-agent/venv/bin/python`,['scripts/hermes_job.py'],{env:{...(process.env.SECTOR_USAGE_DIR?{SECTOR_USAGE_DIR:process.env.SECTOR_USAGE_DIR}:{}),PATH:process.env.PATH??'',HOME:homedir(),HERMES_HOME:`${homedir()}/.hermes/profiles/sectorhaber`,PYTHONPATH:`${homedir()}/.hermes/hermes-agent`},stdio:['pipe','pipe','pipe']});let result='';
    let diagnostic='';const timer=setTimeout(()=>child.kill('SIGTERM'),500_000);child.stdout.on('data',chunk=>{result+=chunk.toString();if(result.length>500_000)child.kill('SIGTERM');});child.stderr.on('data',chunk=>{if(diagnostic.length<2000)diagnostic+=chunk.toString();});
-   child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code===0)resolve(result);else {let reason='hermes_job_failed';try{const value=JSON.parse(diagnostic);if(['quota_paused','hermes_auth_unavailable','subscription_turn_failed','JSONDecodeError'].includes(value.error))reason=value.error;}catch{}reject(new Error(reason));}});
+   child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code===0)resolve(result);else {let reason='hermes_job_failed';try{const value=JSON.parse(diagnostic);if(['quota_paused','hermes_auth_unavailable','subscription_turn_failed','provider_timeout','provider_unavailable','provider_request_invalid','JSONDecodeError'].includes(value.error))reason=value.error;}catch{}reject(new Error(reason));}});
    child.stdin.end(JSON.stringify({...job,profile:`${homedir()}/.hermes/profiles/sectorhaber`}));
   });
   stage='decode';const result=JSON.parse(output) as {draft:Draft;audit:unknown;runtime:unknown};
   await writeFile(directory+'/last-model-result.json',JSON.stringify({job_id:job.id,result}),{mode:0o600});
   stage='review';await recordModelReview(env,job.id,result.audit);
-  const documents=job.documents as Document[];result.draft=acceptHermes(result.draft,result.audit,documents).draft;
+  const documents=job.documents as Document[];result.draft=acceptHermes(result.draft,result.audit,documents,job.kind==='edit'?job.edit_request:null).draft;
   stage='render';const date=new Date().toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}),svgs=draftCards(result.draft,job.card_theme==='navy'||job.card_theme==='paper'?job.card_theme:undefined,job.card_layout);
  const cards=[];for(const svg of svgs)cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
   stage='submit';const delivered=await submitJob(env,{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,...result,card_date:date,cards});
@@ -115,15 +115,18 @@ async function kapLoop(){
 async function requestsLoop(){while(!stopping()){try{await refreshNewsRequests(env);await prepare(env);}catch(e){await status('news_requests_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(5_000);}}
 async function reportCacheLoop(){let store:KapStore|undefined,reports:KapReports|undefined;while(!stopping()){try{if(!store){await access(directory+'/kap/kap.sqlite');store=new KapStore(directory+'/kap/kap.sqlite');reports=new KapReports(store);}await reports!.cacheOne();}catch(e){await status('kap_report_health',{ok:false,code:errorCode(e)});}await pause(5_000);}store?.close();}
 async function manualLoop(){while(!stopping()){try{await runManual(env);}catch(e){await status('manual_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}await pause(5_000);}}
-async function telegramLoop(){
+async function telegramLoop(maintenance?:{owner:string;chat:string;deadline:number;artifact:string}):Promise<boolean>{
  let offset=Number((await env.DB.prepare("SELECT value FROM system_state WHERE key='telegram_offset'").first<{value:string}>())?.value??0);
- while(!stopping()){try{
+ while(!stopping()&&(!maintenance||Date.now()<maintenance.deadline)){try{
   const result=await telegram(env,'getUpdates',new URLSearchParams({offset:String(offset),timeout:'15',allowed_updates:JSON.stringify(['callback_query','message'])}));
   const updates=result as unknown as {update_id:number}[];
   offset=await saveTelegramUpdates(env,updates)??offset;
-  await processTelegramUpdates(env,update=>worker.fetch(new Request('https://local.sector/telegram/webhook',{method:'POST',headers:{'x-telegram-bot-api-secret-token':env.TELEGRAM_WEBHOOK_SECRET!,'Content-Type':'application/json'},body:JSON.stringify(update)}),env,{waitUntil:()=>{}} as unknown as ExecutionContext));
+  if(maintenance&&Date.now()>=maintenance.deadline)break;
+  await processTelegramUpdates(env,update=>worker.fetch(new Request('https://local.sector/telegram/webhook',{method:'POST',headers:{'x-telegram-bot-api-secret-token':env.TELEGRAM_WEBHOOK_SECRET!,'Content-Type':'application/json'},body:JSON.stringify(update)}),env,{waitUntil:()=>{}} as unknown as ExecutionContext),undefined,maintenance);
   await status('telegram_health',{ok:true,at:new Date().toISOString()});
+  if(maintenance&&await maintenanceApproved(env,maintenance.artifact)&&(await newsPreferences(env)).mode==='active')return true;
  }catch(e){await status('telegram_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});await pause(10_000);}}
+ return false;
 }
 async function telegramCommandsLoop(){
  let retry=0;
@@ -133,12 +136,31 @@ async function telegramCommandsLoop(){
  }
 }
 try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
- await status('runtime_identity',{release:process.env.SECTOR_RELEASE_ID??'unknown',catalog:{version:COMPANY_CATALOG_VERSION,companies:new Set(catalogEntities.map(c=>c.code)).size,issuers:COMPANY_CATALOG_PROVENANCE.issuer_count,equity_codes:COMPANY_CATALOG_PROVENANCE.equity_count},news_review_artifact:await newsReviewArtifact(process.cwd()),at:new Date().toISOString()});
- await writeFile(directory+'/service-ready.json',JSON.stringify({pid:process.pid,release:process.env.SECTOR_RELEASE_ID??'',started_at:new Date().toISOString()}),{mode:0o600});
- await cleanupSourceArtifacts().catch(()=>0);lastArtifactCleanup=Date.now();
+ const maintenanceMode=process.env.SECTOR_MAINTENANCE_MODE;
+ if(maintenanceMode!==undefined&&maintenanceMode!=='1')throw Error('maintenance_configuration_invalid');
+ const maintenanceDeadline=Number(process.env.SECTOR_MAINTENANCE_DEADLINE);
+ let alreadyActive=false;if(maintenanceMode==='1'){try{await access(`${directory}/releases/${process.env.SECTOR_RELEASE_ID}/active`);alreadyActive=true;}catch{/* staged release */}}
+ if(maintenanceMode==='1'&&(!/^[a-f0-9]{32}$/.test(process.env.SECTOR_RELEASE_ID??'')||!env.TELEGRAM_USER_ID||!env.TELEGRAM_CHAT_ID||![env.TELEGRAM_USER_ID,env.TELEGRAM_CHAT_ID].every(v=>/^[1-9]\d*$/.test(v)&&Number.isSafeInteger(Number(v)))||(!alreadyActive&&(!Number.isSafeInteger(maintenanceDeadline)||maintenanceDeadline<=Date.now()||maintenanceDeadline>Date.now()+900000))))throw Error('maintenance_configuration_invalid');
+ if(maintenanceMode!=='1'||alreadyActive)await seed(env);
+ const artifact=await newsReviewArtifact(process.cwd());
+ if(maintenanceMode==='1'&&!alreadyActive){const row=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_maintenance_candidate'").first<{value:string}>();let candidate:any;try{candidate=JSON.parse(row?.value??'null');}catch{}if(candidate?.state!=='pending'||candidate.hash!==artifact.hash||!Number.isSafeInteger(candidate.expires_at)||candidate.expires_at<=maintenanceDeadline)throw Error('maintenance_candidate_mismatch');}
+ await status('runtime_identity',{release:process.env.SECTOR_RELEASE_ID??'unknown',catalog:{version:COMPANY_CATALOG_VERSION,companies:new Set(catalogEntities.map(c=>c.code)).size,issuers:COMPANY_CATALOG_PROVENANCE.issuer_count,equity_codes:COMPANY_CATALOG_PROVENANCE.equity_count},news_review_artifact:artifact,at:new Date().toISOString()});
+ let filter:{requested:string;mode:string;reasons:string[]}={requested:'unknown',mode:'unavailable',reasons:['Haber filtresi okunamadı.']};
+ try{const raw=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_filter_preferences'").first<{value:string}>();const requested=raw?(JSON.parse(raw.value).mode==='active'?'active':'shadow'):'shadow';const prefs=await newsPreferences(env);filter={requested,mode:prefs.mode,reasons:prefs.readiness_reasons??[]};}catch{/* fail closed in installer */}
+ const writeReady=async(maintenance?:string)=>writeFile(directory+'/service-ready.json',JSON.stringify({pid:process.pid,release:process.env.SECTOR_RELEASE_ID??'',started_at:new Date().toISOString(),news_filter:filter,...(maintenance?{maintenance}:{})}),{mode:0o600});
+ if(maintenanceMode==='1'&&alreadyActive&&filter.requested==='active'&&filter.mode!=='active')throw Error('sector_news_filter_not_active');
+ await writeReady(maintenanceMode==='1'&&!alreadyActive?'waiting':undefined);
+ if(maintenanceMode==='1'&&!alreadyActive){
+  if(!await telegramLoop({owner:env.TELEGRAM_USER_ID!,chat:env.TELEGRAM_CHAT_ID!,deadline:maintenanceDeadline,artifact:artifact.hash}))throw Error('maintenance_approval_timeout');
+  const prefs=await newsPreferences(env);filter={requested:prefs.requested_mode??'shadow',mode:prefs.mode,reasons:prefs.readiness_reasons??[]};if(filter.requested!=='active'||filter.mode!=='active')throw Error('sector_news_filter_not_active');
+  await writeReady('approved');
+ }
  if(!await awaitActivation(directory,process.env.SECTOR_RELEASE_ID,()=>stopping()))return;
+ if(maintenanceMode==='1'&&!alreadyActive)await seed(env);
+ if(await tweetkitReady())env.X_PUBLISH_ENABLED='true';
+ await cleanupSourceArtifacts().catch(()=>0);lastArtifactCleanup=Date.now();
  // Never replay requests accepted by an earlier publisher after activation.
- await env.DB.prepare("UPDATE x_posts SET state='expired',error='publisher_restart' WHERE state='queued' AND NOT EXISTS (SELECT 1 FROM x_schedules s WHERE s.post_id=x_posts.id)").run();
+ if(maintenanceMode!=='1'||alreadyActive)await env.DB.prepare("UPDATE x_posts SET state='expired',error='publisher_restart' WHERE state='queued' AND NOT EXISTS (SELECT 1 FROM x_schedules s WHERE s.post_id=x_posts.id)").run();
  if(process.argv.includes('--prepare-once')){await tick(env);console.log('Sources scanned and model jobs prepared.');return;}
  if(process.argv.includes('--model-once')){ // run one fully checked job for commissioning
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);

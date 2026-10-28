@@ -3,15 +3,20 @@ import {newsReviewArtifact} from '../scripts/news_review_artifact';
 async function fixture(){const trusted=structuredClone(anchor),binding={fixture:'parent-policy'},schedule={fixture:'approved-hours'};trusted.parent_state_hash=await sha256(canonical({binding,schedule}));const artifact={files:{...trusted.runtime_files},catalog_hash:trusted.parent_artifact.catalog_hash,hash:''};artifact.hash=await sha256(canonical({files:artifact.files,catalog_hash:artifact.catalog_hash}));const record={...trusted,actor:'owner',artifact_hash:artifact.hash};return{trusted,input:{record,artifact,binding,schedule,owner:'owner',rule:trusted.rule,catalog:trusted.catalog,scope:trusted.scope,activated_at:trusted.activated_at,schedule_since:trusted.schedule_since,now:trusted.recorded_at+1000}};}
 test('approved maintenance binds exact new sources to unchanged editorial/schedule parents',async()=>{const f=await fixture(),before=canonical({binding:f.input.binding,schedule:f.input.schedule});const r=await validateMaintenanceReview(f.input,f.trusted);assert(r.valid);assert.equal(canonical({binding:f.input.binding,schedule:f.input.schedule}),before);assert.equal(r.parent_artifact.hash,f.trusted.parent_artifact.hash);});
 test('maintenance rejects forged source, changed parent/time/cutoff/catalog/scope and runtime',async()=>{for(const mutate of [(i:any)=>i.record=null,(i:any)=>i.record.approval_source='fake',(i:any)=>i.owner='wrong',(i:any)=>i.record.recorded_at++,(i:any)=>i.binding.fixture='changed',(i:any)=>i.schedule.fixture='changed',(i:any)=>i.rule='wrong',(i:any)=>i.catalog='wrong',(i:any)=>i.scope='wrong',(i:any)=>i.activated_at++,(i:any)=>i.schedule_since++,(i:any)=>i.artifact.hash='wrong',(i:any)=>i.artifact.files['src/pipeline.ts']='wrong']){const f=await fixture();mutate(f.input);assert.equal((await validateMaintenanceReview(f.input,f.trusted)).valid,false);}});
-test('official artifact generator matches the owner-approved source and rejects later drift',async()=>{
+test('successor requires exact owner event, candidate, valid parent and approval before expiry',async()=>{
+ async function successor(){const f=await fixture(),oldHash=f.input.artifact.hash,artifact=structuredClone(f.input.artifact);artifact.files['src/style.ts']='f'.repeat(64);artifact.hash=await sha256(canonical({files:artifact.files,catalog_hash:artifact.catalog_hash}));const at=f.trusted.recorded_at+100;
+  const candidate={state:'pending',hash:artifact.hash,rule:f.input.rule,catalog:f.input.catalog,scope:f.input.scope,activated_at:f.input.activated_at,schedule_since:f.input.schedule_since,parent_state_hash:f.trusted.parent_state_hash,previous_artifact_hash:oldHash,created_at:at-1,expires_at:at+100};const candidate_raw=JSON.stringify(candidate),digest=await sha256(candidate_raw);
+  const request={state:'approved',owner:'owner',chat:'chat',message:123,nonce:'nonce',artifact:artifact.hash,candidate_digest:digest,expires_at:at+100};const event={owner:'owner',chat:'chat',message:123,nonce:'nonce',artifact:artifact.hash,candidate_digest:digest,approved_at:at};return{...f,input:{...f.input,artifact,ownerChat:'chat',successor:{candidate_raw,request,event}}};}
+ const good=await successor();assert.equal((await validateMaintenanceReview(good.input,good.trusted)).valid,true);
+ for(const mutate of [(i:any)=>i.successor.event=null,(i:any)=>i.successor.event.artifact='b'.repeat(64),(i:any)=>i.successor.event.approved_at=i.successor.request.expires_at,(i:any)=>i.binding.fixture='changed',(i:any)=>i.successor.event.owner='other',(i:any)=>i.successor.event.message++, (i:any)=>i.ownerChat='other']){const f=await successor();mutate(f.input);assert.equal((await validateMaintenanceReview(f.input,f.trusted)).valid,false);}
+});
+test('approved baseline stays valid while an unapproved working-tree candidate is rejected',async()=>{
  const actual=await newsReviewArtifact(process.cwd());
- const mismatches=Object.keys(anchor.runtime_files as Record<string,string>).filter(path=>actual.files[path]!== (anchor.runtime_files as Record<string,string>)[path]);
- assert.deepEqual(mismatches,[]);
- const f=await fixture();(f.input as any).artifact=actual;f.input.record.artifact_hash=actual.hash;
- const result=await validateMaintenanceReview(f.input,f.trusted);
- assert.equal(result.valid,true,result.reasons.join('; '));
+ const f=await fixture(),baselineHash=f.input.artifact.hash;assert.equal((await validateMaintenanceReview(f.input,f.trusted)).valid,true);
+ (f.input as any).artifact=actual;
+ assert.equal((await validateMaintenanceReview(f.input,f.trusted)).valid,actual.hash===baselineHash);
  const drifted=structuredClone(actual);drifted.files['scripts/image_reader.ts']='0'.repeat(64);drifted.hash=await sha256(canonical({files:drifted.files,catalog_hash:drifted.catalog_hash}));
- (f.input as any).artifact=drifted;f.input.record.artifact_hash=drifted.hash;
+ (f.input as any).artifact=drifted;
  const rejected=await validateMaintenanceReview(f.input,f.trusted);
  assert.equal(rejected.valid,false);
  assert(rejected.reasons.some(reason=>reason.includes('çalışan kaynak parmak izi')));

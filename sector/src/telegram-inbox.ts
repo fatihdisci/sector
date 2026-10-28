@@ -12,9 +12,12 @@ export async function saveTelegramUpdates(env:Env,updates:{update_id:number}[],t
  ]);
  return offset;
 }
-export async function processTelegramUpdates(env:Env,dispatch:(value:unknown)=>Promise<Response>,time=seconds()):Promise<void>{
- await env.DB.prepare("UPDATE telegram_updates SET state='queued' WHERE state='processing' AND lease_until<=?").bind(time).run();
- const rows=await env.DB.prepare("SELECT update_id,payload,attempts FROM telegram_updates WHERE state='queued' AND next_try<=? ORDER BY update_id LIMIT 10").bind(time).all<{update_id:number;payload:string;attempts:number}>();
+export async function processTelegramUpdates(env:Env,dispatch:(value:unknown)=>Promise<Response>,time=seconds(),maintenance?:{owner:string;chat:string}):Promise<void>{
+ if(maintenance&&(!/^[1-9]\d*$/.test(maintenance.owner)||!/^[1-9]\d*$/.test(maintenance.chat)||!Number.isSafeInteger(Number(maintenance.owner))||!Number.isSafeInteger(Number(maintenance.chat))))throw Error('maintenance_identity_invalid');
+ const filter=maintenance?` AND json_valid(payload) AND ((json_extract(payload,'$.message.from.id')=? AND json_extract(payload,'$.message.chat.id')=? AND json_extract(payload,'$.message.chat.type')='private' AND json_extract(payload,'$.message.text')='/haberfiltre' AND json_type(payload,'$.message.reply_to_message') IS NULL AND json_type(payload,'$.message.forward_origin') IS NULL) OR (json_extract(payload,'$.callback_query.from.id')=? AND json_extract(payload,'$.callback_query.message.chat.id')=? AND json_extract(payload,'$.callback_query.message.chat.type')='private' AND json_extract(payload,'$.callback_query.data') GLOB 'nm:approve:*'))`:'';
+ const args=maintenance?[Number(maintenance.owner),Number(maintenance.chat),Number(maintenance.owner),Number(maintenance.chat)]:[];
+ await env.DB.prepare("UPDATE telegram_updates SET state='queued' WHERE state='processing' AND lease_until<=?"+filter).bind(time,...args).run();
+ const rows=await env.DB.prepare("SELECT update_id,payload,attempts FROM telegram_updates WHERE state='queued' AND next_try<=?"+filter+" ORDER BY update_id LIMIT 10").bind(time,...args).all<{update_id:number;payload:string;attempts:number}>();
  for(const row of rows.results??[]){
   if(row.attempts>=3){await env.DB.prepare("UPDATE telegram_updates SET state='uncertain',payload='{}',error='update_interrupted',finished_at=? WHERE update_id=? AND state='queued'").bind(time,row.update_id).run();continue;}
   const lock=await env.DB.prepare("UPDATE telegram_updates SET state='processing',attempts=attempts+1,lease_until=? WHERE update_id=? AND state='queued'").bind(time+120,row.update_id).run();if(!lock.meta.changes)continue;

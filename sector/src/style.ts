@@ -107,7 +107,7 @@ export function invalidEmojiPlacement(draft:Draft):boolean {
 
 // These repairs select only source-backed category/ticker tags, never facts.
 // Run before the semantic audit as well as at the submission boundary.
-export function repairDraftStyle(value:Draft,documents:Document[]):Draft {
+export function repairDraftStyle(value:Draft,documents:Document[],editorRequest?:string|null):Draft {
  if(!value||typeof value!=='object')return value;
  const preference=documents.find(d=>d.output_preferences)?.output_preferences;
  const {output_preferences:_ignored,tweet_style:_style,...plain}=value;value={...plain,...(preference?{output_preferences:preference}:{})};
@@ -120,12 +120,18 @@ export function repairDraftStyle(value:Draft,documents:Document[]):Draft {
  const market=documents.find(d=>d.market_data)?.market_data;
  const botAkd=documents.some(d=>d.family==='telegram-ucretsizderinlikbot'&&d.market_data?.kind==='akd'&&!!d.market_data.ticker);
  if(botAkd)value={...value,tweet_style:'akd_single_ticker'};
- const period=market?.editorial_period;
- if(period){
-  const prefix=(s:string)=>fold(s).includes(fold(period))?s:period+' — '+s;
-  if(typeof value.headline==='string'){const m=/^((?:📢|🚨|📊|🏦|🌍|⚡|💻|📈|📉)\uFE0F?)\s+/u.exec(value.headline);value={...value,headline:(m?m[0]:'')+prefix(m?value.headline.slice(m[0].length):value.headline)};}
-  if(typeof value.card_headline==='string')value={...value,card_headline:prefix(value.card_headline)};
- }
+ // Explicit owner heading edits supersede the submission-time editorial label;
+ // they never change the source timestamp or numerical evidence.
+ const request=editorRequest?.toLocaleLowerCase('tr-TR')??'';
+ const ownerPeriod=market&&!/["“”'‘’]/u.test(request)&&!/(?:yazma|kullanma|ekleme|olmasın|yapma)/u.test(request)&&/\b(?:yaz|kullan|ekle|olsun|yap)\b/u.test(request)?(['Gün sonu','Gün ortası','Kapanışa doğru','Açılışın ilk dakikaları'] as const).find(p=>request.includes(p.toLocaleLowerCase('tr-TR'))):undefined;
+ const textTarget=/tweet|metin/u.test(request),cardTarget=/görsel|kart/u.test(request);
+ const prefix=(s:string,applyOwner:boolean)=>{
+   const period=applyOwner?ownerPeriod:market?.editorial_period;if(!period)return s;
+   if(applyOwner)s=s.replace(/^(?:Gün sonu|Gün ortası|Kapanışa doğru|Açılışın ilk dakikaları)\s*(?:[—–:-]\s*|$)/iu,'').trim();
+   return fold(s).includes(fold(period))?s:period+(s?' — '+s:'');
+ };
+ if(typeof value.headline==='string'){const m=/^((?:📢|🚨|📊|🏦|🌍|⚡|💻|📈|📉)\uFE0F?)\s+/u.exec(value.headline);value={...value,headline:(m?m[0]:'')+prefix(m?value.headline.slice(m[0].length):value.headline,!!ownerPeriod&&(!cardTarget||textTarget))};}
+ if(typeof value.card_headline==='string')value={...value,card_headline:prefix(value.card_headline,!!ownerPeriod&&(!textTarget||cardTarget))};
  if(market?.kind==='institutional'&&market.broker){
   const ranked={...value.card_data,broker:market.broker};
   for(const side of ['buy','sell'] as const){

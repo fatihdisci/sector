@@ -5,6 +5,13 @@ spec=importlib.util.spec_from_file_location('sector_job',Path(__file__).parents[
 job_module=importlib.util.module_from_spec(spec);spec.loader.exec_module(job_module)
 
 class HermesJobContract(unittest.TestCase):
+    def test_provider_reason_whitelist_never_exposes_arbitrary_text(self):
+        self.assertEqual(job_module.provider_failure_code('timeout'),'provider_timeout')
+        self.assertEqual(job_module.provider_failure_code('server_error'),'provider_unavailable')
+        self.assertEqual(job_module.provider_failure_code('auth'),'hermes_auth_unavailable')
+        self.assertEqual(job_module.provider_failure_code('rate_limit'),'quota_paused')
+        self.assertEqual(job_module.provider_failure_code('secret-token timeout'),'subscription_turn_failed')
+        self.assertEqual(job_module.provider_failure_code(None),'subscription_turn_failed')
     def setUp(self):
         self.preflight=patch.object(job_module,'deterministic_issues',return_value=[])
         self.preflight.start();self.addCleanup(self.preflight.stop)

@@ -37,7 +37,11 @@ export function newsFailureNote(row:NewsProgress):string {
   return 'Kaynak metni veya görseli eksiksiz okunamadı. İnceleme gerekiyor; eksik veriden içerik üretilmedi.';
  }
  const codes=[code,...issues];
- if(code==='quota_paused'||code==='hermes_auth_unavailable')return 'İçerik hazırlama geçici olarak durakladı. Yeni içerik üretilmedi; bağlantı/kota durumu kontrol edilmeli.';
+ if(code==='quota_paused')return 'İçerik hazırlama hizmetinin kullanım sınırı nedeniyle geçici olarak durakladı; içerik gönderilmedi.';
+ if(code==='hermes_auth_unavailable')return 'İçerik hazırlama hizmetinin oturum doğrulaması başarısız oldu; içerik gönderilmedi.';
+ if(code==='provider_timeout')return 'İçerik hazırlama hizmetinin yanıt süresi doldu; içerik gönderilmedi.';
+ if(code==='provider_unavailable')return 'İçerik hazırlama hizmeti şu anda yanıt veremiyor; içerik gönderilmedi.';
+ if(code==='provider_request_invalid')return 'İçerik isteği hizmet tarafından kabul edilmedi; içerik gönderilmedi.';
  if(code==='lease_expired'||code==='invalid_job_lease')return 'Hazırlama süresi doldu; önceki işlemin sonucu doğrulanamadı. Otomatik tekrar yapılmadı; aynı düğmeyle kontrollü yeniden deneyebilirsin.';
  if(code==='expired'||row.job_state==='expired')return 'İsteğin süresi doldu. Güncel kaynakla aynı düğmeden yeniden isteyebilirsin.';
  if(codes.some(c=>/^(?:unsupported_number_or_unit|claim_number_mismatch|market_row_value_mismatch|market_currency_missing_use_rank)$/.test(c)||/^(?:body|headline|card_body|card_headline|card_data\.|claims\[).*sayı.*birim/u.test(c)))return 'Kaynak ile taslaktaki sayı, işaret veya birim eşleşmedi. Hatalı içerik gönderilmedi. Aynı düğmeyle kontrollü yeniden deneyebilirsin.';

@@ -9,6 +9,7 @@ import {requestRedesign} from './card-redesign';
 import {requestNews} from './news-inbox';
 import {newsPreferences} from './news-routing';
 import {newsFilterHealth} from './news-health';
+import {approveMaintenanceRequest} from './news-maintenance-request';
 import {sendDraftAsset} from './draft-assets';
 import registry from '../sources.json';
 import {queueManual,type InputMessage} from './manual';
@@ -48,6 +49,8 @@ async function webhook(request:Request,env:Env):Promise<Response> {
  }
  const cb=update.callback_query as {id:string;data:string;from:{id:number};message?:{message_id:number;chat:{id:number;type:string}}}|undefined;
  if(!cb||!cb.message||!isOwner(env,String(cb.from?.id),String(cb.message.chat?.id),cb.message.chat?.type))return json({ok:true});
+ const maintenance=cb.data?.match(/^nm:approve:([a-f0-9-]{36})$/);
+ if(maintenance){const answer=await approveMaintenanceRequest(env,maintenance[1],String(cb.from.id),String(cb.message.chat.id),cb.message.message_id);await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:answer})).catch(()=>{});return json({ok:true});}
  const kapPrepare=cb.data?.match(/^kap:prepare:([a-f0-9-]{36})$/);
  if(kapPrepare){
   const changed=await env.DB.prepare("UPDATE kap_previews SET state='selected',selected_at=? WHERE id=? AND message_id=? AND state='sent'").bind(Date.now(),kapPrepare[1],cb.message.message_id).run();

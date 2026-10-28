@@ -7,6 +7,7 @@ import {digestDeliveryStatus,newsReadiness} from './news-readiness';
 import type {Env} from './types';
 import {telegram,TelegramError} from './telegram';
 import {NEWS_RULE_VERSION,newsPreferences,searchNewsArchive} from './news-routing';
+import {createMaintenanceRequest} from './news-maintenance-request';
 async function runtimeIdentity(env:Env){const r=await env.DB.prepare("SELECT value FROM system_state WHERE key='runtime_identity'").first<{value:string}>();return r?JSON.parse(r.value):{release:'unknown'};}
 const send=(env:Env,text:string,extra:Record<string,string>={})=>{if(text.length>3900&&!extra.reply_markup){const file=new FormData();file.set('chat_id',env.TELEGRAM_CHAT_ID!);file.set('document',new Blob([text],{type:'text/plain;charset=utf-8'}),'endeks-editor.txt');return telegram(env,'sendDocument',file);}return telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text,...extra}));};
 export async function newsroomMessage(env:Env,m:{text?:string;forward_origin?:unknown}){
@@ -19,7 +20,7 @@ export async function newsroomMessage(env:Env,m:{text?:string;forward_origin?:un
  if(text==='/haberfiltre'){const prefs=await newsPreferences(env);const counts=(await env.DB.prepare('SELECT route,legacy_eligible,COUNT(*) n FROM news_candidates GROUP BY route,legacy_eligible').all()).results;await send(env,`Çalışan sürüm/katalog: ${JSON.stringify(await runtimeIdentity(env))}\nHaber filtresi: ${prefs.mode}${prefs.requested_mode==='active'&&prefs.mode!=='active'?' (aktif istek hazırlık kontrolünde durduruldu)':''}. Seçki yapılandırması: ${prefs.digest_enabled?'açık':'kapalı'} (${prefs.digest_times.join(', ')} İstanbul). Seçki gönderimi: ${digestDeliveryStatus(prefs)?'açık':'kapalı'}${prefs.mode==='shadow'?' — gölge modda gönderim kapalı':''}.
 ${(prefs.readiness_reasons??[]).join('\n')}
 ${JSON.stringify(counts)}
-İnceleme ve gerçek ölçümler: /golgerapor. /secki ile açık editör isteği kullanılabilir; otomatik gönderimi açmaz.`);return true;}
+İnceleme ve gerçek ölçümler: /golgerapor. /secki ile açık editör isteği kullanılabilir; otomatik gönderimi açmaz.`);await createMaintenanceRequest(env,(text,extra)=>send(env,text,extra));return true;}
  if(text==='/secki'){await sendSelection(env);return true;}return false;
 }
 export const DIGEST_CATCHUP_MS=2*60*60*1000;

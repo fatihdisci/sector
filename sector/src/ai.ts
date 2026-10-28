@@ -19,10 +19,10 @@ source_notes iç denetim notlarıdır. Oraya aktarılan bir çelişki görünür
 Kopyalanmış metin, uydurma sonuç veya abartılı son dakika ifadesini reddet. Sadece açık ve özgün Türkçe onaylanır.
 Yayıncı adının tweet içinde bulunmaması hata değildir: bağlantı düğmede verilir. Ancak belirsiz iddia kesin olguya çevrilmemeli ve gerçek açıklama sahibinin adı korunmalıdır. Fon haberlerinde #Fon #PBLK #Tasfiye kullanıcının sabit kategori etiketleridir; tek başına bu etiketler metinde tasfiye gerçekleştiği iddiası sayılmaz. Diğer etiketler haberle ilişkili olmalı; BIST dışı şirketlere BIST etiketi veya kaynakta bulunmayan hisse kodu eklenmemeli.
 Yalnız {"supported":boolean,"issues":string[]} JSON nesnesi döndür. Yalnız aktarılan olguyu etkileyen somut doğruluk sorununda supported=false ver. Üslup tercihi, kısa anlatım veya haberdeki bütün ikincil ayrıntıların aktarılmaması ret nedeni değildir. Ana gelişme doğruysa gereksiz ayrıntı isteme.`;
-export function acceptHermes(draft:unknown,audit:unknown,documents:Document[]):{draft:Draft;verification:string} {
+export function acceptHermes(draft:unknown,audit:unknown,documents:Document[],editorRequest?:string|null):{draft:Draft;verification:string} {
  if((audit as any)?.issues?.includes('output_capacity_exceeded'))throw Error('output_capacity_exceeded');
  const preference=documents.find(d=>d.output_preferences)?.output_preferences;
- const value=outputView(repairDraftStyle({...draft as Draft,...(preference?{output_preferences:preference}:{})},documents));
+ const value=outputView(repairDraftStyle({...draft as Draft,...(preference?{output_preferences:preference}:{})},documents,editorRequest));
  const checked=validateDraft(value,documents);
  const a=audit as {supported?:boolean;issues?:unknown};
  if(!a||a.supported!==true||!Array.isArray(a.issues)||a.issues.length)throw new Error('semantic_review_failed');

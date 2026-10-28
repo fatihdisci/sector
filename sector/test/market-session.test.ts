@@ -1,4 +1,5 @@
 import test from'node:test';import assert from'node:assert/strict';import{readFile}from'node:fs/promises';import{equitySessionLabel}from'../src/market-session';import{bindChannelPublication}from'../src/channel-publication';import{marketTimeContext,marketTimeIssues}from'../src/market-time';import{repairDraftStyle}from'../src/style';import{leaseJob}from'../src/bridge';import{localDatabase}from'../src/local-adapters';import{sha256}from'../src/utils/text';import type{Document,Draft,Env}from'../src/types';
+import{draftCard}from'../src/card';
 const date='2026-10-26',at=(time:string,day=date)=>day+'T'+time+':00+03:00';
 test('full-day editorial boundaries are disjoint: 14:00 is midday, closing is not a completed-price claim',()=>{
  for(const[time,label]of [['09:39',null],['09:40','Güne başlarken'],['09:59','Güne başlarken'],['10:00','Açılışın ilk dakikaları'],['10:59','Açılışın ilk dakikaları'],['11:00','Gün ortası'],['14:00','Gün ortası'],['14:59','Gün ortası'],['15:00','Kapanışa doğru'],['17:59','Kapanışa doğru'],['18:00','Kapanışta'],['18:09','Kapanışta'],['18:10',null],['22:00',null]]as const)assert.equal(equitySessionLabel(at(time)).label,label,time);
@@ -12,6 +13,19 @@ test('closed, half-day and unknown sessions never receive full-day false opening
 const text='BIST 100: 11.004,37 puan. Değişim %1,01 düşüş; puan farkı -112,62 puan.';
 const doc:Document={source_id:'sermaye-telegram',source_name:'Sermaye Borsası',official:false,family:'telegram-sermayeborsasi',url:'https://t.me/SermayeBorsasi/26431',title:'Sermaye Borsası kaynak görseli',body:text,published_at:'2026-10-27T18:00:00Z',source_layout:{kind:'market_overview',panels:[],minimum_rows:0},passages:[{id:'p',text}]};
 const draft={headline:'📊 Kaynak tablosunda BIST 100',body:'Endeks 11.004,37 puan.',card_headline:'Kaynak tablosunda BIST 100',card_body:'Endeks 11.004,37 puan.',template:'market',category:'bist',hashtags:['#Borsa','#BIST'],entities:['BIST 100'],claims:[],uncertainties:[],importance:65,event_key:'fixture'}as Draft;
+test('explicit ASTOR edit overrides the prior submission heading in tweet and card without changing source time or facts',()=>{
+ const source={...doc,source_id:'manual-input',family:'manual',source_layout:undefined,market_data:{kind:'akd' as const,ticker:'ASTOR',submitted_at:1793180912,editorial_period:'Gün ortası'}};
+ const original={...draft,headline:'📊 Gün ortası — ASTOR kurum dağılımı',card_headline:'Gün ortası — ASTOR kurum dağılımı',body:'HSBC 7.490.044 lot.',card_body:'HSBC 7.490.044 lot.',card_data:{ticker:'ASTOR',buy:[{label:'HSBC',value:'7.490.044 lot'}]}};
+ const out=repairDraftStyle(original,[source],'gün sonu yaz tweette ve görsele');
+ assert.equal(out.headline,'📊 Gün sonu — ASTOR kurum dağılımı');assert.equal(out.card_headline,'Gün sonu — ASTOR kurum dağılımı');
+ assert.equal(out.body,original.body);assert.equal(out.card_data?.buy?.[0].value,'7.490.044 lot');assert.equal(source.market_data.submitted_at,1793180912);assert.equal(source.market_data.editorial_period,'Gün ortası');
+ assert.deepEqual(repairDraftStyle(out,[source],'gün sonu yaz tweette ve görsele'),out);
+ assert.notEqual(draftCard(repairDraftStyle(original,[source])),draftCard(out));
+ assert.match(repairDraftStyle(original,[source]).headline,/Gün ortası/);
+ const tweetOnly=repairDraftStyle(original,[source],'tweet başlığına gün sonu yaz');assert.match(tweetOnly.headline,/Gün sonu/);assert.match(tweetOnly.card_headline,/Gün ortası/);
+ const cardOnly=repairDraftStyle(original,[source],'görsele gün sonu yaz');assert.match(cardOnly.headline,/Gün ortası/);assert.match(cardOnly.card_headline,/Gün sonu/);
+ for(const request of ['gün sonu yazma','"gün sonu yaz" ifadesini kullanma']){const unchanged=repairDraftStyle(original,[source],request);assert.match(unchanged.headline,/Gün ortası/);assert.match(unchanged.card_headline,/Gün ortası/);}
+});
 async function manifest(provenance?:any){const message={id:26431,at:'2026-10-26T11:00:03Z',edited_at:'2026-10-26T13:00:00Z',fingerprint:'a'.repeat(64),provenance};return{version:1,channel:'SermayeBorsasi',peer_id:2426639373,url:doc.url,messages:[message],hash:await sha256(message.fingerprint),captured_at:Date.parse('2026-10-27T14:00:00Z')};}
 test('delayed collection, edit or next-day retry cannot replace the original channel publication time',async()=>{
  const m=await manifest(),docs=await bindChannelPublication([doc],JSON.stringify(m)),c=marketTimeContext(docs)[0];assert.equal(c.editorial_session.label,'Öğleden sonra');assert.equal(c.publication_day,'2026-10-26');assert.equal(c.measurement_time,null);assert.equal(c.independent_date_verification,false);assert.equal(c.forward_state,'unknown');

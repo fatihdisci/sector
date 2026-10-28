@@ -57,7 +57,7 @@ export async function leaseJob(env:Env) {
  const layout=editing?(await savedLayout(env,'draft:'+job.draft_id)??'editorial'):await chooseLayout(env,job.article_id);
  const previous=await env.DB.prepare('SELECT id,content FROM drafts WHERE created_at>? ORDER BY created_at DESC LIMIT 40').bind(now()-48*3600).all<{id:string;content:string}>();
  const existing_events=(previous.results??[]).map(r=>{const d=JSON.parse(r.content) as Draft;return {id:r.id,headline:d.headline,event_key:d.event_key,entities:d.entities};});
- return {id:job.id,card_theme:theme,card_layout:layout,lease_token:token,input_hash:job.input_hash,deadline:now()+600,model:env.AI_MODEL,effort:env.AI_EFFORT,provider:'openai-codex',allowed_tools:[],documents:JSON.parse(job.documents),editorial_policy:editorialPolicy(JSON.parse(job.documents)),previous_validation_issues:await previousModelIssues(env,job.id),existing_events,edit_request:job.edit_request,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,audit_prompt:AUDIT_PROMPT};
+ return {id:job.id,kind:job.kind,card_theme:theme,card_layout:layout,lease_token:token,input_hash:job.input_hash,deadline:now()+600,model:env.AI_MODEL,effort:env.AI_EFFORT,provider:'openai-codex',allowed_tools:[],documents:JSON.parse(job.documents),editorial_policy:editorialPolicy(JSON.parse(job.documents)),previous_validation_issues:await previousModelIssues(env,job.id),existing_events,edit_request:job.edit_request,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,audit_prompt:AUDIT_PROMPT};
 }
 export async function enqueueEdit(env:Env,id:string,revision:number,request:string):Promise<void> {
  if(!request.trim()||request.length>12_000)throw new Error('invalid_edit_request');
@@ -97,7 +97,7 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
  const meta=input.runtime as {model?:string;effort?:string;provider?:string;tool_count?:number;fallback_count?:number};
  if(!meta||meta.model!==env.AI_MODEL||meta.effort!==env.AI_EFFORT||meta.provider!=='openai-codex'||meta.tool_count!==0||meta.fallback_count!==0)throw new Error('model_route_mismatch');
  const documents=JSON.parse(job.documents) as Document[];
- const checked=acceptHermes(input.draft,input.audit,documents),draft=checked.draft;
+ const checked=acceptHermes(input.draft,input.audit,documents,job.kind==='edit'?job.edit_request:null),draft=checked.draft;
  draft.importance=Math.min(draft.importance,documentScore(documents[0],job.kind==='manual'||job.kind==='edit').score+10);
  const existingCard=job.kind==='edit'?await env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(job.draft_id).first<{content:string}>():null;
  const theme=existingCard?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(existingCard.content) as Draft).template)):(await savedTheme(env,job.article_id)??legacyTheme(draft.template));

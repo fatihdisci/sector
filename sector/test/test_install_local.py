@@ -1,10 +1,15 @@
-import importlib.util,subprocess,tempfile,unittest
+import importlib.util,subprocess,tempfile,unittest,sqlite3,time,os
 from pathlib import Path
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('installer',Path(__file__).parents[1]/'scripts/install_local.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 class InstallerRegression(unittest.TestCase):
+    def test_staged_news_filter_must_match_requested_active_mode(self):
+        self.assertTrue(module.news_filter_ready({'news_filter':{'requested':'active','mode':'active'}}))
+        self.assertTrue(module.news_filter_ready({'news_filter':{'requested':'shadow','mode':'shadow'}}))
+        for state in ({'requested':'active','mode':'shadow'},{'requested':'unknown','mode':'unavailable'},None):
+            self.assertFalse(module.news_filter_ready({'news_filter':state}))
     def test_dependency_failure_must_not_stop_or_mutate_current_service(self):
         with tempfile.TemporaryDirectory() as tmp:
             home=Path(tmp);root=home/'Library/Application Support/sector-haber';app=root/'app';app.mkdir(parents=True)
@@ -25,10 +30,15 @@ class FakeInstaller(module.Installer):
     def loaded(self):return self.running
     def process_alive(self):return False
     def stop(self):self.events.append('stop');self.running=False
+    def wait_maintenance(self,deadline_ms):
+        self.events.append('maintenance')
+        if self.failure in ('timeout','wrongapproval'):raise RuntimeError('maintenance_approval_timeout')
+        if self.failure=='abort':raise KeyboardInterrupt()
     def wait_ready(self,release=None):
         self.events.append('ready')
         if release:assert not (self.release/'active').exists()
         if release and self.failure=='health':raise RuntimeError('not ready')
+        if release and self.failure=='selection' and not module.news_filter_ready({'news_filter':{'requested':'active','mode':'shadow'}}):raise RuntimeError('sector_news_filter_not_active')
     def command(self,args,**kwargs):
         args=list(map(str,args));self.events.append(' '.join(args[:3]))
         if args[:2]==['npm','ci'] and self.failure=='npm':raise RuntimeError('npm failed')
@@ -54,6 +64,73 @@ class StagedInstallerTests(unittest.TestCase):
         pdf=runtime/'pdf-venv/bin/python';pdf.parent.mkdir(parents=True);pdf.touch()
         plist=root/'service.plist';plist.write_text('old plist')
         return FakeInstaller(source,runtime,plist,'/fake/node',failure=failure)
+    def maintenance_db(self,i):
+        import json
+        path=i.runtime/'sector-haber.sqlite';db=sqlite3.connect(path);root=Path(__file__).parents[1];db.executescript((root/'migrations/0001_sector.sql').read_text()+'\n'+(root/'migrations/0008_kap_previews.sql').read_text());db.execute("INSERT INTO telegram_updates(update_id,payload,state,created_at) VALUES(1,'{}','queued',1)");db.execute("INSERT INTO system_state VALUES('news_maintenance_candidate',?)",(json.dumps({'state':'pending','hash':'a'*64,'expires_at':int(time.time()*1000)+86400000}),));db.commit();db.close();return path
+    def test_maintenance_success_and_failures_restore_or_activate_without_changing_buffer(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        for failure in (None,'timeout','wrongapproval','health','activation','abort'):
+            with self.subTest(failure=failure),tempfile.TemporaryDirectory() as tmp:
+                i=self.setup_installer(Path(tmp),failure);dbpath=self.maintenance_db(i);replace=os.replace
+                def maybe_fail(source,target):
+                    if failure=='activation' and str(source).endswith('active.next'):raise OSError('activation failed')
+                    return replace(source,target)
+                with patch.object(module.os,'replace',side_effect=maybe_fail):
+                    if failure:
+                        with self.assertRaises((RuntimeError,OSError,KeyboardInterrupt)):i.install(update=True,maintenance=True)
+                    else:i.install(update=True,maintenance=True)
+                db=sqlite3.connect(dbpath);self.assertEqual(db.execute('SELECT state,payload FROM telegram_updates').fetchone(),('queued','{}'));db.close()
+                if failure:self.assertTrue(i.running);self.assertEqual((i.runtime/'app/old.txt').read_text(),'old');self.assertFalse((i.release/'active').exists())
+                else:self.assertTrue((i.release/'active').exists());self.assertLess(i.events.index('maintenance'),i.events.index('ready'))
+    def test_maintenance_preflight_blocks_inflight_and_near_schedule_without_mutation(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));path=self.maintenance_db(i);deadline=int(time.time()*1000)+600000
+            db=sqlite3.connect(path);db.execute("INSERT INTO model_jobs(id,article_id,documents,input_hash,state,created_at) VALUES('j','a','[]','h','leased',1)");db.commit();db.close()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_in_flight'):module.maintenance_preflight(path,deadline)
+            db=sqlite3.connect(path);self.assertEqual(db.execute('SELECT state FROM model_jobs').fetchone()[0],'leased');db.execute('DELETE FROM model_jobs');db.execute("INSERT INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at) VALUES('p','d',1,'today','posting','x','m',1)");db.commit();db.close()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_in_flight'):module.maintenance_preflight(path,deadline)
+            db=sqlite3.connect(path);db.execute("UPDATE x_posts SET state='queued'");db.execute("INSERT INTO x_schedules VALUES('p',?,'[]')",(deadline+1000,));db.commit();db.close()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_scheduled_nearby'):module.maintenance_preflight(path,deadline)
+            db=sqlite3.connect(path);self.assertEqual(db.execute('SELECT state FROM x_posts').fetchone()[0],'queued');db.close()
+    def test_second_preflight_failure_restarts_old_service_without_buffer_rewrite(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));path=self.maintenance_db(i)
+            with patch.object(module,'maintenance_preflight',side_effect=[None,RuntimeError('maintenance_in_flight')]):
+                with self.assertRaisesRegex(RuntimeError,'maintenance_in_flight'):i.install(update=True,maintenance=True)
+            self.assertTrue(i.running);self.assertEqual((i.runtime/'app/old.txt').read_text(),'old')
+            db=sqlite3.connect(path);self.assertEqual(db.execute('SELECT state,payload FROM telegram_updates').fetchone(),('queued','{}'));db.close()
+    def test_deadline_after_approval_before_activation_rolls_back(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));self.maintenance_db(i)
+            with patch.object(module.time,'time',side_effect=[1000.0,1601.0]):
+                with self.assertRaisesRegex(RuntimeError,'maintenance_approval_timeout'):i.install(update=True,maintenance=True)
+            self.assertTrue(i.running);self.assertFalse((i.release/'active').exists());self.assertEqual((i.runtime/'app/old.txt').read_text(),'old')
+    def test_installer_keeps_old_service_running_on_maintenance_preflight_failure(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        for problem in ('inflight','scheduled'):
+            with self.subTest(problem=problem),tempfile.TemporaryDirectory() as tmp:
+                i=self.setup_installer(Path(tmp));path=self.maintenance_db(i);db=sqlite3.connect(path)
+                if problem=='inflight':db.execute("INSERT INTO model_jobs(id,article_id,documents,input_hash,state,created_at) VALUES('j','a','[]','h','leased',1)")
+                else:
+                    db.execute("INSERT INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at) VALUES('p','d',1,'today','queued','x','m',1)")
+                    db.execute("INSERT INTO x_schedules VALUES('p',?,'[]')",(int(time.time()*1000)+300000,))
+                db.commit();db.close()
+                with self.assertRaises(RuntimeError):i.install(update=True,maintenance=True)
+                self.assertTrue(i.running);self.assertNotIn('stop',i.events);self.assertEqual((i.runtime/'app/old.txt').read_text(),'old')
+    def test_real_maintenance_wait_rejects_wrong_approval_and_accepts_active_owner_result(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));(i.runtime/'service.lock').write_text('123')
+            ready={'release':i.release_id,'pid':123,'maintenance':'waiting','news_filter':{'requested':'active','mode':'shadow'}}
+            (i.runtime/'service-ready.json').write_text(json.dumps(ready))
+            with patch.object(i,'process_alive',return_value=True),patch.object(module.time,'time',side_effect=[1.0,1.002]),patch.object(module.time,'sleep'):
+                with self.assertRaisesRegex(RuntimeError,'maintenance_approval_timeout'):module.Installer.wait_maintenance(i,1001)
+            ready.update(maintenance='approved',news_filter={'requested':'active','mode':'active'});(i.runtime/'service-ready.json').write_text(json.dumps(ready))
+            with patch.object(i,'process_alive',return_value=True),patch.object(module.time,'time',return_value=1.0):module.Installer.wait_maintenance(i,2000)
     def test_prepare_failures_leave_old_files_and_service_running(self):
         for failure in getattr(self,'prepare_failures',('npm','build','ocr')):
             with self.subTest(failure=failure),tempfile.TemporaryDirectory() as tmp:
@@ -71,6 +148,13 @@ class StagedInstallerTests(unittest.TestCase):
                 self.assertFalse((i.runtime/'app').is_symlink())
                 self.assertEqual((i.runtime/'app/old.txt').read_text(),'old')
                 self.assertEqual((i.runtime/'bin/pdf-ocr').read_text(),'old OCR');self.assertEqual(i.plist.read_text(),'old plist')
+    def test_shadow_when_active_requested_rolls_back_before_activation(self):
+        if self.__class__.__name__ == 'CollectorInstallerTests':self.skipTest('news publisher only')
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp),'selection')
+            with self.assertRaisesRegex(RuntimeError,'sector_news_filter_not_active'):i.install(update=True)
+            self.assertTrue(i.running);self.assertEqual(i.boots,2);self.assertFalse((i.release/'active').exists())
+            self.assertEqual((i.runtime/'app/old.txt').read_text(),'old');self.assertEqual(i.plist.read_text(),'old plist')
     def test_success_switches_to_clean_tree_and_retains_rollback_copy(self):
         with tempfile.TemporaryDirectory() as tmp:
             i=self.setup_installer(Path(tmp));i.install(update=True)
