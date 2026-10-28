@@ -37,6 +37,21 @@ test('exact MIDAS one-off change instruction replaces both headings and preserve
  const no=repairDraftStyle(original,[source],'Görseli ve tweeti gün sonu olarak değiştirme');assert.equal(no.headline,original.headline);assert.equal(no.card_headline,original.card_headline);
  const quote=repairDraftStyle(original,[source],'"gün sonu olarak değiştir" ifadesini kullanma');assert.equal(quote.headline,original.headline);
 });
+test('HSBC edit scopes rejected old heading separately from requested new heading',()=>{
+ const source={...doc,source_id:'manual-input',family:'manual',source_layout:undefined,market_data:{kind:'institutional' as const,broker:'HSBC',submitted_at:1793191209,editorial_period:'Kapanışa doğru'}};
+ const original={...draft,headline:'📊 Kapanışa doğru — HSBC üzerinden alım-satımda öne çıkan hisseler',card_headline:'Kapanışa doğru — HSBC üzerinden öne çıkan hisseler',card_data:{broker:'HSBC',buy:[{label:'ASTOR',value:'1,4 milyar TL'}],sell:[{label:'SAHOL',value:'101,5 milyon TL'}]},body:'HSBC üzerinden net alım 1,4 milyar TL olarak aktarıldı.'};
+ const before=JSON.stringify(source);
+ for(const request of ['Görselin ve tweetin başlığını gün sonu olarak değiştir kapanışa doğru olmasın','Kapanışa doğru olmasın, görselin ve tweetin başlığını gün sonu olarak değiştir']){
+  const out=repairDraftStyle(original,[source],request);
+  assert.equal(out.headline,'📊 Gün sonu — HSBC üzerinden alım-satımda öne çıkan hisseler');assert.equal(out.card_headline,'Gün sonu — HSBC üzerinden öne çıkan hisseler');
+  assert.equal(out.body,original.body);assert.deepEqual(out.card_data,original.card_data);assert.deepEqual(out.claims,original.claims);assert.equal(JSON.stringify(source),before);assert.notEqual(draftCard(out),draftCard(original));assert.deepEqual(repairDraftStyle(out,[source],request),out);
+ }
+ for(const request of ['Gün sonu olarak değiştirme, kapanışa doğru olsun','gün sonu olmasın','gün sonu yazma','"gün sonu olarak değiştir" ifadesini kullanma']){
+  const out=repairDraftStyle(original,[source],request);assert.equal(out.headline,original.headline);assert.equal(out.card_headline,original.card_headline);
+ }
+ const text=repairDraftStyle(original,[source],'tweet başlığını gün sonu olarak değiştir kapanışa doğru olmasın');assert.match(text.headline,/Gün sonu/);assert.equal(text.card_headline,original.card_headline);
+ const card=repairDraftStyle(original,[source],'görselin başlığını gün sonu olarak değiştir kapanışa doğru olmasın');assert.equal(card.headline,original.headline);assert.match(card.card_headline,/Gün sonu/);
+});
 async function manifest(provenance?:any){const message={id:26431,at:'2026-10-26T11:00:03Z',edited_at:'2026-10-26T13:00:00Z',fingerprint:'a'.repeat(64),provenance};return{version:1,channel:'SermayeBorsasi',peer_id:2426639373,url:doc.url,messages:[message],hash:await sha256(message.fingerprint),captured_at:Date.parse('2026-10-27T14:00:00Z')};}
 test('delayed collection, edit or next-day retry cannot replace the original channel publication time',async()=>{
  const m=await manifest(),docs=await bindChannelPublication([doc],JSON.stringify(m)),c=marketTimeContext(docs)[0];assert.equal(c.editorial_session.label,'Öğleden sonra');assert.equal(c.publication_day,'2026-10-26');assert.equal(c.measurement_time,null);assert.equal(c.independent_date_verification,false);assert.equal(c.forward_state,'unknown');
