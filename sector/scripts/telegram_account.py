@@ -6,6 +6,7 @@ unknown sends are never repeated. One account lock serializes setup and queries.
 import asyncio,fcntl,getpass,hashlib,json,os,pathlib,re,sqlite3,sys,time
 ROOT=pathlib.Path.home()/'Library/Application Support/sector-haber/telegram-account'
 MAX_BYTES=20_000_000
+monotonic=time.monotonic
 class QueryError(Exception):pass
 
 def validate_query(value):
@@ -77,30 +78,46 @@ async def query_movers(client,db,value):
             if isinstance(seconds,int) and seconds>0:db.execute("INSERT OR REPLACE INTO limits VALUES('flood',?)",(time.time()+seconds,))
             db.execute("UPDATE requests SET state='uncertain' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_delivery_uncertain')
         db.execute("UPDATE requests SET state='sent',sent_id=? WHERE key=?",(sent.id,key));db.commit()
-        parts=[];ids=[];received=None;deadline=time.monotonic()+90
-        for _ in range(20):
-            remaining=deadline-time.monotonic()
-            if remaining<=0:break
-            try:message=await conversation.get_reply(sent,timeout=min(remaining,15 if parts else 90))
-            except (asyncio.TimeoutError,TimeoutError):break
-            if message.sender_id!=peer.id or getattr(message,'reply_to_msg_id',None)!=sent.id or message.id<=sent.id:
-                db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_ambiguous')
-            if message.id in ids:continue
-            ids.append(message.id);text=message.raw_text or ''
-            if len(text)>30000 or sum(map(len,parts))+len(text)>30000:
-                db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_size_limit')
-            if text:
-                if re.search(r'(?:abonelik|üyelik|üye ol|paket|sorgu limiti|günlük limit|kota).{0,60}(?:gerek|doldu|aşıldı|bitti|yetersiz|ulaştı)',text,re.I):
-                    db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_provider_limit')
-                if '\n' not in text and re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and not re.search(r'\d',text):continue
-                if getattr(message,'date',None) and received is None:received=message.date.isoformat()
-                if movers_complete(text):parts=[text];break
-                if text not in parts:parts.append(text)
-            combined='\n'.join(parts)
-            if movers_complete(combined):break
-        if not movers_complete('\n'.join(parts)):
-            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_text_incomplete_movers' if ids else 'bot_query_timeout')
-        result={'bot':bot,'command':command,'message_ids':ids,'text':'\n'.join(parts),'images':[]}
+        ids=[];texts={};hashes={};received=None;deadline=monotonic()+90
+        async def accept(message,refetch=False):
+            nonlocal received
+            if (message is None or message.sender_id!=peer.id or getattr(message,'chat_id',None)!=peer.id or
+                getattr(message,'reply_to_msg_id',None)!=sent.id or message.id<=sent.id or (refetch and message.id not in ids)):
+                raise QueryError('bot_query_ambiguous')
+            if message.id not in ids:
+                if len(ids)>=20:raise QueryError('bot_query_size_limit')
+                ids.append(message.id)
+            text=message.raw_text or ''
+            if len(text)>30000:raise QueryError('bot_query_size_limit')
+            digest=hashlib.sha256(text.encode('utf-8')).digest()
+            if hashes.get(message.id)==digest:return
+            hashes[message.id]=digest
+            if re.search(r'(?:abonelik|üyelik|üye ol|paket|sorgu limiti|günlük limit|kota).{0,60}(?:gerek|doldu|aşıldı|bitti|yetersiz|ulaştı)',text,re.I):raise QueryError('bot_query_provider_limit')
+            if '\n' not in text and re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and not re.search(r'\d',text):text=''
+            texts[message.id]=text
+            if sum(len(t) for t in texts.values())>30000:raise QueryError('bot_query_size_limit')
+            if text and getattr(message,'date',None):received=message.date.isoformat()
+        try:
+            first=await conversation.get_reply(sent,timeout=max(0.01,deadline-monotonic()))
+            await accept(first)
+            while True:
+                combined='\n'.join(dict.fromkeys(texts.get(i,'') for i in ids if texts.get(i)))
+                if movers_complete(combined):break
+                remaining=deadline-monotonic()
+                if remaining<=0:raise QueryError('bot_query_text_incomplete_movers')
+                try:
+                    message=await conversation.get_reply(sent,timeout=min(3,remaining))
+                except (asyncio.TimeoutError,TimeoutError):message=None
+                if message is not None:await accept(message)
+                if monotonic()>=deadline:raise QueryError('bot_query_text_incomplete_movers')
+                refreshed=await asyncio.wait_for(client.get_messages(peer,ids=ids),timeout=max(0.01,deadline-monotonic()))
+                for message in refreshed:await accept(message,True)
+        except (asyncio.TimeoutError,TimeoutError):
+            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_timeout')
+        except QueryError as error:
+            state='ambiguous' if str(error) in ('bot_query_ambiguous','bot_query_size_limit') else 'expired'
+            db.execute("UPDATE requests SET state=? WHERE key=?",(state,key));db.commit();raise
+        result={'bot':bot,'command':command,'message_ids':ids,'text':combined,'images':[]}
         if received:result['received_at']=received
         db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result
 
@@ -131,7 +148,7 @@ async def query(client,db,root,value):
         row=db.execute('SELECT * FROM requests WHERE key=?',(key,)).fetchone()
     if time.time()-row['created_at']>300:
         db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_expired')
-    deadline=time.monotonic()+90;fingerprint=None;changed=time.monotonic();responses=[]
+    deadline=monotonic()+90;fingerprint=None;changed=time.monotonic();responses=[]
     while time.monotonic()<deadline:
         messages=await client.get_messages(peer,min_id=row['sent_id'],limit=60)
         try:responses=candidate_messages(messages,peer.id,row['sent_id'])

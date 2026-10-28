@@ -12,7 +12,7 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
     def request(self,state,sent_id=10):
         self.db.execute('INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)',('123','b0pt_bot','/kurum bank of america',state,7,sent_id,None,time.time()));self.db.commit()
     def message(self,id=11,**kwargs):
-        return N(**dict(dict(id=id,out=False,sender_id=7,reply_to_msg_id=10,photo=None,document=None,file=None,raw_text='Net hacim: 100 milyon TL',edit_date=None),**kwargs))
+        return N(**dict(dict(id=id,out=False,sender_id=7,chat_id=7,reply_to_msg_id=10,photo=None,document=None,file=None,raw_text='Net hacim: 100 milyon TL',edit_date=None),**kwargs))
     def test_routes_are_allowlisted_and_injected_commands_fail(self):
         for bot,command in [('b0pt_bot','/piyasayd'),('b0pt_bot','/kurum Ak Yatırım'),('ucretsizderinlikbot','/kurum'),('ucretsizderinlikbot','/akd ASELS'),('ucretsizderinlikbot','/takas THYAO')]:m.validate_query(dict(self.value,bot=bot,command=command))
         for bot,command in [('evil_bot','/kurum'),('b0pt_bot','/start'),('b0pt_bot','/kurum abc\n/start'),('ucretsizderinlikbot','/akd ASELS;cat')]:
@@ -29,7 +29,8 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
     async def test_piyasayd_placeholder_duplicate_and_timeout_fail_closed(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
         a=self.message(raw_text='En çok yükselen ve düşen hisseler');client,conv=self.movers_client([a,a,TimeoutError()])
-        with self.assertRaisesRegex(m.QueryError,'text_incomplete_movers'):await m.query(client,self.db,self.root,value)
+        with patch.object(m,'monotonic',side_effect=[0,0,0,0,0,100]):
+            with self.assertRaisesRegex(m.QueryError,'text_incomplete_movers'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1)
         with self.assertRaisesRegex(m.QueryError,'expired'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1)
@@ -40,6 +41,31 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
         with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1)
+    async def test_piyasayd_refetches_same_correlated_id_after_30_seconds(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        initial=self.message(raw_text='Hazırlanıyor',photo=object())
+        fixture=(pathlib.Path(__file__).parent/'fixtures/piyasayd-edit.txt').read_text().strip();updated=self.message(raw_text=fixture,photo=object())
+        client,conv=self.movers_client([initial,TimeoutError(),TimeoutError()])
+        client.get_messages=AsyncMock(side_effect=[[initial],[updated]])
+        with patch.object(m,'monotonic',side_effect=[0,0,0,1,1,30,30,30]):
+            result=await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        self.assertEqual(result['text'],fixture);self.assertEqual(result['message_ids'],[11]);self.assertEqual(conv.send_message.await_count,1)
+        self.assertEqual(client.get_messages.await_args.kwargs['ids'],[11]);client.download_media.assert_not_awaited()
+    async def test_piyasayd_multiple_partial_edits_and_unrelated_id(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        up,down=self.movers_text().split('En Çok Düşenler')
+        initial=self.message(raw_text='Hazırlanıyor');partial=self.message(raw_text=up);final=self.message(raw_text=self.movers_text())
+        client,conv=self.movers_client([initial,TimeoutError(),TimeoutError()]);client.get_messages=AsyncMock(side_effect=[[partial],[final]])
+        with patch.object(m,'monotonic',side_effect=[0,0,0,1,1,30,30,30]):result=await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        self.assertEqual(result['text'],self.movers_text());self.assertEqual(result['message_ids'],[11])
+        self.db.execute('DELETE FROM requests');self.db.commit()
+        client,_=self.movers_client([initial,TimeoutError()]);client.get_messages=AsyncMock(return_value=[self.message(id=12,raw_text=self.movers_text())])
+        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+    async def test_piyasayd_rejects_refetch_from_wrong_sender(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        client,_=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError()])
+        client.get_messages=AsyncMock(return_value=[self.message(sender_id=8,raw_text=self.movers_text())])
+        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
     async def test_piyasayd_explicit_provider_limit_is_not_retried(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
         client,conv=self.movers_client(self.message(raw_text='Günlük limit doldu'))
@@ -62,7 +88,7 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         class Context:
             async def __aenter__(self):return conversation
             async def __aexit__(self,*args):return False
-        client=N(get_entity=AsyncMock(return_value=self.peer),conversation=unittest.mock.Mock(return_value=Context()),get_messages=AsyncMock(),download_media=AsyncMock())
+        client=N(get_entity=AsyncMock(return_value=self.peer),conversation=unittest.mock.Mock(return_value=Context()),get_messages=AsyncMock(return_value=[]),download_media=AsyncMock())
         return client,conversation
     async def test_piyasayd_waits_for_one_correlated_event_no_polling_and_no_second_send(self):
         from datetime import datetime,timezone
