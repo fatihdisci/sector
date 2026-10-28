@@ -46,6 +46,12 @@ def candidate_messages(messages,peer,sent):
 def meaningful(messages):
     return any(m.photo or (m.file and (m.file.mime_type or '').startswith('image/')) or re.search(r'net.{0,20}(?:hacim|lot|al[iı]ş|sat[iı]ş)|toplam.{0,20}takas|(?:al[iı]ş|sat[iı]ş).{0,8}hacmi|en çok (?:alınan|satılan)',m.raw_text or '',re.I) and re.search(r'\d',m.raw_text or '') for m in messages)
 
+def movers_complete(text):
+    # This is only a collection boundary; the TypeScript parser validates all
+    # rows, signs, units, ordering and freshness before producing any content.
+    rows=re.findall(r'(?m)^[^\n]*?\b([A-Z][A-Z0-9]{3,4})(?:\.E)?\s*[:|–—-]?\s*\d+[.,]\d{2}',text)
+    return bool(re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and len(rows)==20 and len(set(rows))==20)
+
 async def query_movers(client,db,value):
     # One explicit command and one correlated event; no message polling or
     # automatic resend after a timeout/uncertain outcome.
@@ -71,13 +77,31 @@ async def query_movers(client,db,value):
             if isinstance(seconds,int) and seconds>0:db.execute("INSERT OR REPLACE INTO limits VALUES('flood',?)",(time.time()+seconds,))
             db.execute("UPDATE requests SET state='uncertain' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_delivery_uncertain')
         db.execute("UPDATE requests SET state='sent',sent_id=? WHERE key=?",(sent.id,key));db.commit()
-        try:message=await conversation.get_reply(sent)
-        except (asyncio.TimeoutError,TimeoutError):
-            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_timeout')
-        if message.sender_id!=peer.id or getattr(message,'reply_to_msg_id',None)!=sent.id or not message.raw_text or len(message.raw_text)>100_000:
-            db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_ambiguous')
-        result={'bot':bot,'command':command,'message_ids':[message.id],'text':message.raw_text,'images':[]}
-        if getattr(message,'date',None):result['received_at']=message.date.isoformat()
+        parts=[];ids=[];received=None;deadline=time.monotonic()+90
+        for _ in range(20):
+            remaining=deadline-time.monotonic()
+            if remaining<=0:break
+            try:message=await conversation.get_reply(sent,timeout=min(remaining,15 if parts else 90))
+            except (asyncio.TimeoutError,TimeoutError):break
+            if message.sender_id!=peer.id or getattr(message,'reply_to_msg_id',None)!=sent.id or message.id<=sent.id:
+                db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_ambiguous')
+            if message.id in ids:continue
+            ids.append(message.id);text=message.raw_text or ''
+            if len(text)>30000 or sum(map(len,parts))+len(text)>30000:
+                db.execute("UPDATE requests SET state='ambiguous' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_size_limit')
+            if text:
+                if re.search(r'(?:abonelik|üyelik|üye ol|paket|sorgu limiti|günlük limit|kota).{0,60}(?:gerek|doldu|aşıldı|bitti|yetersiz|ulaştı)',text,re.I):
+                    db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_provider_limit')
+                if '\n' not in text and re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and not re.search(r'\d',text):continue
+                if getattr(message,'date',None) and received is None:received=message.date.isoformat()
+                if movers_complete(text):parts=[text];break
+                if text not in parts:parts.append(text)
+            combined='\n'.join(parts)
+            if movers_complete(combined):break
+        if not movers_complete('\n'.join(parts)):
+            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_text_incomplete_movers' if ids else 'bot_query_timeout')
+        result={'bot':bot,'command':command,'message_ids':ids,'text':'\n'.join(parts),'images':[]}
+        if received:result['received_at']=received
         db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result
 
 async def query(client,db,root,value):

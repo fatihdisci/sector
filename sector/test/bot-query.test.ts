@@ -51,3 +51,7 @@ test('truncated institutional text is rejected without falling back to images',a
 test('image-only named institution replies never invoke OCR',async()=>{
  let reads=0;await assert.rejects(()=>botDocuments('/kurum bank of america','104',undefined,reply('', ['responses/table.image']),async()=>{reads++;throw Error('unexpected_ocr');},async()=>new Uint8Array([1])),/bot_query_text_incomplete/);assert.equal(reads,0);
 });
+
+test('incomplete movers text has its own failure code and does not inspect images',async()=>{
+ let reads=0;await assert.rejects(()=>botDocuments('/piyasayd','105',undefined,reply('En Çok Yükselenler\nEn Çok Düşenler',['responses/table.image']),async()=>{reads++;throw Error('unexpected_ocr');},async()=>new Uint8Array([1])),/bot_query_text_incomplete_movers/);assert.equal(reads,0);
+});
