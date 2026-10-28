@@ -20,7 +20,7 @@ export function cardPageDrafts(input:Draft):Draft[]{
  const add=(name:string,rows:unknown[]|undefined,capacity:number,set:(p:Draft,r:any[])=>void)=>{if(rows)fields.push({name,rows,capacity,set});};
  if(data.report?.buyback)add('buyback.rows',data.report.buyback.rows,60,(p,r)=>{p.card_data!.report!.buyback!.rows=r;p.card_data!.report!.buyback!.row_count=r.length;});
  else if(data.report?.general)add('general.rows',data.report.general.rows,60,(p,r)=>{p.card_data!.report!.general!.rows=r;});
- else if(data.report)add('report.rows',data.report.rows,15,(p,r)=>{p.card_data!.report!.rows=r;});
+ else if(data.report)add('report.rows',data.report.rows,data.report.circuit?30:15,(p,r)=>{p.card_data!.report!.rows=r;});
  else if(d.template==='circuit')add('tickers',data.tickers,36,(p,r)=>{p.card_data!.tickers=r;});
  else {
   const cap=d.template==='institutional'?10:5;

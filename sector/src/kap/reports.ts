@@ -79,20 +79,16 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
 
 function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences):{draft:Draft;documents:Document[]}{
  const events=current.map(d=>({id:d.id,tickers:[...d.subjectCodes],published_at:d.publishedAt}));
- const requested=preferences?.list==='first'?preferences.count??5:CIRCUIT_REPORT_LIMIT;
- const {rows,selection}=selectCircuitReport(events,indices,at,Math.min(requested,CIRCUIT_REPORT_LIMIT));
- const headline='Devre kesici',note=circuitOmissionNote(selection);
- const body=(codes:string[],tags:boolean)=>[codes.map(c=>(tags?'#':'')+c).join(' '),note].filter(Boolean).join('\n');
- const text=(codes:string[],tags:boolean)=>[headline,body(codes,tags)].filter(Boolean).join('\n\n');
- const hashtag=twitter.parseTweet(text(selection.selected_tickers,true)),plain=twitter.parseTweet(text(selection.selected_tickers,false));
- if(!hashtag.valid&&!plain.valid){
-  let fit=0;for(let n=1;n<rows.length;n++){const codes=selection.selected_tickers.slice(0,n),shortNote=circuitOmissionNote({...selection,omitted:selection.total_tickers-n}),candidate=[headline,[codes.join(' '),shortNote].filter(Boolean).join('\n')].join('\n\n');if(twitter.parseTweet(candidate).valid)fit=n;}
-  throw new OutputCapacityError('tweet_capacity_exceeded',{version:1,kind:'tweet',events:events.length,tickers:selection.total_tickers,selected_tickers:rows.length,fit_tickers:fit,tweet_length:plain.weightedLength,tweet_limit:280,hashtag_tweet_length:hashtag.weightedLength,preference:preferences?.list??'default_summary'});
- }
- selection.tweet_style=hashtag.valid?'hashtags':'plain';
+ const {rows,selection}=selectCircuitReport(events,indices,at,CIRCUIT_REPORT_LIMIT);
+ const headline='Devre kesici raporu',note='';
+ const codes=selection.selected_tickers.slice(0,20);
+ const body=rows.length?`${selection.total_tickers} hissede ${events.length} devre kesici bildirimi kaydedildi.\n\nÖne çıkan hisseler: ${codes.map(c=>'#'+c).join(' ')}\n\nTüm liste görsellerde.`:'Gün içinde kaydedilmiş devre kesici bildirimi yok.';
+ const tweet=twitter.parseTweet([headline,body].join('\n\n'));
+ if(!tweet.valid)throw new OutputCapacityError('tweet_capacity_exceeded',{version:1,kind:'tweet',events:events.length,tickers:selection.total_tickers,selected_tickers:codes.length,tweet_length:tweet.weightedLength,tweet_limit:280});
+ selection.tweet_style='hashtags';
  const source='https://www.kap.org.tr/tr/bildirim-sorgu',day=istanbulDay(at);
  const evidence=`${day}: ${events.length} bildirim; ${selection.total_tickers} farklı hisse. Gösterilen ${rows.length}; gösterilmeyen ${selection.omitted}. Öncelik BIST30, BIST100 (BIST30 hariç), diğer; grup içinde tekrar sayısı azalan, eşitlikte kod artan.\n`+selection.all_rows.map(r=>r.label+': '+r.value).join('\n')+'\n'+coverage;
  const document:Document={source_id:'kap-daily-report',source_name:'KAP günlük kayıt raporu',family:'kap-report',official:true,url:source+'#circuit-'+at,title:'Devre kesici raporu',body:evidence,passages:[{id:'computed_report',text:evidence}],published_at:new Date(at).toISOString(),primary_urls:current.map(d=>d.url),language:'tr'};
- const draft:Draft={...(preferences?{output_preferences:preferences}:{}),headline,body:rows.length?body(selection.selected_tickers,hashtag.valid):'Kaydedilmiş devre kesici bildirimi yok.',hashtags:[],category:'kap',importance:85,template:'info',card_headline:'Devre kesici raporu',card_body:`${events.length} bildirim · ${selection.total_tickers} farklı hisse`,card_data:{report:{rows,footer:note,events,circuit:selection}},claims:[{text:evidence,evidence:[{document:0,passage:'computed_report',quote:evidence}]}],entities:[],event_key:'circuit-'+at,uncertainties:[],source_notes:[]};
+ const draft:Draft={...(preferences?{output_preferences:preferences}:{}),headline,body,hashtags:[],category:'kap',importance:85,template:'info',card_headline:'Devre kesici raporu',card_body:`${events.length} bildirim · ${selection.total_tickers} farklı hisse`,card_data:{report:{rows,footer:note,events,circuit:selection}},claims:[{text:evidence,evidence:[{document:0,passage:'computed_report',quote:evidence}]}],entities:[],event_key:'circuit-'+at,uncertainties:[],source_notes:[]};
  return {draft,documents:[document]};
 }

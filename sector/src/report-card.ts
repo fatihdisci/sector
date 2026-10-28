@@ -9,12 +9,12 @@ export function reportCard(d:Pick<Draft,'headline'|'body'|'card_data'|'output_pr
  if(d.card_data!.report!.kind==='range')return rangeCard(d);
  if(d.card_data!.report!.buyback)return buybackCard(d.card_data!.report!.buyback!);
  if(d.card_data!.report!.general)return generalCard(d.card_data!.report!.general!,d.output_preferences?.show_time===true,d.output_preferences?.show_footer!==false);
- const data=d.card_data!.report!,rows=data.rows,cols=1,height=55;
- if(rows.length>15)throw Error('report_card_capacity_exceeded');
+ const data=d.card_data!.report!,rows=data.rows,cols=data.circuit?2:1,height=data.circuit?52:55;
+ if(rows.length>(data.circuit?30:15))throw Error('report_card_capacity_exceeded');
  const text=(s:string,x:number,y:number,size:number,color=COLORS.paper)=>`<text x="${x}" y="${y}" font-size="${size}" fill="${color}">${esc(s)}</text>`;
  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="${COLORS.navy}"/><g font-family="Noto Sans, sans-serif"><image href="${PROFILE_DATA}" x="64" y="52" width="64" height="64"/>`+text('ENDEKS HABER',148,94,30)+text(d.headline.replace(/^📢\s*/,''),64,210,40)+text(d.body,64,263,26,COLORS.steel);
- for(let c=0;c<cols;c++){const x=64+c*500;svg+=text('HİSSE',x,310,20,COLORS.steel)+text(d.headline.includes('Devre')?'BİLDİRİM / ENDEKS':'ALIM MİKTARI',x+300,310,20,COLORS.steel);}
- rows.forEach((r,i)=>{const x=64,y=350+i*height;if(reportTextWidth(r.label,30,true)>280||reportTextWidth(r.value,28)>670)throw Error('report_cell_capacity_exceeded');svg+=`<g data-report-row="${i}">`+text(r.label,x,y,30)+text(r.value,x+300,y,28)+'</g>';});
+ for(let c=0;c<cols;c++){const x=64+c*500;svg+=text('HİSSE',x,310,20,COLORS.steel)+text(d.headline.includes('Devre')?'BİLDİRİM / ENDEKS':'ALIM MİKTARI',x+(data.circuit?155:300),310,20,COLORS.steel);}
+ rows.forEach((r,i)=>{const x=64+(data.circuit?Math.floor(i/15)*500:0),y=350+(data.circuit?i%15:i)*height,offset=data.circuit?155:300,size=data.circuit?22:28;if(reportTextWidth(r.label,data.circuit?25:30,true)>(data.circuit?145:280)||reportTextWidth(r.value,size)>(data.circuit?330:670))throw Error('report_cell_capacity_exceeded');svg+=`<g data-report-row="${i}">`+text(r.label,x,y,data.circuit?25:30)+text(r.value,x+offset,y,size)+'</g>';});
  if(!rows.length)svg+=text('Doğrulanmış günlük işlem satırı yok.',64,380,32);
 
  const omission=data.circuit?circuitOmissionNote(data.circuit):'';

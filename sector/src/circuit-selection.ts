@@ -1,3 +1,4 @@
+import {OutputCapacityError} from './output-capacity';
 export interface CircuitEvent {id:number;tickers:string[];published_at:string;}
 export interface CircuitIndices {bist30:string[];bist100:string[];checkedAt:string;source:string;}
 export interface CircuitSelection {
@@ -7,7 +8,7 @@ export interface CircuitSelection {
  indices:{status:'verified'|'missing';snapshot:CircuitIndices|null};
  tweet_style?:'hashtags'|'plain';
 }
-export const CIRCUIT_REPORT_LIMIT=40;
+export const CIRCUIT_REPORT_LIMIT=120;
 const code=/^[A-Z][A-Z0-9]{3,4}$/;
 export function circuitOmissionNote(s:Pick<CircuitSelection,'total_tickers'|'omitted'>):string{return s.omitted?`${s.total_tickers} hisse; ${s.omitted} gösterilmedi.`:'';}
 /** Selection affects presentation only. Every event and aggregate remains archived. */
@@ -20,6 +21,7 @@ export function selectCircuitReport(events:readonly CircuitEvent[],indices:Circu
  if(counts.size&&!verified)throw Error('circuit_report_indices_unavailable');
  const tier=(c:string)=>verified?(indices!.bist30.includes(c)?30:indices!.bist100.includes(c)?100:999):999;
  const sorted=[...counts].sort((a,b)=>tier(a[0])-tier(b[0])||b[1]-a[1]||(a[0]<b[0]?-1:a[0]>b[0]?1:0));
+ if(sorted.length>limit)throw new OutputCapacityError('multi_card_capacity_exceeded',{version:1,kind:'visual',events:events.length,tickers:sorted.length,fields:[{name:'report.rows',rows:sorted.length,per_card:30}],required_cards:Math.ceil(sorted.length/30),max_cards:4});
  const all_rows=sorted.map(([ticker,n])=>({label:'#'+ticker,value:`${n} bildirim${tier(ticker)<999?' · BIST '+tier(ticker):''}`}));
  const rows=all_rows.slice(0,limit);
  const selection:CircuitSelection={version:1,rule:'bist30-bist100-repeats-code-v1',limit,total_events:events.length,total_tickers:counts.size,selected_tickers:rows.map(r=>r.label.slice(1)),omitted:counts.size-rows.length,all_rows,indices:{status:verified?'verified':'missing',snapshot:verified?{bist30:[...indices!.bist30],bist100:[...indices!.bist100],checkedAt:indices!.checkedAt,source:indices!.source}:null}};
