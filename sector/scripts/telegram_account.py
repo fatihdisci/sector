@@ -37,6 +37,7 @@ def resume_state(db,key,bot,command):
     if row and row['state'] in ('sending','uncertain'):raise QueryError('bot_query_delivery_uncertain')
     if row and row['state']=='expired':raise QueryError('bot_query_expired')
     if row and row['state']=='ambiguous':raise QueryError('bot_query_ambiguous')
+    if row and row['state']=='reply_mismatch':raise QueryError('bot_query_reply_mismatch')
     return row
 
 def candidate_messages(messages,peer,sent):
@@ -81,9 +82,17 @@ async def query_movers(client,db,value):
         ids=[];texts={};hashes={};received=None;deadline=monotonic()+90
         async def accept(message,refetch=False):
             nonlocal received
-            if (message is None or message.sender_id!=peer.id or getattr(message,'chat_id',None)!=peer.id or
-                getattr(message,'reply_to_msg_id',None)!=sent.id or message.id<=sent.id or (refetch and message.id not in ids)):
-                raise QueryError('bot_query_ambiguous')
+            def mismatch(reason):
+                error=QueryError('bot_query_reply_mismatch');error.reason=reason;raise error
+            if message is None:mismatch('missing_message')
+            mid=getattr(message,'id',None)
+            if not isinstance(mid,int) or mid<=sent.id or (refetch and mid not in ids):mismatch('message_id')
+            sender=getattr(message,'sender_id',None);chat=getattr(message,'chat_id',None);reply=getattr(message,'reply_to_msg_id',None)
+            # Refetch is constrained to already verified IDs in the bound peer.
+            # Telegram may omit optional headers on an edited message; explicit
+            # contradictory metadata always fails closed.
+            for name,value,expected in (('sender',sender,peer.id),('chat',chat,peer.id),('reply',reply,sent.id)):
+                if value!=expected and (not refetch or value is not None):mismatch(name)
             if message.id not in ids:
                 if len(ids)>=20:raise QueryError('bot_query_size_limit')
                 ids.append(message.id)
@@ -115,8 +124,8 @@ async def query_movers(client,db,value):
         except (asyncio.TimeoutError,TimeoutError):
             db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_timeout')
         except QueryError as error:
-            state='ambiguous' if str(error) in ('bot_query_ambiguous','bot_query_size_limit') else 'expired'
-            db.execute("UPDATE requests SET state=? WHERE key=?",(state,key));db.commit();raise
+            state='reply_mismatch' if str(error)=='bot_query_reply_mismatch' else 'ambiguous' if str(error)=='bot_query_size_limit' else 'expired'
+            db.execute("UPDATE requests SET state=?,result=? WHERE key=?",(state,json.dumps({'reason':getattr(error,'reason','unspecified')}) if state=='reply_mismatch' else None,key));db.commit();raise
         result={'bot':bot,'command':command,'message_ids':ids,'text':combined,'images':[]}
         if received:result['received_at']=received
         db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result

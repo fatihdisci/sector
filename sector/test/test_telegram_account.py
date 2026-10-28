@@ -38,8 +38,8 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
         up,down=self.movers_text().split('En Çok Düşenler')
         client,conv=self.movers_client([self.message(raw_text=up),self.message(id=12,reply_to_msg_id=9,raw_text='En Çok Düşenler'+down)])
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1)
     async def test_piyasayd_refetches_same_correlated_id_after_30_seconds(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
@@ -60,12 +60,30 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['text'],self.movers_text());self.assertEqual(result['message_ids'],[11])
         self.db.execute('DELETE FROM requests');self.db.commit()
         client,_=self.movers_client([initial,TimeoutError()]);client.get_messages=AsyncMock(return_value=[self.message(id=12,raw_text=self.movers_text())])
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+    async def test_initial_reply_requires_all_provenance_fields(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        for fields in ({'sender_id':None},{'chat_id':None},{'reply_to_msg_id':None},{'sender_id':8},{'chat_id':8},{'reply_to_msg_id':9},{'id':9}):
+            self.db.execute('DELETE FROM requests');self.db.commit()
+            client,_=self.movers_client(self.message(**fields))
+            with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+            client.get_messages.assert_not_awaited()
+    async def test_refetched_verified_id_preserves_binding_with_missing_optional_headers(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        initial=self.message(raw_text='Hazırlanıyor');edited=self.message(sender_id=None,chat_id=None,reply_to_msg_id=None,raw_text=self.movers_text())
+        client,_=self.movers_client([initial,TimeoutError()]);client.get_messages=AsyncMock(return_value=[edited])
+        result=await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        self.assertEqual(result['message_ids'],[11]);self.assertEqual(result['text'],self.movers_text())
+    async def test_refetch_contradiction_is_recorded_without_content(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        client,_=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError()]);client.get_messages=AsyncMock(return_value=[self.message(chat_id=8,raw_text='secret-content')])
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        row=self.db.execute('select state,result from requests').fetchone();self.assertEqual(row['state'],'reply_mismatch');self.assertEqual(json.loads(row['result']),{'reason':'chat'});self.assertNotIn('secret-content',row['result'])
     async def test_piyasayd_rejects_refetch_from_wrong_sender(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
         client,_=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError()])
         client.get_messages=AsyncMock(return_value=[self.message(sender_id=8,raw_text=self.movers_text())])
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
     async def test_piyasayd_explicit_provider_limit_is_not_retried(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
         client,conv=self.movers_client(self.message(raw_text='Günlük limit doldu'))
@@ -104,8 +122,8 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(m.QueryError,'expired'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1);client.get_messages.assert_not_awaited()
         self.db.execute('DELETE FROM requests');self.db.commit();client,conv=self.movers_client(self.message(reply_to_msg_id=9))
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
-        with self.assertRaisesRegex(m.QueryError,'ambiguous'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,value)
+        with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,value)
         self.assertEqual(conv.send_message.await_count,1)
     async def test_unknown_send_is_persisted_and_never_resent(self):
         client=N(get_entity=AsyncMock(return_value=self.peer),send_message=AsyncMock(side_effect=TimeoutError()))
