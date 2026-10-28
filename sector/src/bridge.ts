@@ -18,6 +18,7 @@ import {readDocument} from './article';
 import registry from '../sources.json';
 import type {Source} from './types';
 import {readPublic,safeUrl} from './network';
+import {tryHashtagOnlyEdit} from './hashtag-edit';
 type Job={id:string;article_id:string;documents:string;related_ids:string;input_hash:string;lease_token:string;lease_until:number;state:string;kind:string;draft_id:string|null;expected_revision:number;edit_request:string|null;result_draft:string|null;};
 const now=()=>Math.floor(Date.now()/1000);
 export const OFFICIAL_PDF_DOCUMENT_TTL_SECONDS=24*3600;
@@ -61,6 +62,7 @@ export async function leaseJob(env:Env) {
 }
 export async function enqueueEdit(env:Env,id:string,revision:number,request:string):Promise<void> {
  if(!request.trim()||request.length>12_000)throw new Error('invalid_edit_request');
+ if(await tryHashtagOnlyEdit(env,id,revision,request))return;
  const row=await env.DB.prepare("SELECT * FROM drafts WHERE id=? AND revision=? AND state='pending' AND expires_at>?").bind(id,revision,now()).first<{documents:string;content:string}>();if(!row)throw new Error('stale_edit');
  const article=await env.DB.prepare('SELECT * FROM articles WHERE draft_id=? ORDER BY first_seen LIMIT 1').bind(id).first<{id:string;source_id:string;url:string;title:string;summary:string;published_at:string}>();if(!article)throw new Error('edit_source_missing');
  const stored=JSON.parse(row.documents) as Document[];
