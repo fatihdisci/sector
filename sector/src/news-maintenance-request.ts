@@ -29,9 +29,20 @@ export async function stageMaintenanceCandidate(env:Env,raw:string,artifact:Revi
  if(!prior.valid||artifact.catalog_hash!==old.catalog_hash)throw Error('candidate_parent_invalid');
  const existing=await maintenanceCandidate(env);
  if(existing?.raw===raw)return 'already_staged';
- if(c.hash===old.hash||await env.DB.prepare('SELECT 1 FROM system_state WHERE key=?').bind('news_maintenance_history:'+c.hash).first())throw Error('candidate_replay');
+ if(c.hash===old.hash||await env.DB.prepare('SELECT 1 FROM system_state WHERE key IN (?,?)').bind('news_maintenance_history:'+c.hash,'news_maintenance_superseded:'+c.hash).first())throw Error('candidate_replay');
  if(existing){
-  if(existing.hash!==old.hash||!successor)throw Error('candidate_already_exists');
+  if(existing.hash!==old.hash||!successor){
+   let previous:any;try{previous=JSON.parse(existing.raw);}catch{throw Error('candidate_already_exists');}
+   if(previous.state!=='pending'||previous.previous_artifact_hash!==old.hash||previous.parent_state_hash!==record?.parent_state_hash)throw Error('candidate_already_exists');
+   const digest=await sha256(existing.raw),archive='news_maintenance_superseded:'+existing.hash;
+   const guard=keys.map(()=>"COALESCE((SELECT value FROM system_state WHERE key=?),'null')=?").join(' AND '),bindings=keys.flatMap((k,i)=>[k,values[i]]);
+   const safe="NOT EXISTS(SELECT 1 FROM system_state WHERE key LIKE 'news_maintenance_approval:%' AND json_valid(value) AND json_extract(value,'$.candidate_digest')=?) AND NOT EXISTS(SELECT 1 FROM system_state WHERE key LIKE 'news_maintenance_request:%' AND json_valid(value) AND json_extract(value,'$.candidate_digest')=? AND (json_extract(value,'$.state')='approved' OR (json_extract(value,'$.state') IN ('pending','sending') AND json_extract(value,'$.expires_at')>?)))";
+   const result=await env.DB.batch([
+    env.DB.prepare(`INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE ${guard} AND ${safe}`).bind(archive,existing.raw,...bindings,digest,digest,now),
+    env.DB.prepare(`UPDATE system_state SET value=? WHERE key=? AND value=? AND ${guard} AND ${safe} AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)`).bind(raw,existing.key,existing.raw,...bindings,digest,digest,now,archive,existing.raw)
+   ]);
+   if(!result[1].meta.changes)throw Error('candidate_already_exists');return 'staged';
+  }
   const historyKey='news_maintenance_history:'+old.hash,history=JSON.stringify({artifact:old,candidate_raw:successor.candidate_raw});
   const saved=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(historyKey).first<{value:string}>();
   if(saved&&saved.value!==history)throw Error('candidate_history_conflict');

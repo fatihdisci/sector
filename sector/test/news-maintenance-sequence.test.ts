@@ -28,7 +28,22 @@ test('real staging/readiness supports three approvals, rejects replay and preser
     await assert.rejects(stageMaintenanceCandidate(racing,raw,artifact),/candidate_parent_changed/);await DB.prepare("DELETE FROM system_state WHERE key='news_owner_review_binding'").run();
     assert.equal(await DB.prepare("SELECT value FROM system_state WHERE key='news_maintenance_staged_candidate'").first(),null);
    }
-   assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'staged');assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'already_staged');
+   if(n===1){
+    const altFiles={...files,'src/style.ts':'a'.repeat(64)},alt={files:altFiles,catalog_hash,hash:await sha256(canonical({files:altFiles,catalog_hash}))},altRaw=JSON.stringify({...candidate,hash:alt.hash});
+    assert.equal(await stageMaintenanceCandidate(env,altRaw,alt),'staged');let stale='';
+    await createMaintenanceRequest({...env,TELEGRAM_UPDATE_ID:99},async(_text,extra)=>{stale=JSON.parse(extra.reply_markup).inline_keyboard[0][0].callback_data.split(':').at(-1);return{message_id:99};});
+    await assert.rejects(stageMaintenanceCandidate(env,raw,artifact),/candidate_already_exists/);
+    const request=await DB.prepare('SELECT value FROM system_state WHERE key=?').bind('news_maintenance_request:'+stale).first<any>();
+    await put('news_maintenance_request:'+stale,{...JSON.parse(request.value),expires_at:Date.now()-1});
+    await put('news_maintenance_approval:fixture',{candidate_digest:await sha256(altRaw)});
+    await assert.rejects(stageMaintenanceCandidate(env,raw,artifact),/candidate_already_exists/);
+    await DB.prepare("DELETE FROM system_state WHERE key='news_maintenance_approval:fixture'").run();
+    assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'staged');
+    assert.match(await approveMaintenanceRequest(env,stale,'7','7',99),/geçersiz/);
+    await assert.rejects(stageMaintenanceCandidate(env,altRaw,alt),/candidate_replay/);
+    assert.equal((await DB.prepare('SELECT value FROM system_state WHERE key=?').bind('news_maintenance_superseded:'+alt.hash).first<any>()).value,altRaw);
+   }else assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'staged');
+   assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'already_staged');
    assert.equal(await maintenanceCandidateForRuntime(env,artifact.hash,candidate.expires_at-1),true);assert.equal(await maintenanceCandidateForRuntime(env,previous.hash,candidate.expires_at-1),false);assert.equal(await maintenanceCandidateForRuntime(env,artifact.hash,candidate.expires_at),false);
    if(n>1)assert.match(await approveMaintenanceRequest(env,nonces[n-2],'7','7',n-1),/geçersiz/);
    // Existing active release stays valid before approval, including rollback releases.
