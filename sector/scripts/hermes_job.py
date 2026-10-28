@@ -129,7 +129,8 @@ def prepare_draft(draft,documents):
     return normalized
 
 def main(job):
-    if job.get('provider')!='openai-codex' or job.get('model')!='gpt-6-luna' or job.get('effort')!='high' or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
+    route=(job.get('model'),job.get('effort'))
+    if job.get('provider')!='openai-codex' or route not in {('gpt-6-luna','high'),('gpt-6.1-terra','low')} or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
     instructions=job['prompt']+'\nYalnız aşağıdaki şemaya uyan JSON nesnesini döndür, başka çıktı yazma.\n'+json.dumps(job['schema'],ensure_ascii=False)
     draft=call({**job,'metric_stage':'generate'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_validation_issues':job.get('previous_validation_issues',[])})
     draft=prepare_draft(draft,job['documents'])

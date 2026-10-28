@@ -36,15 +36,23 @@ class HermesJobContract(unittest.TestCase):
 
     def job(self):return {'id':'test','provider':'openai-codex','model':'gpt-6-luna','effort':'high','allowed_tools':[],'deadline':time.time()+600,'prompt':'Grounded editor','schema':{},'documents':[],'audit_prompt':'Check facts'}
     def test_no_paid_provider_or_tools_can_run(self):
-        for change in [{'provider':'openai-api'},{'allowed_tools':['terminal']},{'effort':'medium'},{'effort':'low'},{'model':'gpt-5.6-terra'},{'model':'gpt-6.1-sol'}]:
+        for change in [{'provider':'openai-api'},{'allowed_tools':['terminal']},{'effort':'medium'},{'effort':'low'},{'model':'gpt-5.6-terra'},{'model':'gpt-6.1-sol'},{'model':'gpt-6-luna','effort':'low'},{'model':'gpt-6.1-terra','effort':'high'}]:
             with patch.object(job_module,'call') as call:
                 with self.assertRaises(RuntimeError):job_module.main(self.job()|change)
                 call.assert_not_called()
+    def test_terra_low_uses_existing_subscription_route(self):
+        job=self.job()|{'model':'gpt-6.1-terra','effort':'low'}
+        with patch.object(job_module,'call',side_effect=[{'headline':'source'}, {'supported':True,'issues':[]}]) as call:
+            result=job_module.main(job)
+        self.assertEqual(call.call_count,2)
+        self.assertEqual(result['runtime']['model'],'gpt-6.1-terra')
+        self.assertEqual(result['runtime']['effort'],'low')
+        self.assertEqual(call.call_args_list[0].args[0]['provider'],'openai-codex')
     def test_verified_draft_uses_two_subscription_turns(self):
         with patch.object(job_module,'call',side_effect=[{'headline':'source'}, {'supported':True,'issues':[]}]) as call:
             result=job_module.main(self.job());self.assertEqual(call.call_count,2);self.assertEqual(result['runtime']['calls'],2)
             self.assertEqual(result['runtime']['model'],'gpt-6-luna');self.assertEqual(result['runtime']['effort'],'high')
-    def test_agent_receives_requested_model_and_high_effort(self):
+    def test_agent_receives_requested_model_and_effort(self):
         captured={}
         class Agent:
             def __init__(self,**kwargs):
@@ -52,8 +60,9 @@ class HermesJobContract(unittest.TestCase):
             def run_conversation(self,**kwargs):return {'completed':True,'api_calls':1,'final_response':'{"ok":true}'}
         credentials={'api_key':'test-only','base_url':'https://chatgpt.com/backend-api/codex'}
         with patch.object(job_module,'runtime',return_value=(Agent,credentials)):
-            self.assertEqual(job_module.call(self.job()|{'profile':'test'},'Return JSON',{}),{'ok':True})
-        self.assertEqual(captured['model'],'gpt-6-luna');self.assertEqual(captured['reasoning_config'],{'effort':'high'})
+            for model,effort in [('gpt-6-luna','high'),('gpt-6.1-terra','low')]:
+                self.assertEqual(job_module.call(self.job()|{'profile':'test','model':model,'effort':effort},'Return JSON',{}),{'ok':True})
+                self.assertEqual(captured['model'],model);self.assertEqual(captured['reasoning_config'],{'effort':effort})
         self.assertEqual(captured['provider'],'openai-codex');self.assertEqual(captured['fallback_model'],[])
     def test_semantic_failure_has_one_bounded_repair(self):
         with patch.object(job_module,'call',side_effect=[{'headline':'bad'},{'supported':False,'issues':['condition lost']},{'headline':'fixed'},{'supported':True,'issues':[]}]) as call:

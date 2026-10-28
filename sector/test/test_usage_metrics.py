@@ -27,14 +27,14 @@ class CallIntegrationTests(unittest.TestCase):
     self._interruptible_api_call({'prompt':'secret-prompt'})
     return {'final_response':'{"ok":true}', 'api_calls':1}
   with tempfile.TemporaryDirectory() as home, patch.dict(os.environ, {'HOME':home,'SECTOR_USAGE_DIR':'metrics'}, clear=False), patch.object(hermes_job,'runtime',return_value=(FakeAgent,{'api_key':'secret-key','base_url':'unused'})):
-   job={'id':'a'*64,'model':'gpt-6-luna','effort':'high','profile':'unused','documents':[],'metric_stage':'generate'}
+   job={'id':'a'*64,'model':'gpt-6.1-terra','effort':'low','profile':'unused','documents':[],'metric_stage':'generate'}
    self.assertEqual(hermes_job.call(job,'secret-instructions',{'secret':'secret-payload'}),{'ok':True})
    path=pathlib.Path(home)/'Library/Application Support/sector-haber/metrics/model-calls.jsonl'
    raw=path.read_text();row=json.loads(raw)
    self.assertNotIn('secret',raw)
    self.assertEqual([row[k] for k in ('input_tokens','output_tokens','cached_tokens','reasoning_tokens')],[12,4,3,2])
-   self.assertEqual((row['job_id'],row['stage'],row['success']),('a'*64,'generate',True))
-   agent=FakeAgent(model='gpt-6-luna',provider='openai-codex');agent.fail=True
+   self.assertEqual((row['job_id'],row['stage'],row['success'],row['model']),('a'*64,'generate',True,'gpt-6.1-terra'))
+   agent=FakeAgent(model='gpt-6.1-terra',provider='openai-codex');agent.fail=True
    from usage_metrics import instrument_agent
    instrument_agent(agent,job)
    with self.assertRaises(RuntimeError):agent._interruptible_api_call({})

@@ -52,7 +52,7 @@ def record_call(response, *, job_id, stage, model, started_at, success):
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         safe_id = job_id if isinstance(job_id, str) and (re.fullmatch(r'[a-f0-9]{64}', job_id) or re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', job_id) or job_id == 'image-evidence') else None
         safe_stage = stage if stage in ('generate', 'audit', 'repair', 'vision', 'vision_audit', 'vision_repair') else None
-        safe_model = model if model == 'gpt-6-luna' else None
+        safe_model = model if model in ('gpt-6-luna', 'gpt-6.1-terra') else None
         row = usage_metrics(provider_usage(response), job_id=safe_id, stage=safe_stage,
                             model=safe_model, started_at=started_at, outcome='ok' if success else 'error')
         row['success'] = bool(success)

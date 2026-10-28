@@ -20,7 +20,7 @@ def summarize(lines, day):
             if timestamp.tzinfo is None or timestamp.astimezone(ZoneInfo('Europe/Istanbul')).date() != day:
                 continue
             stage, model, success = row.get('stage'), row.get('model'), row.get('success')
-            if stage not in ('generate', 'audit', 'repair', 'vision', 'vision_audit', 'vision_repair', None) or model not in ('gpt-6-luna', None) or not isinstance(success, bool):
+            if stage not in ('generate', 'audit', 'repair', 'vision', 'vision_audit', 'vision_repair', None) or model not in ('gpt-6-luna', 'gpt-6.1-terra', None) or not isinstance(success, bool):
                 continue
             key = (stage or 'unknown', model or 'unknown')
             group = groups.setdefault(key, {'calls': 0, 'success': 0, 'error': 0, 'missing_usage': 0, **{f: None for f in FIELDS}})

@@ -12,7 +12,7 @@ class VisualEvidenceTests(unittest.TestCase):
   self.assertEqual(len(calls),2);self.assertEqual(out['images'],evidence['images'])
   self.assertNotIn('30%',out['body']);self.assertEqual(len(out['passages']),4)
   self.assertEqual(calls[1][0]['documents'],[evidence])
-  self.assertEqual(calls[0][0]['model'],'gpt-6-luna');self.assertEqual(calls[0][0]['effort'],'high')
+  self.assertEqual(calls[0][0]['model'],'gpt-6.1-terra');self.assertEqual(calls[0][0]['effort'],'low')
  def test_unreadable_or_audit_failure_never_becomes_evidence(self):
   for result in [{'complete':False,'facts':['x']},{'complete':True,'facts':[]},{'complete':True,'facts':[123]}]:
    with self.assertRaisesRegex(RuntimeError,'image_vision_incomplete'):extract({},lambda *args:result)
