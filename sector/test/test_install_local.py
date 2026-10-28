@@ -72,6 +72,8 @@ class StagedInstallerTests(unittest.TestCase):
         for failure in (None,'timeout','wrongapproval','health','activation','abort'):
             with self.subTest(failure=failure),tempfile.TemporaryDirectory() as tmp:
                 i=self.setup_installer(Path(tmp),failure);dbpath=self.maintenance_db(i);replace=os.replace
+                # A subsequent release has a separate pending pointer. Keep both on rollback.
+                db=sqlite3.connect(dbpath);original=db.execute("SELECT value FROM system_state WHERE key='news_maintenance_candidate'").fetchone()[0];db.execute("INSERT INTO system_state VALUES('news_maintenance_staged_candidate',?)",(original.replace('a'*64,'b'*64),));db.commit();before=db.execute('SELECT key,value FROM system_state ORDER BY key').fetchall();db.close()
                 def maybe_fail(source,target):
                     if failure=='activation' and str(source).endswith('active.next'):raise OSError('activation failed')
                     return replace(source,target)
@@ -79,7 +81,7 @@ class StagedInstallerTests(unittest.TestCase):
                     if failure:
                         with self.assertRaises((RuntimeError,OSError,KeyboardInterrupt)):i.install(update=True,maintenance=True)
                     else:i.install(update=True,maintenance=True)
-                db=sqlite3.connect(dbpath);self.assertEqual(db.execute('SELECT state,payload FROM telegram_updates').fetchone(),('queued','{}'));db.close()
+                db=sqlite3.connect(dbpath);self.assertEqual(db.execute('SELECT state,payload FROM telegram_updates').fetchone(),('queued','{}'));self.assertEqual(db.execute('SELECT key,value FROM system_state ORDER BY key').fetchall(),before);db.close()
                 if failure:self.assertTrue(i.running);self.assertEqual((i.runtime/'app/old.txt').read_text(),'old');self.assertFalse((i.release/'active').exists())
                 else:self.assertTrue((i.release/'active').exists());self.assertLess(i.events.index('maintenance'),i.events.index('ready'))
     def test_maintenance_preflight_blocks_inflight_and_near_schedule_without_mutation(self):
@@ -200,6 +202,21 @@ class StagedInstallerTests(unittest.TestCase):
             with patch.object(i,'stop',side_effect=RuntimeError('still running')):
                 with self.assertRaises(RuntimeError):i.install(update=True)
             self.assertEqual((i.runtime/'app/old.txt').read_text(),'old');self.assertFalse((i.runtime/'app').is_symlink())
+
+class MaintenanceCandidatePriorityTests(unittest.TestCase):
+    def test_preflight_checks_new_pointer_and_never_falls_back_to_old_approval(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'fixture.sqlite';db=sqlite3.connect(path);root=Path(__file__).parents[1]
+            db.executescript((root/'migrations/0001_sector.sql').read_text()+'\n'+(root/'migrations/0008_kap_previews.sql').read_text())
+            deadline=int(time.time()*1000)+600000
+            valid=json.dumps({'state':'pending','hash':'a'*64,'expires_at':deadline+1000})
+            expired=json.dumps({'state':'pending','hash':'b'*64,'expires_at':deadline-1})
+            db.executemany('INSERT INTO system_state VALUES(?,?)',[('news_maintenance_candidate',valid),('news_maintenance_staged_candidate',expired)]);db.commit()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_candidate_missing'):module.maintenance_preflight(path,deadline)
+            db.execute("UPDATE system_state SET value=? WHERE key='news_maintenance_candidate'",(expired,));db.execute("UPDATE system_state SET value=? WHERE key='news_maintenance_staged_candidate'",(valid,));db.commit()
+            before=db.execute('SELECT key,value FROM system_state ORDER BY key').fetchall();module.maintenance_preflight(path,deadline)
+            self.assertEqual(db.execute('SELECT key,value FROM system_state ORDER BY key').fetchall(),before);db.close()
 
 class CollectorInstallerTests(StagedInstallerTests):
     prepare_failures=('npm','build')

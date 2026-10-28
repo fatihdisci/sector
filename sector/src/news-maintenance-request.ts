@@ -12,26 +12,41 @@ import type {Env} from './types';
 import {sha256} from './utils/text';
 import {canonical,type ReviewArtifact} from './news-owner-review';
 import {validateMaintenanceReview} from './news-maintenance-review';
+import {loadMaintenanceSuccessor,maintenanceCandidate,MAINTENANCE_CANDIDATE_KEYS} from './news-maintenance-store';
 const candidateKey='news_maintenance_candidate';
 /** Stage only; never creates an approval or changes readiness. */
 export async function stageMaintenanceCandidate(env:Env,raw:string,artifact:ReviewArtifact,now=Date.now()):Promise<'staged'|'already_staged'>{
  let c:any;try{c=JSON.parse(raw);}catch{throw Error('candidate_invalid');}
  if(c?.state!=='pending'||!env.TELEGRAM_USER_ID||c.hash!==artifact.hash||await sha256(canonical({files:artifact.files,catalog_hash:artifact.catalog_hash}))!==artifact.hash||!Number.isSafeInteger(c.created_at)||c.created_at>now||!Number.isSafeInteger(c.expires_at)||c.expires_at<=now)throw Error('candidate_invalid');
- const keys=['news_maintenance_transition','news_owner_review_binding','news_schedule_transition','runtime_identity'];
+ const keys=['news_maintenance_transition','news_owner_review_binding','news_schedule_transition','runtime_identity',...MAINTENANCE_CANDIDATE_KEYS];
  const rows=await Promise.all(keys.map(k=>env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(k).first<{value:string}>()));
  const values=rows.map(r=>r?.value??'null');let record:any,binding:any,schedule:any,runtime:any;try{[record,binding,schedule,runtime]=values.map(v=>JSON.parse(v));}catch{throw Error('candidate_parent_invalid');}
  const old=runtime?.news_review_artifact??null;
  if(!old||old.hash!==c.previous_artifact_hash||c.parent_state_hash!==record?.parent_state_hash)throw Error('candidate_parent_invalid');
- const prior=await validateMaintenanceReview({record,artifact:old,binding,schedule,owner:env.TELEGRAM_USER_ID,rule:c.rule,catalog:c.catalog,scope:c.scope,activated_at:c.activated_at,schedule_since:c.schedule_since,now});
+ const successor=await loadMaintenanceSuccessor(env,old);
+ const prior=await validateMaintenanceReview({record,artifact:old,binding,schedule,owner:env.TELEGRAM_USER_ID,ownerChat:env.TELEGRAM_CHAT_ID??'',rule:c.rule,catalog:c.catalog,scope:c.scope,activated_at:c.activated_at,schedule_since:c.schedule_since,now,successor});
  if(!prior.valid||artifact.catalog_hash!==old.catalog_hash)throw Error('candidate_parent_invalid');
- const existing=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(candidateKey).first<{value:string}>();
- if(existing){if(existing.value===raw)return 'already_staged';throw Error('candidate_already_exists');}
+ const existing=await maintenanceCandidate(env);
+ if(existing?.raw===raw)return 'already_staged';
+ if(c.hash===old.hash||await env.DB.prepare('SELECT 1 FROM system_state WHERE key=?').bind('news_maintenance_history:'+c.hash).first())throw Error('candidate_replay');
+ if(existing){
+  if(existing.hash!==old.hash||!successor)throw Error('candidate_already_exists');
+  const historyKey='news_maintenance_history:'+old.hash,history=JSON.stringify({artifact:old,candidate_raw:successor.candidate_raw});
+  const saved=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(historyKey).first<{value:string}>();
+  if(saved&&saved.value!==history)throw Error('candidate_history_conflict');
+  const guard=keys.map(()=>"COALESCE((SELECT value FROM system_state WHERE key=?),'null')=?").join(' AND '),bindings=keys.flatMap((k,i)=>[k,values[i]]);
+  // Preserve the first pointer for old release rollback; archive no approval copies.
+  const result=await env.DB.batch([
+   env.DB.prepare(`INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE ${guard}`).bind(historyKey,history,...bindings),
+   env.DB.prepare(`INSERT INTO system_state(key,value) SELECT ?,? WHERE ${guard} AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(MAINTENANCE_CANDIDATE_KEYS[0],raw,...bindings,historyKey,history)
+  ]);
+  if(!result[1].meta.changes)throw Error('candidate_parent_changed');return 'staged';
+ }
  const claim=await env.DB.prepare(`INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE ${keys.map(()=>"COALESCE((SELECT value FROM system_state WHERE key=?),'null')=?").join(' AND ')}`).bind(candidateKey,raw,...keys.flatMap((k,i)=>[k,values[i]])).run();
  if(!claim.meta.changes)throw Error('candidate_parent_changed');return 'staged';
 }
 async function candidate(env:Env){
- const row=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(candidateKey).first<{value:string}>();
- try{const value=JSON.parse(row?.value??'null');return row&&value?.state==='pending'&&/^[a-f0-9]{64}$/.test(value.hash)?{raw:row.value,hash:value.hash as string}:null;}catch{return null;}
+ return maintenanceCandidate(env);
 }
 export async function maintenanceApproved(env:Env,artifact:string,now=Date.now()):Promise<boolean>{
  const c=await candidate(env);if(!c||c.hash!==artifact||!env.TELEGRAM_USER_ID||!env.TELEGRAM_CHAT_ID)return false;
@@ -60,8 +75,8 @@ export async function approveMaintenanceRequest(env:Env,nonce:string,owner:strin
  if(decision==='already_approved')return 'Bu bakım onayı zaten kaydedildi.';
  const approved=JSON.stringify({...request,state:'approved'}),event=JSON.stringify({nonce,owner,chat,message,artifact:c.hash,candidate_digest:await sha256(c.raw),approved_at:now});
  const result=await env.DB.batch([
-  env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=? AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind(approved,key,row.value,candidateKey,c.raw),
-  env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind('news_maintenance_approval:'+nonce,event,key,approved,candidateKey,c.raw)
+  env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=? AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind(approved,key,row.value,c.key,c.raw),
+  env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind('news_maintenance_approval:'+nonce,event,key,approved,c.key,c.raw)
  ]);
  return result[0].meta.changes?'Bakım onayı kaydedildi.':'Bu bakım adayı değişti.';
 }

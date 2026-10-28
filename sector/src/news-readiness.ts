@@ -1,3 +1,4 @@
+import {loadMaintenanceSuccessor} from './news-maintenance-store';
 import {validateMaintenanceReview} from './news-maintenance-review';
 import {validateScheduleReview} from './news-schedule-review';
 import type {Env} from './types';
@@ -23,8 +24,7 @@ export async function newsReadiness(env:Env,p:NewsPreferences,ruleVersion:string
  const reviewScopeHash=await sha256(JSON.stringify({watchlist:[...p.watchlist].sort(),entities:entityHash,digest_enabled:false,digest_times:p.digest_times}));
  const scheduleRecord=await state('news_schedule_transition');
  const maintenanceRecord=await state('news_maintenance_transition');
- const candidateRow=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_maintenance_candidate'").first<{value:string}>();let successor:null|{candidate_raw:string;request:any;event:any}=null;
- if(candidateRow){const digest=await sha256(candidateRow.value);const eventRow=await env.DB.prepare("SELECT value FROM system_state WHERE key LIKE 'news_maintenance_approval:%' AND json_valid(value) AND json_extract(value,'$.candidate_digest')=? LIMIT 1").bind(digest).first<{value:string}>();try{const event=JSON.parse(eventRow?.value??'null');if(event?.nonce){const request=await state('news_maintenance_request:'+event.nonce);successor={candidate_raw:candidateRow.value,request,event};}}catch{/* malformed approval remains invalid */}}
+ const successor=runtime?.news_review_artifact?await loadMaintenanceSuccessor(env,runtime.news_review_artifact):null;
  const maintenance=await validateMaintenanceReview({record:maintenanceRecord,artifact:runtime?.news_review_artifact??null,binding,schedule:scheduleRecord,owner:env.TELEGRAM_USER_ID??'',ownerChat:env.TELEGRAM_CHAT_ID??'',rule:ruleVersion,catalog:COMPANY_CATALOG_VERSION,scope:scopeHash,activated_at:p.activated_at,schedule_since:p.schedule_since,now,successor});
  const schedule=await validateScheduleReview({record:scheduleRecord,artifact:maintenance.valid?maintenance.parent_artifact:runtime?.news_review_artifact??null,binding,owner:env.TELEGRAM_USER_ID??'',rule:ruleVersion,catalog:COMPANY_CATALOG_VERSION,entities:entityHash,scope:scopeHash,review_scope:reviewScopeHash,times:p.digest_times,watchlist:p.watchlist,activated_at:p.activated_at,schedule_since:p.schedule_since,enabled:p.digest_enabled,now});
  const context=await validateOwnerReview({rows:contextReviews,binding,artifact:schedule.valid?schedule.parent_artifact:runtime?.news_review_artifact??null,owner:env.TELEGRAM_USER_ID??'',rule:ruleVersion,catalog:COMPANY_CATALOG_VERSION,scope:schedule.valid?schedule.parent_review_scope:reviewScopeHash,now,evaluate:r=>evaluateNews({title:r.title,summary:r.summary,url:r.url,published_at:r.published_at},{id:r.source_id} as any,p,Date.parse(r.published_at)+60000)});

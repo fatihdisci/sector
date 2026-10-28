@@ -15,7 +15,7 @@ def maintenance_preflight(path,deadline_ms):
     db=sqlite3.connect(pathlib.Path(path).resolve().as_uri()+'?mode=ro',uri=True)
     try:
         try:
-            row=db.execute("SELECT value FROM system_state WHERE key='news_maintenance_candidate'").fetchone();candidate=json.loads(row[0]) if row else None
+            row=db.execute("SELECT value FROM system_state WHERE key IN ('news_maintenance_staged_candidate','news_maintenance_candidate') ORDER BY CASE key WHEN 'news_maintenance_staged_candidate' THEN 0 ELSE 1 END LIMIT 1").fetchone();candidate=json.loads(row[0]) if row else None
             if not isinstance(candidate,dict) or candidate.get('state')!='pending' or not re.fullmatch(r'[a-f0-9]{64}',str(candidate.get('hash',''))) or not isinstance(candidate.get('expires_at'),int) or candidate['expires_at']<=deadline_ms:raise ValueError()
         except (ValueError,TypeError,json.JSONDecodeError):raise RuntimeError('maintenance_candidate_missing')
         checks=["SELECT 1 FROM model_jobs WHERE state='leased' LIMIT 1", "SELECT 1 FROM x_posts WHERE state IN ('uploading','posting') LIMIT 1", "SELECT 1 FROM drafts WHERE delivery_state='sending' LIMIT 1", "SELECT 1 FROM telegram_effects WHERE state='sending' LIMIT 1", "SELECT 1 FROM kap_previews WHERE state='sending' LIMIT 1", "SELECT 1 FROM news_digest_runs WHERE state='sending' LIMIT 1", "SELECT 1 FROM news_digest_pages WHERE state='sending' LIMIT 1"]
