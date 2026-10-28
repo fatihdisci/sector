@@ -7,6 +7,10 @@ export async function maintenanceCandidate(env:Env){
   if(!row)continue;try{const c=JSON.parse(row.value);return c?.state==='pending'&&/^[a-f0-9]{64}$/.test(c.hash)?{key,raw:row.value,hash:c.hash as string}:null;}catch{return null;}
  }return null;
 }
+export async function maintenanceCandidateForRuntime(env:Env,hash:string,deadline:number){
+ const candidate=await maintenanceCandidate(env);if(!candidate||candidate.hash!==hash)return false;
+ try{const c=JSON.parse(candidate.raw);return Number.isSafeInteger(c.expires_at)&&c.expires_at>deadline;}catch{return false;}
+}
 /** Read immutable artifact/candidate history; approvals stay in their original records. */
 export async function loadMaintenanceSuccessor(env:Env,artifact:ReviewArtifact):Promise<MaintenanceSuccessor|null>{
  const read=async(key:string)=>{const row=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(key).first<{value:string}>();return row?.value??null;};

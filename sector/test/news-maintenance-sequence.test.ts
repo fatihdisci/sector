@@ -4,7 +4,7 @@ import {newsReadiness} from '../src/news-readiness';import {COMPANY_CATALOG_VERS
 import {canonical,type ReviewArtifact} from '../src/news-owner-review';import {sha256} from '../src/utils/text';import anchor from '../src/data/news-maintenance-anchor.json';
 import {reviewFixture} from './news-readiness-fixture';import type {Env} from '../src/types';
 import {stageMaintenanceCandidate,createMaintenanceRequest,approveMaintenanceRequest} from '../src/news-maintenance-request';
-import {loadMaintenanceSuccessor} from '../src/news-maintenance-store';import {validateMaintenanceReview} from '../src/news-maintenance-review';
+import {loadMaintenanceSuccessor,maintenanceCandidateForRuntime} from '../src/news-maintenance-store';import {validateMaintenanceReview} from '../src/news-maintenance-review';
 test('real staging/readiness supports three approvals, rejects replay and preserves active rollback while a candidate waits',async()=>{
  const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8')),env={DB,TELEGRAM_USER_ID:'7',TELEGRAM_CHAT_ID:'7'} as Env;
  const now=Date.now(),prefs={...DEFAULT_NEWS_PREFERENCES,mode:'active' as const,approved_by_owner:true,digest_enabled:true,activated_at:now-60000,entities:[{name:'Örnek Holding',code:'TEST',verified:true}]};
@@ -29,6 +29,7 @@ test('real staging/readiness supports three approvals, rejects replay and preser
     assert.equal(await DB.prepare("SELECT value FROM system_state WHERE key='news_maintenance_staged_candidate'").first(),null);
    }
    assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'staged');assert.equal(await stageMaintenanceCandidate(env,raw,artifact),'already_staged');
+   assert.equal(await maintenanceCandidateForRuntime(env,artifact.hash,candidate.expires_at-1),true);assert.equal(await maintenanceCandidateForRuntime(env,previous.hash,candidate.expires_at-1),false);assert.equal(await maintenanceCandidateForRuntime(env,artifact.hash,candidate.expires_at),false);
    if(n>1)assert.match(await approveMaintenanceRequest(env,nonces[n-2],'7','7',n-1),/geçersiz/);
    // Existing active release stays valid before approval, including rollback releases.
    assert.equal((await newsPreferences(env)).mode,'active');

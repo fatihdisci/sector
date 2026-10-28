@@ -123,7 +123,7 @@ export function repairDraftStyle(value:Draft,documents:Document[],editorRequest?
  // Explicit owner heading edits supersede the submission-time editorial label;
  // they never change the source timestamp or numerical evidence.
  const request=editorRequest?.toLocaleLowerCase('tr-TR')??'';
- const ownerPeriod=market&&!/["“”'‘’]/u.test(request)&&!/(?:yazma|kullanma|ekleme|olmasın|yapma)/u.test(request)&&/\b(?:yaz|kullan|ekle|olsun|yap)\b/u.test(request)?(['Gün sonu','Gün ortası','Kapanışa doğru','Açılışın ilk dakikaları'] as const).find(p=>request.includes(p.toLocaleLowerCase('tr-TR'))):undefined;
+ const ownerPeriod=market&&!/["“”'‘’]/u.test(request)&&!/(?:yazma|kullanma|ekleme|olmasın|yapma|değiştirme)/u.test(request)&&/\b(?:yaz|kullan|ekle|olsun|yap|değiştir)\b/u.test(request)?(['Gün sonu','Gün ortası','Kapanışa doğru','Açılışın ilk dakikaları'] as const).find(p=>request.includes(p.toLocaleLowerCase('tr-TR'))):undefined;
  const textTarget=/tweet|metin/u.test(request),cardTarget=/görsel|kart/u.test(request);
  const prefix=(s:string,applyOwner:boolean)=>{
    const period=applyOwner?ownerPeriod:market?.editorial_period;if(!period)return s;

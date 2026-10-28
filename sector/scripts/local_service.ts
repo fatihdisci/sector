@@ -5,6 +5,7 @@ import{channelTransport}from'./channel_reader';
 import {newsReviewArtifact} from './news_review_artifact';
 import {newsPreferences} from '../src/news-routing';
 import {maintenanceApproved} from '../src/news-maintenance-request';
+import {maintenanceCandidateForRuntime} from '../src/news-maintenance-store';
 import {COMPANY_CATALOG_VERSION,COMPANY_CATALOG_PROVENANCE,catalogEntities} from '../src/news-company-catalog';
 import {kapDeliveryHealth} from '../src/kap-health';
 import {pollBuybacks} from '../src/buyback-pipeline';
@@ -143,7 +144,7 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
  if(maintenanceMode==='1'&&(!/^[a-f0-9]{32}$/.test(process.env.SECTOR_RELEASE_ID??'')||!env.TELEGRAM_USER_ID||!env.TELEGRAM_CHAT_ID||![env.TELEGRAM_USER_ID,env.TELEGRAM_CHAT_ID].every(v=>/^[1-9]\d*$/.test(v)&&Number.isSafeInteger(Number(v)))||(!alreadyActive&&(!Number.isSafeInteger(maintenanceDeadline)||maintenanceDeadline<=Date.now()||maintenanceDeadline>Date.now()+900000))))throw Error('maintenance_configuration_invalid');
  if(maintenanceMode!=='1'||alreadyActive)await seed(env);
  const artifact=await newsReviewArtifact(process.cwd());
- if(maintenanceMode==='1'&&!alreadyActive){const row=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_maintenance_candidate'").first<{value:string}>();let candidate:any;try{candidate=JSON.parse(row?.value??'null');}catch{}if(candidate?.state!=='pending'||candidate.hash!==artifact.hash||!Number.isSafeInteger(candidate.expires_at)||candidate.expires_at<=maintenanceDeadline)throw Error('maintenance_candidate_mismatch');}
+ if(maintenanceMode==='1'&&!alreadyActive&&!await maintenanceCandidateForRuntime(env,artifact.hash,maintenanceDeadline))throw Error('maintenance_candidate_mismatch');
  await status('runtime_identity',{release:process.env.SECTOR_RELEASE_ID??'unknown',catalog:{version:COMPANY_CATALOG_VERSION,companies:new Set(catalogEntities.map(c=>c.code)).size,issuers:COMPANY_CATALOG_PROVENANCE.issuer_count,equity_codes:COMPANY_CATALOG_PROVENANCE.equity_count},news_review_artifact:artifact,at:new Date().toISOString()});
  let filter:{requested:string;mode:string;reasons:string[]}={requested:'unknown',mode:'unavailable',reasons:['Haber filtresi okunamadı.']};
  try{const raw=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_filter_preferences'").first<{value:string}>();const requested=raw?(JSON.parse(raw.value).mode==='active'?'active':'shadow'):'shadow';const prefs=await newsPreferences(env);filter={requested,mode:prefs.mode,reasons:prefs.readiness_reasons??[]};}catch{/* fail closed in installer */}
