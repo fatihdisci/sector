@@ -13,6 +13,7 @@ import {sha256} from './utils/text';
 import {canonical,type ReviewArtifact} from './news-owner-review';
 import {validateMaintenanceReview} from './news-maintenance-review';
 import {loadMaintenanceSuccessor,maintenanceCandidate,MAINTENANCE_CANDIDATE_KEYS} from './news-maintenance-store';
+import {HOURLY_SELECTION_SCHEDULE} from './news-selection-schedule';
 const candidateKey='news_maintenance_candidate';
 /** Stage only; never creates an approval or changes readiness. */
 export async function stageMaintenanceCandidate(env:Env,raw:string,artifact:ReviewArtifact,now=Date.now()):Promise<'staged'|'already_staged'>{
@@ -62,7 +63,8 @@ export async function createMaintenanceRequest(env:Env,send:(text:string,extra:R
   env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind(marker,nonce),
   env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind(key,initial,marker,nonce)
  ]);if(!claims[1].meta.changes)return;
- const sent=await send(`Bakım adayı: ${c.hash}\nBu onay yalnız bu sürüm içindir; diğer hazırlık kontrolleri geçerli kalır.`,{reply_markup:JSON.stringify({inline_keyboard:[[{text:'Bu bakım sürümünü onayla',callback_data:'nm:approve:'+nonce}]]})});
+ let details='';try{const candidate=JSON.parse(c.raw);if(JSON.stringify(candidate.selection_schedule)===JSON.stringify(HOURLY_SELECTION_SCHEDULE))details='\nSeçki: her saat başı (00:00–23:00 TRT); 00:00–08:00 sessiz. Boş veya daha önce gönderilmiş seçki gönderilmez.';}catch{}
+ const sent=await send(`Bakım adayı: ${c.hash}${details}\nBu onay yalnız bu sürüm içindir; diğer hazırlık kontrolleri geçerli kalır.`,{reply_markup:JSON.stringify({inline_keyboard:[[{text:'Bu bakım sürümünü onayla',callback_data:'nm:approve:'+nonce}]]})});
  const message=Number(sent?.message_id);if(!Number.isSafeInteger(message)||message<=0)return;
  const bound=JSON.stringify({nonce,owner:env.TELEGRAM_USER_ID,chat:env.TELEGRAM_CHAT_ID,message,artifact:c.hash,candidate_digest,expires_at:JSON.parse(initial).expires_at,state:'pending'});
  await env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=?').bind(bound,key,initial).run();
@@ -74,9 +76,25 @@ export async function approveMaintenanceRequest(env:Env,nonce:string,owner:strin
  if(decision==='reject'||!request||!row||(request as MaintenanceRequest&{candidate_digest?:string}).candidate_digest!==await sha256(c.raw))return 'Bu düğme geçersiz veya süresi dolmuş.';
  if(decision==='already_approved')return 'Bu bakım onayı zaten kaydedildi.';
  const approved=JSON.stringify({...request,state:'approved'}),event=JSON.stringify({nonce,owner,chat,message,artifact:c.hash,candidate_digest:await sha256(c.raw),approved_at:now});
+ const candidateData=JSON.parse(c.raw),scheduleRow=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_schedule_transition'").first<{value:string}>();
+ const oldSuccessor=await env.DB.prepare("SELECT value FROM system_state WHERE key='news_schedule_successor'").first<{value:string}>();
+ let scheduleWrite,scheduleExpectedRaw:string|undefined;
+ if(JSON.stringify(candidateData.selection_schedule)===JSON.stringify(HOURLY_SELECTION_SCHEDULE)){
+  let previous:any=null;try{previous=JSON.parse(oldSuccessor?.value??'null');}catch{}
+  if(previous&&(previous.times?.join(',')!==HOURLY_SELECTION_SCHEDULE.times.join(',')||previous.quiet_hours?.start!==0||previous.quiet_hours?.end!==8))return 'Önceki seçki geçişi uyuşmuyor; ayarlar değiştirilmedi.';
+  if(!previous){
+   let parent:any;try{parent=JSON.parse(scheduleRow?.value??'null');}catch{}
+   if(!parent||!Array.isArray(parent.times)||parent.times.length===0)return 'Mevcut seçki onayı okunamadı; ayarlar değiştirilmedi.';
+   const scheduleSuccessor={version:1,approval_source:'maintenance_owner_callback',parent_schedule_hash:await sha256(canonical(parent)),times:[...HOURLY_SELECTION_SCHEDULE.times],timezone:HOURLY_SELECTION_SCHEDULE.timezone,quiet_hours:HOURLY_SELECTION_SCHEDULE.quiet_hours,artifact_hash:c.hash,nonce,actor:owner,chat,message,applied_at:now};
+   scheduleExpectedRaw=JSON.stringify(scheduleSuccessor);
+   if(!scheduleRow)return 'Mevcut seçki onayı okunamadı; ayarlar değiştirilmedi.';
+   scheduleWrite=env.DB.prepare("INSERT OR IGNORE INTO system_state(key,value) SELECT 'news_schedule_successor',? WHERE EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)").bind(scheduleExpectedRaw,'news_schedule_transition',scheduleRow.value,c.key,c.raw,key,row.value);
+  }
+ }
  const result=await env.DB.batch([
-  env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=? AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind(approved,key,row.value,c.key,c.raw),
+  ...(scheduleWrite?[scheduleWrite]:[]),
+  env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=? AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)'+(scheduleExpectedRaw?" AND EXISTS(SELECT 1 FROM system_state WHERE key='news_schedule_successor' AND value=?)":'')).bind(approved,key,row.value,c.key,c.raw,...(scheduleExpectedRaw?[scheduleExpectedRaw]:[])),
   env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?) AND EXISTS(SELECT 1 FROM system_state WHERE key=? AND value=?)').bind('news_maintenance_approval:'+nonce,event,key,approved,c.key,c.raw)
  ]);
- return result[0].meta.changes?'Bakım onayı kaydedildi.':'Bu bakım adayı değişti.';
+ const approvedAt=result[scheduleWrite?1:0];return approvedAt.meta.changes?(candidateData.selection_schedule?'Bakım onayı ve saatlik seçki ayarı kaydedildi.':'Bakım onayı kaydedildi.'):'Bu bakım adayı değişti.';
 }

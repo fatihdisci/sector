@@ -8,6 +8,7 @@ import type {Env} from './types';
 import {telegram,TelegramError} from './telegram';
 import {NEWS_RULE_VERSION,newsPreferences,searchNewsArchive} from './news-routing';
 import {createMaintenanceRequest} from './news-maintenance-request';
+import {selectionIsQuiet} from './news-selection-schedule';
 async function runtimeIdentity(env:Env){const r=await env.DB.prepare("SELECT value FROM system_state WHERE key='runtime_identity'").first<{value:string}>();return r?JSON.parse(r.value):{release:'unknown'};}
 const send=(env:Env,text:string,extra:Record<string,string>={})=>{if(text.length>3900&&!extra.reply_markup){const file=new FormData();file.set('chat_id',env.TELEGRAM_CHAT_ID!);file.set('document',new Blob([text],{type:'text/plain;charset=utf-8'}),'endeks-editor.txt');return telegram(env,'sendDocument',file);}return telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text,...extra}));};
 export async function newsroomMessage(env:Env,m:{text?:string;forward_origin?:unknown}){
@@ -17,13 +18,15 @@ export async function newsroomMessage(env:Env,m:{text?:string;forward_origin?:un
  const link=/^\/olay ([a-f0-9]{32}) ([a-f0-9]{32})$/.exec(text);if(link){const count=(await env.DB.prepare('SELECT COUNT(*) n FROM news_candidates WHERE id IN (?,?)').bind(link[1],link[2]).first<any>())?.n;if(count!==2){await send(env,'İki farklı ve kayıtlı aday kimliği gerekli.');return true;}await env.DB.prepare('INSERT OR IGNORE INTO news_event_links VALUES(?,?,?,?)').bind(link[1],link[2],env.TELEGRAM_USER_ID!,Date.now()).run();await send(env,'Olay ilişkisi sahibin onayıyla kaydedildi. Haberler bastırılmadı veya bağımsız teyit sayılmadı.');return true;}
  const review=/^\/aday ([a-f0-9]{32}) (instant|digest|archive)$/.exec(text);if(review){await env.DB.prepare('INSERT OR IGNORE INTO news_feedback VALUES(?,?,?,?)').bind(env.TELEGRAM_UPDATE_ID??Date.now(),review[1],'review:'+review[2],Date.now()).run();await send(env,'İnceleme etiketi kaydedildi; canlı rota değiştirilmedi.');return true;}
  if(text==='/golgerapor'){const prefs=await newsPreferences(env);await send(env,JSON.stringify({runtime:await runtimeIdentity(env),...await newsReadiness(env,prefs,NEWS_RULE_VERSION),interest_feedback:await interestSummary(env)},null,2));const file=new FormData();file.set('chat_id',env.TELEGRAM_CHAT_ID!);file.set('document',new Blob([await detailedInterestReport(env)],{type:'text/plain;charset=utf-8'}),'endeks-geri-bildirim.txt');await telegram(env,'sendDocument',file);return true;}
- if(text==='/haberfiltre'){const prefs=await newsPreferences(env);const counts=(await env.DB.prepare('SELECT route,legacy_eligible,COUNT(*) n FROM news_candidates GROUP BY route,legacy_eligible').all()).results;await send(env,`Çalışan sürüm/katalog: ${JSON.stringify(await runtimeIdentity(env))}\nHaber filtresi: ${prefs.mode}${prefs.requested_mode==='active'&&prefs.mode!=='active'?' (aktif istek hazırlık kontrolünde durduruldu)':''}. Seçki yapılandırması: ${prefs.digest_enabled?'açık':'kapalı'} (${prefs.digest_times.join(', ')} İstanbul). Seçki gönderimi: ${digestDeliveryStatus(prefs)?'açık':'kapalı'}${prefs.mode==='shadow'?' — gölge modda gönderim kapalı':''}.
+ if(text==='/haberfiltre'){const prefs=await newsPreferences(env);const counts=(await env.DB.prepare('SELECT route,legacy_eligible,COUNT(*) n FROM news_candidates GROUP BY route,legacy_eligible').all()).results;const times=prefs.selection_times??prefs.digest_times;await send(env,`Çalışan sürüm/katalog: ${JSON.stringify(await runtimeIdentity(env))}\nHaber filtresi: ${prefs.mode}${prefs.requested_mode==='active'&&prefs.mode!=='active'?' (aktif istek hazırlık kontrolünde durduruldu)':''}. Seçki yapılandırması: ${prefs.digest_enabled?'açık':'kapalı'} (${times.join(', ')} İstanbul${prefs.selection_quiet_hours?' · 00:00–08:00 sessiz':''}). Seçki gönderimi: ${digestDeliveryStatus(prefs)?'açık':'kapalı'}${prefs.mode==='shadow'?' — gölge modda gönderim kapalı':''}.
 ${(prefs.readiness_reasons??[]).join('\n')}
 ${JSON.stringify(counts)}
 İnceleme ve gerçek ölçümler: /golgerapor. /secki ile açık editör isteği kullanılabilir; otomatik gönderimi açmaz.`);await createMaintenanceRequest(env,(text,extra)=>send(env,text,extra));return true;}
  if(text==='/secki'){await sendSelection(env);return true;}return false;
 }
 export const DIGEST_CATCHUP_MS=2*60*60*1000;
+function isQuietHour(now:number,quiet:{start:number;end:number}){const hour=new Date(now+3*60*60_000).getUTCHours();return hour>=quiet.start&&hour<quiet.end&&selectionIsQuiet(now);}
+export function dueSelectionSlot(now:number,times:string[],earliest:number){const day=new Date(now+10800000).toISOString().slice(0,10);return times.map(clock=>({clock,at:Date.parse(day+'T'+clock+':00+03:00')})).filter(s=>s.at<=now&&s.at>=earliest&&now-s.at<DIGEST_CATCHUP_MS).sort((a,b)=>a.at-b.at).at(-1)??null;}
 export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now(),limit=10){
  // Freshness is checked at selection time, not inherited from a stale eligible flag.
  return (await env.DB.prepare(`WITH eligible_rows AS (
@@ -39,10 +42,10 @@ export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now()
  SELECT id,title FROM ranked WHERE position=1 ORDER BY first_seen,id LIMIT ?`).bind(now,since,since,(now-86400000)/1000,(now+300000)/1000,ids?JSON.stringify(ids):null,JSON.stringify(ids??[]),ids?1:null,ids?1:null,limit).all<{id:string;title:string}>()).results;
 }
 
-export async function sendSelection(env:Env,since=0,ids?:string[],pageInfo?:{page:number;total:number}){
+export async function sendSelection(env:Env,since=0,ids?:string[],pageInfo?:{page:number;total:number;silent?:boolean}){
  const rows=await selectionRows(env,since,ids);
  if(ids&&!rows.length)return [];
- const sent=await send(env,rows.length?`Toplu seçki${pageInfo?' · '+pageInfo.page+'/'+pageInfo.total:''} · Hazırlanmasını istediğin habere dokun.`:'Seçkide güncel aday yok.',{reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:Array.from(r.title).slice(0,85).join(''),callback_data:'pick:'+r.id}])})});
+ const sent=await send(env,rows.length?`Toplu seçki${pageInfo?' · '+pageInfo.page+'/'+pageInfo.total:''} · Hazırlanmasını istediğin habere dokun.`:'Seçkide güncel aday yok.',{...(pageInfo?.silent?{disable_notification:'true'}:{}),reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:Array.from(r.title).slice(0,85).join(''),callback_data:'pick:'+r.id}])})});
  return {ids:rows.map(r=>r.id),message_id:Number(sent.message_id)};
 }
 export async function newsroomCallback(env:Env,data:string,messageId:number,update:number):Promise<string|null>{
@@ -66,18 +69,18 @@ export async function newsroomCallback(env:Env,data:string,messageId:number,upda
  env.DB.prepare("INSERT OR IGNORE INTO news_cards(id,article_id,state,message_id,created_at,requested_at) VALUES(?,?,'requested',?,?,?)").bind(id,row.article_id,Number(status.message_id),time,time)
  ]);return 'Açık isteğin alındı; mevcut tam metin ve denetim akışıyla hazırlanacak.';
 }
-export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,since:number,ids?:string[],pageInfo?:{page:number;total:number})=>Promise<void|string[]|{ids:string[];message_id:number}>=sendSelection){
+export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,since:number,ids?:string[],pageInfo?:{page:number;total:number;silent?:boolean})=>Promise<void|string[]|{ids:string[];message_id:number}>=sendSelection){
  const prefs=await newsPreferences(env);if(!digestDeliveryStatus(prefs))return;
  // Each uncertain page is quarantined independently; successful pages never repeat.
  await env.DB.prepare("UPDATE news_digest_pages SET state='uncertain',error='interrupted_send' WHERE state='sending' AND updated_at<?").bind(now-120000).run();
  await env.DB.prepare("UPDATE news_digest_pages SET state='deferred' WHERE state IN ('pending','retry') AND expires_at<=?").bind(now).run();
  await env.DB.prepare("UPDATE news_digest_runs SET state='uncertain',error='interrupted_send' WHERE state='sending' AND created_at<? AND NOT EXISTS(SELECT 1 FROM news_digest_pages p WHERE p.slot_id=news_digest_runs.id)").bind(now-120000).run();
- const day=new Date(now+10800000).toISOString().slice(0,10),slot=prefs.digest_times.map(clock=>({clock,at:Date.parse(day+'T'+clock+':00+03:00')})).filter(s=>s.at<=now&&s.at>=Math.max(prefs.activated_at,prefs.schedule_since??0)&&now-s.at<DIGEST_CATCHUP_MS).sort((a,b)=>a.at-b.at).at(-1);if(!slot)return;
- const key=day+':'+slot.clock;
- const planHash=await sha256(JSON.stringify({version:1,rule:NEWS_RULE_VERSION,catalog:COMPANY_CATALOG_VERSION,scope:{entities:prefs.entities,watchlist:prefs.watchlist,times:prefs.digest_times,activated_at:prefs.activated_at}}));
+ const times=prefs.selection_times??prefs.digest_times,since=prefs.selection_since??prefs.schedule_since??0,selectionCutoff=Math.max(prefs.activated_at,prefs.selection_since??prefs.activated_at),slot=dueSelectionSlot(now,times,Math.max(prefs.activated_at,since));if(!slot)return;
+ const day=new Date(now+10800000).toISOString().slice(0,10),key=day+':'+slot.clock;
+ const planHash=await sha256(JSON.stringify({version:1,rule:NEWS_RULE_VERSION,catalog:COMPANY_CATALOG_VERSION,scope:{entities:prefs.entities,watchlist:prefs.watchlist,times,activated_at:prefs.activated_at,selection_since:prefs.selection_since??null}}));
  let receipt=await env.DB.prepare('SELECT state,items,error FROM news_digest_runs WHERE id=?').bind(key).first<{state:string;items:string;error:string|null}>();
  if(!receipt){
-  const ids=(await selectionRows(env,prefs.activated_at,undefined,now,-1)).map(r=>r.id);
+  const ids=(await selectionRows(env,selectionCutoff,undefined,now,-1)).map(r=>r.id);
   // Freeze the winning slot snapshot first; page planning resumes idempotently after a crash.
   const snapshot=JSON.stringify(ids),hash=await sha256(snapshot);
   await env.DB.prepare("INSERT OR IGNORE INTO news_digest_runs(id,state,created_at,items,error) VALUES(?,'planning',?,?,?)").bind(key,now,snapshot,JSON.stringify({snapshot_sha256:hash,plan_hash:planHash})).run();
@@ -98,9 +101,9 @@ export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,
  if(page){
   const claimed=await env.DB.prepare("UPDATE news_digest_pages SET state='sending',attempts=attempts+1,updated_at=? WHERE slot_id=? AND page=? AND state IN ('pending','retry')").bind(now,key,page.page).run();if(!claimed.meta.changes)return;
   await env.DB.prepare('UPDATE news_digest_runs SET next_try=? WHERE id=?').bind(now+1000,key).run();
-  const planned=JSON.parse(page.items) as string[],ids=(await selectionRows(env,prefs.activated_at,planned,now)).map(r=>r.id);
+  const planned=JSON.parse(page.items) as string[],ids=(await selectionRows(env,selectionCutoff,planned,now)).map(r=>r.id);
   try{
-   const result=ids.length?await sender(env,prefs.activated_at,ids,{page:page.page+1,total:Math.ceil(JSON.parse(receipt.items).length/10)}):[];
+   const result=ids.length?await sender(env,prefs.activated_at,ids,{page:page.page+1,total:Math.ceil(JSON.parse(receipt.items).length/10),silent:!!prefs.selection_quiet_hours&&isQuietHour(now,prefs.selection_quiet_hours)}):[];
    const actual=Array.isArray(result)?result:result?.ids??ids;
    const messageId=result&&!Array.isArray(result)?result.message_id:null;
    if(actual.some(id=>!ids.includes(id))||new Set(actual).size!==actual.length)throw Error('invalid_delivery_receipt');
