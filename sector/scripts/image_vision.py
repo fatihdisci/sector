@@ -47,7 +47,7 @@ def extract(evidence,invoke=call):
     job={'id':'image-evidence','profile':str(pathlib.Path.home()/'.hermes/profiles/sectorhaber'),'model':'gpt-6-luna','effort':'high','documents':[evidence]}
     payload={'auxiliary_ocr':evidence.get('body',''),'source_layout':evidence.get('source_layout')}
     for attempt in range(2):
-        result=invoke({**job,'metric_stage':'vision' if attempt==0 else 'vision_repair'},PROMPT,payload)
+        result=invoke(job,PROMPT,payload)
         facts=result.get('facts')
         if result.get('complete') is not True or result.get('issues') or not isinstance(facts,list) or not 1<=len(facts)<=150 or any(not isinstance(f,str) or not f.strip() or len(f)>2000 for f in facts):
             issues=result.get('issues')
@@ -58,7 +58,7 @@ def extract(evidence,invoke=call):
         notes=result.get('notes',[])
         if not isinstance(notes,list)or len(notes)>20 or any(not isinstance(n,str)or not n.strip()or len(n)>2000 for n in notes):raise RuntimeError('image_vision_incomplete')
         visual=checked_layout(result.get('visual_layout'),facts)
-        audit=invoke({**job,'metric_stage':'vision_audit'},AUDIT,{'facts':facts,'notes':notes,'visual_layout':visual})
+        audit=invoke(job,AUDIT,{'facts':facts,'notes':notes,'visual_layout':visual})
         if audit.get('supported') is True and audit.get('issues')==[]:break
         issues=audit.get('issues')
         if attempt or not isinstance(issues,list) or not issues or any(not isinstance(v,str) or len(v)>2000 for v in issues) or len(issues)>20:raise RuntimeError('image_vision_unverified')

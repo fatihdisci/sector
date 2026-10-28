@@ -8,7 +8,7 @@ import type {Document} from '../src/types';
 export type ImageEvidence=PdfEvidence&Pick<Document,'market_data'|'source_layout'|'equity_codes'>;
 export async function analyzeVisual(evidence:ImageEvidence):Promise<ImageEvidence>{
  return new Promise((resolve,reject)=>{
-  const home=homedir(),child=spawn(join(home,'.hermes/hermes-agent/venv/bin/python'),['scripts/image_vision.py'],{env:{...(process.env.SECTOR_USAGE_DIR?{SECTOR_USAGE_DIR:process.env.SECTOR_USAGE_DIR}:{}),PATH:process.env.PATH??'',HOME:home,PYTHONPATH:join(home,'.hermes/hermes-agent')},stdio:['pipe','pipe','pipe']});let output='',error='';
+  const home=homedir(),child=spawn(join(home,'.hermes/hermes-agent/venv/bin/python'),['scripts/image_vision.py'],{env:{PATH:process.env.PATH??'',HOME:home,PYTHONPATH:join(home,'.hermes/hermes-agent')},stdio:['pipe','pipe','pipe']});let output='',error='';
   const timer=setTimeout(()=>child.kill('SIGKILL'),240_000);
   child.stdout.on('data',b=>{output+=b.toString();if(output.length>1_000_000)child.kill('SIGKILL');});child.stderr.on('data',b=>{if(error.length<1000)error+=b.toString();});
   child.on('error',()=>{clearTimeout(timer);reject(Error('image_vision_unavailable'));});child.on('close',code=>{
