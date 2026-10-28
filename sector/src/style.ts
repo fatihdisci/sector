@@ -164,7 +164,13 @@ export function repairDraftStyle(value:Draft,documents:Document[],editorRequest?
   if(!date||!total||!market?.ticker||!rows.length||numbered!==rows.length||rows.some((r,i)=>r.rank!==i+1||!Number.isFinite(r.numeric)||(i>0&&r.numeric>rows[i-1].numeric)))throw Error('custody_query_source_incomplete');
   const chosen=rows.slice(0,5),fmt=(r:typeof rows[number])=>`${r.amount} ${r.scale==='lot'?'lot':r.scale+' lot'}${r.ratio?' · %'+r.ratio:''}`;
   const dateText=date.split('-').reverse().join('.'),totalText=`${total[1]} ${total[2].toLocaleLowerCase('tr-TR')==='lot'?'lot':total[2].toLocaleLowerCase('tr-TR')+' lot'}`;
-  value={...value,tweet_style:'custody_query',headline:`#${market.ticker} takas dağılımı`,body:`${dateText} tarihli takas dağılımında ${chosen.slice(0,3).map(r=>`${r.label} ${fmt(r)}`).join('; ')} olarak kaydedildi.\n\nİlk kurumlar görselde.`,card_headline:`${market.ticker} takas dağılımı`,card_body:'Takas dağılımı',output_preferences:{...preference,show_time:true},card_data:{ticker:market.ticker,as_of:dateText,metrics:[{label:'Toplam takas',value:totalText}],holdings:chosen.map(r=>({label:r.label,value:fmt(r)}))}};
+  const dateWords=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long'}).format(new Date(date+'T12:00:00Z'));
+  const quantity=(r:typeof rows[number])=>`${r.amount} ${r.scale==='lot'?'lot':r.scale+' lot'}`;
+  const first=chosen[0],rest=chosen.slice(1,3);
+  const opening=`${dateWords} verilerinde ${first.label}, ${quantity(first)}${first.ratio?' ve %'+first.ratio+' payla':' ile'} ilk sırada.`;
+  const remainder=rest.map((r,i)=>`${r.label}${i===1?' ise':''} ${quantity(r)}${r.ratio?'la %'+r.ratio+' paya sahip':' bulunuyor'}`).join('; ');
+  const countWord=['','bir','iki','üç','dört','beş'][chosen.length];
+  value={...value,tweet_style:'custody_query',headline:`#${market.ticker} takas dağılımı`,body:[opening,remainder?remainder+'.':'',`İlk ${countWord} kurumun dağılımı görselde.`].filter(Boolean).join('\n\n'),card_headline:`${market.ticker} takas dağılımı`,card_body:'Takas dağılımı',output_preferences:{...preference,show_time:true},card_data:{ticker:market.ticker,as_of:dateText,metrics:[{label:'Toplam takas',value:totalText}],holdings:chosen.map(r=>({label:r.label,value:fmt(r)}))}};
  }
  return outputView(repairKapShareWording({...value,...(circuit?{template:'circuit' as const,category:'bist' as const,card_data:policy.verified_equity_codes.length?{...value.card_data,tickers:policy.verified_equity_codes}:value.card_data}:market?{template:market.kind,category:'bist' as const,...(market.ticker?{card_data:{...value.card_data,ticker:market.ticker}}:{})}:{}),headline:typeof value.headline==='string'?headlineWithEmoji(value.headline):value.headline,hashtags},documents));
 }
