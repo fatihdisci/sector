@@ -34,9 +34,9 @@ export function wrap(text:string,size:number,width:number):string[] {
  }
  return solve(0,greedy.length)?.lines??greedy;
 }
-export function draftCard(d:Draft,sources:string[]=[],date='',demo=false,theme?:CardTheme,layout:CardLayout='editorial'):string {return cardSvg({headline:d.card_headline,body:d.card_body,template:d.template,card_data:d.card_data,output_preferences:d.output_preferences},sources,date,demo,theme,layout);}
+export function draftCard(d:Draft,sources:string[]=[],date='',demo=false,theme?:CardTheme,layout:CardLayout='editorial'):string {return cardSvg({headline:d.card_headline,body:d.card_body,template:d.template,card_data:d.card_data,output_preferences:d.output_preferences,tweet_style:d.tweet_style},sources,date,demo,theme,layout);}
 // Source access belongs to the Telegram button. Legacy arguments remain accepted.
-export function cardSvg(d:Pick<Draft,'headline'|'body'|'template'|'card_data'|'output_preferences'>,_sources:string[]=[],_date='',_demo=false,theme?:CardTheme,layout:CardLayout='editorial'):string {
+export function cardSvg(d:Pick<Draft,'headline'|'body'|'template'|'card_data'|'output_preferences'>&Partial<Pick<Draft,'tweet_style'>>,_sources:string[]=[],_date='',_demo=false,theme?:CardTheme,layout:CardLayout='editorial'):string {
  d=outputView(d);
  if(!d.output_preferences?.show_time&&d.card_data?.as_of){d={...d,card_data:{...d.card_data}};delete d.card_data!.as_of;}
  if(d.card_data?.movers)return moversCard(d.card_data.movers);

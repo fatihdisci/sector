@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {withMarketText} from '../src/market-input';
+import {repairDraftStyle} from '../src/style';
+import {draftCards} from '../src/card-pages';
+import {numericIssues,postText} from '../src/editorial';
+import type {Document,Draft} from '../src/types';
+const source=`ASTOR Takas\nSon Takas: 2026-10-28\nToplam Takas Lotu: 426,42 Milyon Lot\nSaklama Kuruluşları:\n1. Citi 175,09 Milyon %41,04\n2. Deutsche 59,81 Milyon %14,02\n3. TEB 35,71 Milyon %8,37\n4. İş 20,40 Milyon %4,78\n5. Yat. Fon. 13,79 Milyon %3,23\n6. Emeklilik 12,87 Milyon %3,02`;
+const doc=withMarketText({source_id:'manual-input',source_name:'bot',family:'telegram-ucretsizderinlikbot',official:false,url:'https://t.me/ucretsizderinlikbot#endeks-query-1',title:'ASTOR Takas',body:source,published_at:null,passages:[{id:'bot_reply',text:source}],primary_urls:[],language:'tr'} as Document);
+const base={headline:'Gün sonu — ASTOR takas dağılımı',body:'ASTOR takas verisi',card_headline:'Gün sonu — ASTOR takas dağılımı',card_body:'Toplam takas 426,42 milyon lot',hashtags:[],entities:['ASTOR'],category:'bist',importance:80,template:'custody',event_key:'demo',uncertainties:[],source_notes:[],claims:[],card_data:{ticker:'ASTOR'}} as Draft;
+test('owner takas query uses source date and top five holdings in one card and top three in tweet',()=>{
+ const d=repairDraftStyle(base,[doc]),text=postText(d),cards=draftCards(d);assert.deepEqual(numericIssues(d,[doc]),[]);assert.equal(cards.length,1);assert.equal((text.match(/ASTOR/g)??[]).length,1);assert.match(text,/Citi 175,09 milyon lot · %41,04/);assert.match(text,/Deutsche 59,81 milyon lot · %14,02/);assert.match(text,/TEB 35,71 milyon lot · %8,37/);assert.doesNotMatch(text,/Gün sonu|Emeklilik/);assert.match(cards[0],/KURUMLAR/);assert.match(cards[0],/28\.10\.2026/);assert.equal((cards[0].match(/426,42/g)??[]).length,1);assert.match(cards[0],/Yat\. Fon\./);assert.doesNotMatch(cards[0],/Emeklilik|SAKLAMA KURULUŞLARI|Gün sonu/);
+});
+test('unranked or inconsistent custody query fails closed',()=>{const raw=source.replace('2. Deutsche 59,81','2. Deutsche 999,81');const altered=withMarketText({...doc,body:raw,market_data:undefined,passages:[{id:'bot_reply',text:raw}]} as Document);assert.throws(()=>repairDraftStyle(base,[altered]),/custody_query_source_incomplete/);});
+test('missing source percentage is not invented and malformed ranked rows fail closed',()=>{const raw=source.replace('175,09 Milyon %41,04','175,09 Milyon');const altered=withMarketText({...doc,body:raw,market_data:undefined,passages:[{id:'bot_reply',text:raw}]} as Document);const d=repairDraftStyle(base,[altered]);assert.match(postText(d),/Citi 175,09 milyon lot/);assert.doesNotMatch(postText(d),/%41,04/);const broken=source.replace('6. Emeklilik 12,87 Milyon %3,02','6. Emeklilik bilinmiyor');assert.throws(()=>repairDraftStyle(base,[{...doc,passages:[{id:'bot_reply',text:broken}]}]),/custody_query_source_incomplete/);});

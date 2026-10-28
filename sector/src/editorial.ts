@@ -239,6 +239,7 @@ export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;v
  return {draft:d,verification:d.uncertainties.length?'needs_review':primary?'official_attributed':citedFamilies.size>1?'multiple_families_attributed':'single_source_attributed'};
 }
 function formattedPostText(d:Draft):string {
+ if(d.tweet_style==='custody_query')return [d.headline,d.body].filter(Boolean).join('\n\n');
  d=outputView(d);
  const listLimit=tweetListLimit(d,5);
  if(d.card_data?.movers){const m=d.card_data.movers;return [headlineWithEmoji(d.headline),d.body,'Yükselenler: '+m.up.map(r=>'#'+r.symbol).join(' '),'Düşenler: '+m.down.map(r=>'#'+r.symbol).join(' '),'#Borsa #BIST'].join('\n\n');}

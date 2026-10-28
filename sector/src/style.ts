@@ -154,5 +154,17 @@ export function repairDraftStyle(value:Draft,documents:Document[],editorRequest?
   }
   value={...value,card_data:ranked,...(typeof value.card_headline==='string'&&!fold(value.card_headline).includes(fold(market.broker))?{card_headline:market.broker+'\n'+value.card_headline}:{})};
  }
+ const custodyDoc=documents.find(d=>d.family==='telegram-ucretsizderinlikbot'&&d.url.includes('#endeks-query-')&&d.market_data?.kind==='custody'&&/\bTakas\b/iu.test(d.title));
+ if(custodyDoc&&!editorRequest){
+  const raw=custodyDoc.passages.find(p=>p.id==='bot_reply')?.text??'';
+  const date=raw.match(/Son Takas:\s*(20\d{2}-\d{2}-\d{2})/iu)?.[1];
+  const total=raw.match(/Toplam Takas Lotu:\s*(\d+(?:[.,]\d+)?)\s*(Milyon|Milyar|Bin|Lot)(?:\s+Lot)?/iu);
+  const rows=[...raw.matchAll(/^\s*(\d+)\.\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s+(Milyon|Milyar|Bin|Lot)(?:\s+%(\d+(?:[.,]\d+)?))?\s*$/gimu)].map(m=>({rank:Number(m[1]),label:m[2].trim(),amount:m[3],scale:m[4].toLocaleLowerCase('tr-TR'),ratio:m[5],numeric:Number(m[3].replace(',','.'))*({milyar:1e9,milyon:1e6,bin:1e3,lot:1}[m[4].toLocaleLowerCase('tr-TR')]??0)}));
+  const numbered=[...raw.matchAll(/^\s*\d+\.\s+\S/gmu)].length;
+  if(!date||!total||!market?.ticker||!rows.length||numbered!==rows.length||rows.some((r,i)=>r.rank!==i+1||!Number.isFinite(r.numeric)||(i>0&&r.numeric>rows[i-1].numeric)))throw Error('custody_query_source_incomplete');
+  const chosen=rows.slice(0,5),fmt=(r:typeof rows[number])=>`${r.amount} ${r.scale==='lot'?'lot':r.scale+' lot'}${r.ratio?' · %'+r.ratio:''}`;
+  const dateText=date.split('-').reverse().join('.'),totalText=`${total[1]} ${total[2].toLocaleLowerCase('tr-TR')==='lot'?'lot':total[2].toLocaleLowerCase('tr-TR')+' lot'}`;
+  value={...value,tweet_style:'custody_query',headline:`#${market.ticker} takas dağılımı`,body:`${dateText} tarihli takas dağılımında ${chosen.slice(0,3).map(r=>`${r.label} ${fmt(r)}`).join('; ')} olarak kaydedildi.\n\nİlk kurumlar görselde.`,card_headline:`${market.ticker} takas dağılımı`,card_body:'Takas dağılımı',output_preferences:{...preference,show_time:true},card_data:{ticker:market.ticker,as_of:dateText,metrics:[{label:'Toplam takas',value:totalText}],holdings:chosen.map(r=>({label:r.label,value:fmt(r)}))}};
+ }
  return outputView(repairKapShareWording({...value,...(circuit?{template:'circuit' as const,category:'bist' as const,card_data:policy.verified_equity_codes.length?{...value.card_data,tickers:policy.verified_equity_codes}:value.card_data}:market?{template:market.kind,category:'bist' as const,...(market.ticker?{card_data:{...value.card_data,ticker:market.ticker}}:{})}:{}),headline:typeof value.headline==='string'?headlineWithEmoji(value.headline):value.headline,hashtags},documents));
 }

@@ -7,7 +7,7 @@ type Box={x:number;y:number;width:number;height:number;size:number;min:number;we
 const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 // Each content family owns its hierarchy. Layout changes alter frame, rail,
 // header or alignment while retaining the same evidence and financial values.
-export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'>,theme:CardTheme,layout:CardLayout,fit:(s:string,b:Box)=>string):string {
+export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'>&Partial<Pick<Draft,'tweet_style'>>,theme:CardTheme,layout:CardLayout,fit:(s:string,b:Box)=>string):string {
  if(d.template==='circuit')return circuitCard('navy','editorial',d.card_data?.tickers??[]);
  const bg=COLORS[theme],fg=theme==='navy'?COLORS.paper:COLORS.navy,steel=COLORS.steel;
  const data=d.card_data,variant=CARD_LAYOUTS.indexOf(layout),left=layout==='rail'?122:76,width=1080-left-76;
@@ -50,9 +50,9 @@ export function marketCard(d:Pick<Draft,'headline'|'body'|'template'|'card_data'
   const hero=data?.metrics?.[0];
   if(hero)art+=text(hero.label,left,500,26,steel,700)+block(hero.value,left,530,width,120,78,fg,44,700);
   if(data?.holdings?.length){
-   art+=rect(left,710,width,440,fg)+text('SAKLAMA KURULUŞLARI',left+28,755,25,bg,700);
+   art+=rect(left,710,width,440,fg)+text(d.tweet_style==='custody_query'?'KURUMLAR':'SAKLAMA KURULUŞLARI',left+28,755,25,bg,700);
    data.holdings.forEach((r,i)=>{const y=778+i*70;art+=block(r.label,left+28,y,width*.40,60,29,bg,20,700)+block(r.value,left+width*.45,y,width*.55-28,60,28,bg,18);});
-   art+=block(d.body,left,1190,width,110,29,fg,22);
+   if(d.tweet_style!=='custody_query')art+=block(d.body,left,1190,width,110,29,fg,22);
   }else art+=block(d.body,left,735,width,430,45,fg,28);
  }else if(d.template==='akd'&&(data?.buy?.length||data?.sell?.length)){
   art+=block(d.headline,left,268,width,155,61,fg,38,700,align);
