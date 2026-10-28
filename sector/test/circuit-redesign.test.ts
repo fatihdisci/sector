@@ -14,6 +14,6 @@ test('circuit report retains 59 unique tickers across two cards and uses 20 rank
  assert.equal(items.length,59);
  const out=report('circuit',items,f.indices,f.at,'');const rows=out.draft.card_data!.report!.rows;
  const pages=cardPageDrafts(out.draft);assert.equal(pages.length,2);assert.deepEqual(pages.flatMap(p=>p.card_data!.report!.rows),rows);assert.equal(rows.length,59);
- const text=postText(out.draft),tags=text.match(/#[A-Z][A-Z0-9]{3,4}/g)??[];assert.equal(tags.length,20);assert.equal(new Set(tags).size,20);assert(twitter.parseTweet(text).valid);assert.match(text,/Tüm liste görsellerde/);
+ const text=postText(out.draft),tags=text.match(/#[A-Z][A-Z0-9]{3,4}/g)??[];assert.match(text,/^23 Ekim günü kaç hissede devre kesici çalıştı\?/);assert.equal(tags.length,20);assert.equal(new Set(tags).size,20);assert(twitter.parseTweet(text).valid);assert.match(text,/Tüm liste görsellerde/);
  assert.equal(draftCards(out.draft).reduce((n,s)=>n+(s.match(/data-report-row=/g)??[]).length,0),59);
 });

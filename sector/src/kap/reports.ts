@@ -80,9 +80,10 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
 function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences):{draft:Draft;documents:Document[]}{
  const events=current.map(d=>({id:d.id,tickers:[...d.subjectCodes],published_at:d.publishedAt}));
  const {rows,selection}=selectCircuitReport(events,indices,at,CIRCUIT_REPORT_LIMIT);
- const headline='Devre kesici raporu',note='';
+ const reportDate=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long'}).format(new Date(at));
+ const headline=`${reportDate} günü kaç hissede devre kesici çalıştı?`,note='';
  const codes=selection.selected_tickers.slice(0,20);
- const body=rows.length?`${selection.total_tickers} hissede ${events.length} devre kesici bildirimi kaydedildi.\n\nÖne çıkan hisseler: ${codes.map(c=>'#'+c).join(' ')}\n\nTüm liste görsellerde.`:'Gün içinde kaydedilmiş devre kesici bildirimi yok.';
+ const body=rows.length?`${selection.total_tickers} hissede ${events.length} devre kesici bildirimi kaydedildi.\n\nÖne çıkanlar: ${codes.map(c=>'#'+c).join(' ')}\n\nTüm liste görsellerde.`:'Gün içinde kaydedilmiş devre kesici bildirimi yok.';
  const tweet=twitter.parseTweet([headline,body].join('\n\n'));
  if(!tweet.valid)throw new OutputCapacityError('tweet_capacity_exceeded',{version:1,kind:'tweet',events:events.length,tickers:selection.total_tickers,selected_tickers:codes.length,tweet_length:tweet.weightedLength,tweet_limit:280});
  selection.tweet_style='hashtags';
