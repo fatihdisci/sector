@@ -11,7 +11,7 @@ def news_filter_ready(value):
     if not isinstance(status,dict) or status.get('requested') not in ('active','shadow') or status.get('mode') not in ('active','shadow'):return False
     return status['requested']!='active' or status['mode']=='active'
 
-def maintenance_preflight(path,deadline_ms):
+def maintenance_preflight(path,deadline_ms,allow_near_scheduled=False):
     db=sqlite3.connect(pathlib.Path(path).resolve().as_uri()+'?mode=ro',uri=True)
     try:
         try:
@@ -21,7 +21,7 @@ def maintenance_preflight(path,deadline_ms):
         checks=["SELECT 1 FROM model_jobs WHERE state='leased' LIMIT 1", "SELECT 1 FROM x_posts WHERE state IN ('uploading','posting') LIMIT 1", "SELECT 1 FROM drafts WHERE delivery_state='sending' LIMIT 1", "SELECT 1 FROM telegram_effects WHERE state='sending' LIMIT 1", "SELECT 1 FROM kap_previews WHERE state='sending' LIMIT 1", "SELECT 1 FROM news_digest_runs WHERE state='sending' LIMIT 1", "SELECT 1 FROM news_digest_pages WHERE state='sending' LIMIT 1"]
         if any(db.execute(q).fetchone() for q in checks):raise RuntimeError('maintenance_in_flight')
         if db.execute("SELECT 1 FROM x_posts p WHERE p.state='queued' AND NOT EXISTS(SELECT 1 FROM x_schedules s WHERE s.post_id=p.id) LIMIT 1").fetchone():raise RuntimeError('maintenance_unscheduled_pending')
-        if db.execute("SELECT 1 FROM x_posts p JOIN x_schedules s ON s.post_id=p.id WHERE p.state='queued' AND s.due_at<=? LIMIT 1",(deadline_ms+300000,)).fetchone():raise RuntimeError('maintenance_scheduled_nearby')
+        if not allow_near_scheduled and db.execute("SELECT 1 FROM x_posts p JOIN x_schedules s ON s.post_id=p.id WHERE p.state='queued' AND s.due_at<=? LIMIT 1",(deadline_ms+300000,)).fetchone():raise RuntimeError('maintenance_scheduled_nearby')
     finally:db.close()
 
 class Installer:
@@ -143,26 +143,27 @@ class Installer:
             if path.is_symlink() or path.is_file():path.unlink()
             if had:os.replace(previous,path)
         self.record('rolled_back')
-    def install(self,update=False,maintenance=False):
+    def install(self,update=False,maintenance=False,allow_near_scheduled=False):
         self.runtime.mkdir(parents=True,exist_ok=True,mode=0o700)
         lock=self.runtime/'.install.lock'
         fd=os.open(lock,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
         try:
             was_running=self.loaded()
+            if allow_near_scheduled and not maintenance:raise RuntimeError('near_schedule_override_requires_maintenance')
             if maintenance and (self.collector or not update or not was_running):raise RuntimeError('maintenance_requires_running_news_update')
             if not update and (was_running or (self.runtime/'app').exists() or (self.runtime/'app').is_symlink()):raise RuntimeError('existing_installation_requires_update')
             if not was_running and self.process_alive():raise RuntimeError('unmanaged_sector_process_running')
             self.prepare()
             deadline_ms=int(time.time()*1000)+600000 if maintenance else None
             if maintenance:
-                maintenance_preflight(self.runtime/'sector-haber.sqlite',deadline_ms)
+                maintenance_preflight(self.runtime/'sector-haber.sqlite',deadline_ms,allow_near_scheduled)
                 plist_path=self.release/'service.plist';payload=plistlib.loads(plist_path.read_bytes());payload['EnvironmentVariables'].update({'SECTOR_MAINTENANCE_MODE':'1','SECTOR_MAINTENANCE_DEADLINE':str(deadline_ms)});plist_path.write_bytes(plistlib.dumps(payload))
             # Detect a service started by somebody else while staging.
             if not update and (self.loaded() or self.process_alive()):raise RuntimeError('sector_started_during_staging')
             self.record('prepared')
             if was_running:self.stop()
             try:
-                if maintenance:maintenance_preflight(self.runtime/'sector-haber.sqlite',deadline_ms)
+                if maintenance:maintenance_preflight(self.runtime/'sector-haber.sqlite',deadline_ms,allow_near_scheduled)
                 self.replace(self.runtime/'app',self.release/'app')
                 if not self.collector:self.replace(self.runtime/'bin/pdf-ocr',self.release/'pdf-ocr')
                 if (self.release/'pdf-venv').exists():self.replace(self.runtime/'pdf-venv',self.release/'pdf-venv')
@@ -192,8 +193,8 @@ def main():
     node=shutil.which('node')
     if not node:raise RuntimeError('node_required')
     home=pathlib.Path.home()
-    if any(arg not in ('--update','--maintenance') for arg in sys.argv[1:]):raise RuntimeError('invalid_installer_option')
-    Installer(pathlib.Path(__file__).resolve().parents[1],home/'Library/Application Support/sector-haber',home/'Library/LaunchAgents/com.sectorhaber.news.plist',node,run=subprocess.run).install('--update' in sys.argv,'--maintenance' in sys.argv)
+    if any(arg not in ('--update','--maintenance','--maintenance-allow-near-scheduled') for arg in sys.argv[1:]):raise RuntimeError('invalid_installer_option')
+    Installer(pathlib.Path(__file__).resolve().parents[1],home/'Library/Application Support/sector-haber',home/'Library/LaunchAgents/com.sectorhaber.news.plist',node,run=subprocess.run).install('--update' in sys.argv,'--maintenance' in sys.argv,'--maintenance-allow-near-scheduled' in sys.argv)
     print('ENDEKS HABER release verified and activated. Rollback files retained; main Hermes gateway unchanged.')
 
 if __name__=='__main__':main()

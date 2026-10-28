@@ -204,6 +204,17 @@ class StagedInstallerTests(unittest.TestCase):
             self.assertEqual((i.runtime/'app/old.txt').read_text(),'old');self.assertFalse((i.runtime/'app').is_symlink())
 
 class MaintenanceCandidatePriorityTests(unittest.TestCase):
+    def test_explicit_near_schedule_option_preserves_plan_and_still_blocks_inflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            i=StagedInstallerTests().setup_installer(Path(tmp));path=StagedInstallerTests().maintenance_db(i);deadline=int(time.time()*1000)+600000
+            db=sqlite3.connect(path);db.execute("INSERT INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at) VALUES('p','d',1,'today','queued','x','m',1)");db.execute("INSERT INTO x_schedules VALUES('p',?,'[]')",(deadline-1000,));db.commit()
+            before=db.execute('SELECT * FROM x_schedules').fetchall()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_scheduled_nearby'):module.maintenance_preflight(path,deadline)
+            module.maintenance_preflight(path,deadline,True);self.assertEqual(db.execute('SELECT * FROM x_schedules').fetchall(),before);self.assertEqual(db.execute('SELECT state FROM x_posts').fetchone()[0],'queued')
+            db.execute("UPDATE x_posts SET state='posting'");db.commit()
+            with self.assertRaisesRegex(RuntimeError,'maintenance_in_flight'):module.maintenance_preflight(path,deadline,True)
+            self.assertEqual(db.execute('SELECT state FROM x_posts').fetchone()[0],'posting');db.close()
+            with self.assertRaisesRegex(RuntimeError,'near_schedule_override_requires_maintenance'):i.install(update=True,allow_near_scheduled=True)
     def test_preflight_checks_new_pointer_and_never_falls_back_to_old_approval(self):
         import json
         with tempfile.TemporaryDirectory() as tmp:
