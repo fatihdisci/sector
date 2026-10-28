@@ -70,8 +70,13 @@ class Installer:
             time.sleep(.5)
         raise RuntimeError('sector_startup_not_ready')
     def wait_maintenance(self,deadline_ms):
+        startup_deadline=time.monotonic()+45;started=False
         while int(time.time()*1000)<deadline_ms:
-            if not self.loaded() or not self.process_alive():raise RuntimeError('maintenance_service_stopped')
+            running=self.loaded() and self.process_alive()
+            if not running:
+                if started or time.monotonic()>=startup_deadline:raise RuntimeError('maintenance_service_stopped')
+                time.sleep(.5);continue
+            started=True
             try:
                 value=json.loads((self.runtime/'service-ready.json').read_text())
                 if value.get('release')==self.release_id and value.get('pid')==int((self.runtime/'service.lock').read_text()) and value.get('maintenance')=='approved' and news_filter_ready(value) and value['news_filter']['requested']=='active':return

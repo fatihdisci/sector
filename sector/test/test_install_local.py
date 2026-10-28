@@ -131,6 +131,14 @@ class StagedInstallerTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'maintenance_approval_timeout'):module.Installer.wait_maintenance(i,1001)
             ready.update(maintenance='approved',news_filter={'requested':'active','mode':'active'});(i.runtime/'service-ready.json').write_text(json.dumps(ready))
             with patch.object(i,'process_alive',return_value=True),patch.object(module.time,'time',return_value=1.0):module.Installer.wait_maintenance(i,2000)
+    def test_maintenance_wait_allows_process_lock_to_appear_after_bootstrap(self):
+        if self.__class__.__name__=='CollectorInstallerTests':self.skipTest('news publisher only')
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            i=self.setup_installer(Path(tmp));(i.runtime/'service.lock').write_text('123')
+            (i.runtime/'service-ready.json').write_text(json.dumps({'release':i.release_id,'pid':123,'maintenance':'approved','news_filter':{'requested':'active','mode':'active'}}))
+            with patch.object(i,'process_alive',side_effect=[False,True]),patch.object(module.time,'time',return_value=1.0),patch.object(module.time,'sleep'):
+                module.Installer.wait_maintenance(i,2000)
     def test_prepare_failures_leave_old_files_and_service_running(self):
         for failure in getattr(self,'prepare_failures',('npm','build','ocr')):
             with self.subTest(failure=failure),tempfile.TemporaryDirectory() as tmp:
