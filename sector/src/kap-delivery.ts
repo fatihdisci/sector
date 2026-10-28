@@ -9,7 +9,16 @@ import {enqueueEvidence} from './ingest';
 import {quota} from './pipeline';
 import {telegram} from './telegram';
 import {retryKapModel} from './model-recovery';
+import {catalogEntities} from './news-company-catalog';
 import type {Document,Env} from './types';
+const kapCompany=(d:Disclosure)=>{
+ const codes=[...new Set([...d.subjectCodes,...d.relatedCodes].filter(c=>/^[A-Z][A-Z0-9]{3,4}$/.test(c)))];
+ if(codes.length)return codes.map(code=>`${code} — ${catalogEntities.find(e=>e.code===code)?.name??'şirket adı resmi katalogda doğrulanamadı'}`).join(', ');
+ const company=d.company?.trim();
+ if(company&&!/^(?:KAMUYU AYDINLATMA PLATFORMU|KAP)$/iu.test(company))return `${company} — hisse kodu resmi bildirimde bulunamadı; ilişki belirsiz`;
+ return 'Şirket/fon adı ve hisse kodu resmi bildirim metadata’sında doğrulanamadı';
+};
+export function kapPreviewText(disclosures:Disclosure[]){return disclosures.map(d=>`${kapCompany(d)}\n${d.title}\n${d.url}`).join('\n\n');}
 export class KapDelivery {
  constructor(private store:KapStore,private env:Env,private load:(id:number)=>Promise<Document[]>,private clock=Date.now){
   store.db.exec(`CREATE TABLE IF NOT EXISTS kap_model_jobs(queue_id TEXT PRIMARY KEY REFERENCES queue(id),job_id TEXT,attempts INTEGER NOT NULL DEFAULT 0,lease_until INTEGER NOT NULL DEFAULT 0,last_error TEXT,message_id INTEGER);`);
@@ -83,7 +92,7 @@ export class KapDelivery {
     const claim=await this.env.DB.prepare("INSERT OR IGNORE INTO kap_previews(queue_id,id,state) VALUES(?,?,'sending')").bind(row.id,id).run();
     if(claim.meta.changes){
      const members=this.members(row.id);
-     const lines=members.map(d=>`${d.company||'Şirket belirtilmemiş'}\n${d.title}\n${d.url}`).join('\n\n');
+     const lines=kapPreviewText(members);
      if(members.some(d=>!/^https:\/\/www\.kap\.org\.tr\/tr\/Bildirim\/\d+$/.test(d.url)))throw Error('kap_source_invalid');
      try{
       const sent=await telegram(this.env,'sendMessage',new URLSearchParams({chat_id:this.env.TELEGRAM_CHAT_ID!,text:lines,reply_markup:JSON.stringify({inline_keyboard:[[{text:'Hazırla',callback_data:`kap:prepare:${id}`}]]})}));
