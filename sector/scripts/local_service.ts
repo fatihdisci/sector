@@ -1,3 +1,5 @@
+import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
+import {loadModelSelection,runModelJob} from './model_runner';
 import {modelFailureCode,type ModelStage} from './model_failure';
 import {withModelHeartbeat} from './model_heartbeat';
 import{pollChannel,channelDocuments,CHANNEL_POLL_MS}from'../src/telegram-channel';
@@ -22,7 +24,6 @@ import {saveTelegramUpdates,processTelegramUpdates} from '../src/telegram-inbox'
 import {redesignOne} from '../src/card-redesign';
 import {recordModelReview} from '../src/model-recovery';
 import {readFile,writeFile,open,unlink,access} from 'node:fs/promises';
-import {spawn} from 'node:child_process';
 import {homedir} from 'node:os';
 import {localDatabase,localMedia} from '../src/local-adapters';
 import {prepare} from '../src/pipeline';
@@ -49,6 +50,9 @@ import type {Env,Document,Draft} from '../src/types';
 const directory=`${homedir()}/Library/Application Support/sector-haber`;
 const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
 const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(await readFile('migrations/0001_sector.sql','utf8'))+'\n'+(await readFile('migrations/0008_kap_previews.sql','utf8'))),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
+const modelSelection=await loadModelSelection(process.env);
+env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;
+env.OWNER_VISUAL=await createOwnerVisualRuntime(env,{root:process.cwd()+'/',python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`});
 env.RENDER_REPORT=png;
 env.READ_SPK_X=async manifest=>{const post=JSON.parse(manifest);return post.cached_documents??(post.url?.startsWith('https://x.com/fintables/status/')?fintablesPostDocuments(post,readPdf,readImage):spkPostDocuments(post,readPdf,readImage));};
 env.READ_TELEGRAM_CHANNEL=async raw=>{const m=JSON.parse(raw);if(Date.now()-m.captured_at>86400000)throw Error('channel_evidence_expired');return m.cached_documents??channelDocuments(raw,channelTransport,readImage,readPdf);};
@@ -74,19 +78,14 @@ async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof 
   const paused=await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>();
   if(Number(paused?.value??0)>Date.now()){await pause(30_000);continue;}
   job=await leaseJob(env);if(!job){await pause(2_000);continue;}
-  stage='generate';const output=await new Promise<string>((resolve,reject)=>{
-   const child=spawn(`${homedir()}/.hermes/hermes-agent/venv/bin/python`,['scripts/hermes_job.py'],{env:{...(process.env.SECTOR_USAGE_DIR?{SECTOR_USAGE_DIR:process.env.SECTOR_USAGE_DIR}:{}),PATH:process.env.PATH??'',HOME:homedir(),HERMES_HOME:`${homedir()}/.hermes/profiles/sectorhaber`,PYTHONPATH:`${homedir()}/.hermes/hermes-agent`},stdio:['pipe','pipe','pipe']});let result='';
-   let diagnostic='';const timer=setTimeout(()=>child.kill('SIGTERM'),500_000);child.stdout.on('data',chunk=>{result+=chunk.toString();if(result.length>500_000)child.kill('SIGTERM');});child.stderr.on('data',chunk=>{if(diagnostic.length<2000)diagnostic+=chunk.toString();});
-   child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code===0)resolve(result);else {let reason='hermes_job_failed';try{const value=JSON.parse(diagnostic);if(['quota_paused','hermes_auth_unavailable','subscription_turn_failed','provider_timeout','provider_unavailable','provider_request_invalid','JSONDecodeError'].includes(value.error))reason=value.error;}catch{}reject(new Error(reason));}});
-   child.stdin.end(JSON.stringify({...job,profile:`${homedir()}/.hermes/profiles/sectorhaber`}));
-  });
+  stage='generate';const output=await runModelJob(job,{python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,root:process.cwd()+'/',home:homedir(),profile:`${homedir()}/.hermes/profiles/sectorhaber`,hermesRoot:`${homedir()}/.hermes/hermes-agent`,selection:modelSelection});
   stage='decode';const result=JSON.parse(output) as {draft:Draft;audit:unknown;runtime:unknown};
-  await writeFile(directory+'/last-model-result.json',JSON.stringify({job_id:job.id,result}),{mode:0o600});
+  if(modelSelection.provider==='openai-codex')await writeFile(directory+'/last-model-result.json',JSON.stringify({job_id:job.id,result}),{mode:0o600});
   stage='review';await recordModelReview(env,job.id,result.audit);
   const documents=job.documents as Document[];result.draft=acceptHermes(result.draft,result.audit,documents,job.kind==='edit'?job.edit_request:null).draft;
-  stage='render';const date=new Date().toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}),svgs=draftCards(result.draft,job.card_theme==='navy'||job.card_theme==='paper'?job.card_theme:undefined,job.card_layout);
- const cards=[];for(const svg of svgs)cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
-  stage='submit';const delivered=await submitJob(env,{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,...result,card_date:date,cards});
+  stage='render';const date=new Date().toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'});
+ const renderJob=job;const rendered=await renderModelJob(env,renderJob,result.draft,async()=>{const svgs=draftCards(result.draft,renderJob.card_theme==='navy'||renderJob.card_theme==='paper'?renderJob.card_theme:undefined,renderJob.card_layout);const cards=[];for(const svg of svgs)cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});return cards;});const {cards}=rendered;
+  stage='submit';const delivered=await submitJob(env,{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,...result,...rendered,card_date:date,cards});
   stage='delivery';await deliver(env);await status('model_health',{ok:true,at:new Date().toISOString(),draft_id:delivered.id,duration_ms:Date.now()-started});
  }catch(e){if(job)await env.DB.prepare("UPDATE model_jobs SET state='needs_review',error=? WHERE id=? AND state='leased'").bind(modelFailureCode(e,stage),job.id).run();await status('model_health',{ok:false,at:new Date().toISOString(),code:modelFailureCode(e,stage),stage,duration_ms:Date.now()-started});if(e instanceof Error&&['quota_paused','hermes_auth_unavailable'].includes(e.message))await status('model_paused_until',Date.now()+3600_000);await pause(e instanceof Error&&['quota_paused','hermes_auth_unavailable','subscription_turn_failed','hermes_job_failed'].includes(e.message)?60_000:2_000);}
 }}

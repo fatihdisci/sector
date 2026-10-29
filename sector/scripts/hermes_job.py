@@ -128,26 +128,29 @@ def prepare_draft(draft,documents):
     if not isinstance(normalized,dict):raise RuntimeError('local_validation_failed')
     return normalized
 
-def main(job):
-    route=(job.get('model'),job.get('effort'))
-    if job.get('provider')!='openai-codex' or route not in {('gpt-6-luna','high'),('gpt-6.1-terra','low')} or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
+def run_checked_job(job, invoke):
     instructions=job['prompt']+'\nYalnız aşağıdaki şemaya uyan JSON nesnesini döndür, başka çıktı yazma.\n'+json.dumps(job['schema'],ensure_ascii=False)
-    draft=call({**job,'metric_stage':'generate'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_validation_issues':job.get('previous_validation_issues',[])})
+    draft=invoke({**job,'metric_stage':'generate'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_validation_issues':job.get('previous_validation_issues',[])})
     draft=prepare_draft(draft,job['documents'])
     if job.get('deadline',0)<time.time():raise RuntimeError('job_expired')
-    audit=call({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
+    audit=invoke({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
     calls=2
     layout_issues=presentation_issues(draft,job.get('editorial_policy'))+deterministic_issues(draft,job['documents'])
     if layout_issues:audit={'supported':False,'issues':list(audit.get('issues',[]))+layout_issues}
     if audit.get('supported') is not True or audit.get('issues'):
         if job.get('deadline',0)<time.time()+90:raise RuntimeError('repair_budget_expired')
-        draft=call({**job,'metric_stage':'repair'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_draft':draft,'required_corrections':audit.get('issues',[])})
+        draft=invoke({**job,'metric_stage':'repair'},instructions,{'documents':job['documents'],'recent_events':job.get('existing_events',[]),'editor_request':job.get('edit_request'),'editorial_policy':job.get('editorial_policy',{}),'previous_draft':draft,'required_corrections':audit.get('issues',[])})
         draft=prepare_draft(draft,job['documents'])
-        audit=call({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
+        audit=invoke({**job,'metric_stage':'audit'},job['audit_prompt'],{'documents':job['documents'],'draft':draft})
         calls=4
         layout_issues=presentation_issues(draft,job.get('editorial_policy'))+deterministic_issues(draft,job['documents'])
         if layout_issues:audit={'supported':False,'issues':list(audit.get('issues',[]))+layout_issues}
-    return {'draft':draft,'audit':audit,'runtime':{'model':job['model'],'effort':job['effort'],'provider':'openai-codex','tool_count':0,'fallback_count':0,'calls':calls,'server_model':None}}
+    return {'draft':draft,'audit':audit,'runtime':{'model':job['model'],'effort':job['effort'],'provider':job['provider'],'tool_count':0,'fallback_count':0,'calls':calls,'server_model':None}}
+
+def main(job):
+    route=(job.get('model'),job.get('effort'))
+    if job.get('provider')!='openai-codex' or route not in {('gpt-6-luna','high'),('gpt-6.1-terra','low')} or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
+    return run_checked_job(job, call)
 
 if __name__=='__main__':
     try:

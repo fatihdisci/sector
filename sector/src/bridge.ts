@@ -1,3 +1,6 @@
+import {visualDocument,assertVisualReceipt} from './owner-visual';
+import {bytesHash} from './media-set';
+import {modelRoute} from './model-route';
 import {withOverviewEvidence} from './market-overview';
 import {bindChannelPublication} from './channel-publication';
 import {outputPreferences} from './output-preferences';
@@ -37,6 +40,7 @@ export async function ingestOfficial(env:Env,input:Record<string,unknown>):Promi
  return {accepted:true};
 }
 export async function leaseJob(env:Env) {
+ const route=modelRoute(env); // Validate API opt-in before claiming or changing any job.
  // Ambiguous jobs expire into review, rather than replaying model calls.
  await env.DB.prepare("UPDATE model_jobs SET state='needs_review',error='lease_expired' WHERE state='leased' AND lease_until<?").bind(now()).run();
  const job=await env.DB.prepare("SELECT * FROM model_jobs WHERE state IN ('queued','retry_pending') AND created_at>? AND (kind NOT IN ('initial','news') OR EXISTS (SELECT 1 FROM news_cards c WHERE c.article_id=model_jobs.article_id AND c.state='model_queued')) ORDER BY CASE WHEN state='retry_pending' THEN 1 ELSE 0 END,CASE WHEN kind IN ('news','edit','manual') THEN 0 ELSE 1 END,created_at LIMIT 1").bind(now()-24*3600).first<Job>();if(!job)return null;
@@ -58,20 +62,28 @@ export async function leaseJob(env:Env) {
  const layout=editing?(await savedLayout(env,'draft:'+job.draft_id)??'editorial'):await chooseLayout(env,job.article_id);
  const previous=await env.DB.prepare('SELECT id,content FROM drafts WHERE created_at>? ORDER BY created_at DESC LIMIT 40').bind(now()-48*3600).all<{id:string;content:string}>();
  const existing_events=(previous.results??[]).map(r=>{const d=JSON.parse(r.content) as Draft;return {id:r.id,headline:d.headline,event_key:d.event_key,entities:d.entities};});
- return {id:job.id,kind:job.kind,card_theme:theme,card_layout:layout,lease_token:token,input_hash:job.input_hash,deadline:now()+600,model:env.AI_MODEL,effort:env.AI_EFFORT,provider:'openai-codex',allowed_tools:[],documents:JSON.parse(job.documents),editorial_policy:editorialPolicy(JSON.parse(job.documents)),previous_validation_issues:await previousModelIssues(env,job.id),existing_events,edit_request:job.edit_request,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,audit_prompt:AUDIT_PROMPT};
+ return {id:job.id,kind:job.kind,draft_id:job.draft_id,expected_revision:job.expected_revision,card_theme:theme,card_layout:layout,lease_token:token,input_hash:job.input_hash,deadline:now()+600,model:route.model,effort:route.effort,provider:route.provider,allowed_tools:[],documents:JSON.parse(job.documents),editorial_policy:editorialPolicy(JSON.parse(job.documents)),previous_validation_issues:await previousModelIssues(env,job.id),existing_events,edit_request:job.edit_request,prompt:EDITOR_PROMPT,schema:DRAFT_SCHEMA,audit_prompt:AUDIT_PROMPT};
 }
-export async function enqueueEdit(env:Env,id:string,revision:number,request:string):Promise<void> {
+export async function enqueueEdit(env:Env,id:string,revision:number,request:string,ownerMessageId?:number):Promise<void> {
  if(!request.trim()||request.length>12_000)throw new Error('invalid_edit_request');
- if(await tryHashtagOnlyEdit(env,id,revision,request)||await tryPeriodOnlyEdit(env,id,revision,request))return;
  const row=await env.DB.prepare("SELECT * FROM drafts WHERE id=? AND revision=? AND state='pending' AND expires_at>?").bind(id,revision,now()).first<{documents:string;content:string}>();if(!row)throw new Error('stale_edit');
- const article=await env.DB.prepare('SELECT * FROM articles WHERE draft_id=? ORDER BY first_seen LIMIT 1').bind(id).first<{id:string;source_id:string;url:string;title:string;summary:string;published_at:string}>();if(!article)throw new Error('edit_source_missing');
  const stored=JSON.parse(row.documents) as Document[];
+ const ownerVisual=visualDocument(stored);
+ if(!ownerVisual&&(await tryHashtagOnlyEdit(env,id,revision,request)||await tryPeriodOnlyEdit(env,id,revision,request)))return;
+ const article=await env.DB.prepare('SELECT * FROM articles WHERE draft_id=? ORDER BY first_seen LIMIT 1').bind(id).first<{id:string;source_id:string;url:string;title:string;summary:string;published_at:string}>();if(!article)throw new Error('edit_source_missing');
  const localEvidence=stored[0]?.source_id==='kap'||stored[0]?.source_id==='manual-input';
  const source=(registry as Source[]).find(s=>s.id===article.source_id);
  if(!localEvidence&&!source)throw new Error('edit_source_missing');
  const previousPreferences=(JSON.parse(row.content) as Draft).output_preferences??stored.find(d=>d.output_preferences)?.output_preferences;
  const preference=outputPreferences(request,previousPreferences)??previousPreferences;
- const documents=(localEvidence?stored:[await readDocument(article,source!)]).map(d=>({...selectMarketDocument(d,preference?.side??marketSelection(request)),...(preference?{output_preferences:preference}:{})}));
+ let documents=(localEvidence?stored:[await readDocument(article,source!)]).map(d=>({...selectMarketDocument(d,preference?.side??marketSelection(request)),...(preference?{output_preferences:preference}:{})}));
+ if(ownerVisual){
+  if(!env.OWNER_VISUAL?.enabled)throw Error('owner_visual_api_disabled');
+  const existing=await env.DB.prepare("SELECT id,edit_request FROM model_jobs WHERE draft_id=? AND expected_revision=? AND state IN ('queued','leased','retry_pending','complete')").bind(id,revision).first<{id:string;edit_request:string}>();if(existing){if(existing.edit_request===request)return;throw Error('edit_in_progress');}
+  const claim=await env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind('owner_visual_edit:'+id+':'+revision,JSON.stringify({request_hash:await sha256(request),state:'claimed'})).run();if(!claim.meta.changes)throw Error('edit_in_progress');
+  documents=await env.OWNER_VISUAL.revise(documents,request,{draft_id:id,revision,owner_message_id:ownerMessageId});
+  const current=await env.DB.prepare("SELECT revision FROM drafts WHERE id=? AND state='pending'").bind(id).first<{revision:number}>();if(current?.revision!==revision)throw Error('owner_visual_edit_revision_mismatch');
+ }
  if(documents.some(d=>!d.body||!d.passages.length))throw new Error('edit_source_incomplete');
  const corrections=(await env.DB.prepare("SELECT path,before_value,after_value FROM editor_corrections WHERE draft_id=? AND revision=? AND state='proposed'").bind(id,revision).all<{path:string;before_value:string;after_value:string}>()).results;
  if(corrections.length){const original=await env.DB.prepare('SELECT content FROM drafts WHERE id=? AND revision=?').bind(id,revision).first<{content:string}>();const table=JSON.parse(original!.content).card_data;
@@ -98,16 +110,24 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
  if(job.lease_until<now())throw new Error('invalid_job_lease');
  if(job.state!=='leased')throw new Error('invalid_job_state');
  const meta=input.runtime as {model?:string;effort?:string;provider?:string;tool_count?:number;fallback_count?:number};
- if(!meta||meta.model!==env.AI_MODEL||meta.effort!==env.AI_EFFORT||meta.provider!=='openai-codex'||meta.tool_count!==0||meta.fallback_count!==0)throw new Error('model_route_mismatch');
+ const route=modelRoute(env);
+ if(!meta||meta.model!==route.model||meta.effort!==route.effort||meta.provider!==route.provider||meta.tool_count!==0||meta.fallback_count!==0)throw new Error('model_route_mismatch');
  const documents=JSON.parse(job.documents) as Document[];
  const checked=acceptHermes(input.draft,input.audit,documents,job.kind==='edit'?job.edit_request:null),draft=checked.draft;
- draft.importance=Math.min(draft.importance,documentScore(documents[0],job.kind==='manual'||job.kind==='edit').score+10);
  const existingCard=job.kind==='edit'?await env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(job.draft_id).first<{content:string}>():null;
  const theme=existingCard?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(existingCard.content) as Draft).template)):(await savedTheme(env,job.article_id)??legacyTheme(draft.template));
  const layout=await savedLayout(env,job.kind==='edit'?'draft:'+job.draft_id:job.article_id)??'editorial';
- const svgs=draftCards(draft,theme,layout),cards=Array.isArray(input.cards)?input.cards as {svg_hash:string;png_base64:string}[]:[{svg_hash:input.svg_hash,png_base64:input.png_base64}];
- if(cards.length!==svgs.length)throw Error('card_content_mismatch');const images:Uint8Array[]=[];
- for(let i=0;i<svgs.length;i++){if(cards[i].svg_hash!==await sha256(svgs[i]))throw Error('card_content_mismatch');const dims=/width="(\d+)" height="(\d+)"/.exec(svgs[i])!;images.push(pngBytes(cards[i].png_base64,Number(dims[1]),Number(dims[2])));}
+ const cards=Array.isArray(input.cards)?input.cards as {svg_hash:string;png_base64:string}[]:[{svg_hash:input.svg_hash,png_base64:input.png_base64}]as {svg_hash:string;png_base64:string}[];const images:Uint8Array[]=[];
+ if(visualDocument(documents)){
+  await assertVisualReceipt({id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,deadline:job.lease_until,kind:job.kind,draft_id:job.draft_id,expected_revision:job.expected_revision,documents},draft,input.visual_result,cards);
+  const receipt=input.visual_result as import('./owner-visual').VisualReceipt;
+  for(const [i,card]of cards.entries()){const p=receipt.pages[i],bytes=pngBytes(card.png_base64,p.width,p.height);if(await bytesHash(bytes)!==p.sha256)throw Error('owner_visual_image_hash_mismatch');images.push(bytes);}
+ }else{
+  const svgs=draftCards(draft,theme,layout);if(cards.length!==svgs.length)throw Error('card_content_mismatch');
+  for(let i=0;i<svgs.length;i++){if(cards[i].svg_hash!==await sha256(svgs[i]))throw Error('card_content_mismatch');const dims=/width="(\d+)" height="(\d+)"/.exec(svgs[i])!;images.push(pngBytes(cards[i].png_base64,Number(dims[1]),Number(dims[2])));}
+ }
+
+ draft.importance=Math.min(draft.importance,documentScore(documents[0],job.kind==='manual'||job.kind==='edit').score+10);
  const time=now();
  if(job.kind==='edit') {
   const current=await env.DB.prepare("SELECT revision FROM drafts WHERE id=? AND state='pending'").bind(job.draft_id).first<{revision:number}>();

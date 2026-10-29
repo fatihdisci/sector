@@ -42,7 +42,7 @@ async function webhook(request:Request,env:Env):Promise<Response> {
   if(await publicationMessage(env,message,Number(id)))return json({ok:true});
   const edit=await env.DB.prepare('SELECT * FROM edits WHERE user_id=? AND expires_at>?').bind(env.TELEGRAM_USER_ID!,Math.floor(Date.now()/1000)).first<{draft_id:string;revision:number;prompt_message_id:number}>();
   if(edit&&message.text&&message.reply_to_message?.message_id===edit.prompt_message_id) {
-   try {const state=await publicationState(env,edit.draft_id);if(state.published||state.api)throw Error('publication_locked');await enqueueEdit(env,edit.draft_id,edit.revision,message.text);await env.DB.prepare('DELETE FROM edits WHERE user_id=?').bind(env.TELEGRAM_USER_ID!).run();}
+   try {const state=await publicationState(env,edit.draft_id);if(state.published||state.api)throw Error('publication_locked');await enqueueEdit(env,edit.draft_id,edit.revision,message.text,message.message_id);await env.DB.prepare('DELETE FROM edits WHERE user_id=?').bind(env.TELEGRAM_USER_ID!).run();}
    catch(e) {await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:e instanceof Error&&e.message==='unsupported_output_limit'?OUTPUT_LIMIT_MESSAGE:'Düzenleme kaydedilemedi. Karttaki Düzenle düğmesinden tekrar deneyebilirsin.'}));}
   } else await queueManual(env,Number(id),message);
   return json({ok:true});

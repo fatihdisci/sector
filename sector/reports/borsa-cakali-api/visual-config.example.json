@@ -1,0 +1,76 @@
+{
+  "enabled": false,
+  "budget_authorized": false,
+  "budget_micro_usd": null,
+  "window_id": null,
+  "expires_at": null,
+  "quality": "medium",
+  "template_version": "bc-typographic-v1",
+  "rows_per_image": 12,
+  "approved_models": [
+    "gpt-6.1-terra"
+  ],
+  "allowed_sizes": [
+    "1536x864",
+    "1024x1712"
+  ],
+  "vision": {
+    "model": "gpt-6.1-terra",
+    "rate_model": null,
+    "rate_source": null,
+    "rate_valid_from": null,
+    "rate_expires_at": null,
+    "input_text_rate": null,
+    "input_image_rate": null,
+    "cached_text_rate": null,
+    "cached_image_rate": null,
+    "output_rate": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "image_token_ceiling": null,
+    "context_window_tokens": null,
+    "reasoning_effort": "medium"
+  },
+  "image": {
+    "model": null,
+    "rate_model": null,
+    "rate_source": null,
+    "rate_valid_from": null,
+    "rate_expires_at": null,
+    "input_text_rate": null,
+    "input_image_rate": null,
+    "cached_text_rate": null,
+    "cached_image_rate": null,
+    "output_rate": null,
+    "max_input_tokens": null,
+    "max_output_tokens": null,
+    "image_token_ceiling": null,
+    "context_window_tokens": null
+  },
+  "shared_budget": {
+    "version": 1,
+    "authorized": false,
+    "ledger_path": null,
+    "window_id": null,
+    "limit_micro_usd": null,
+    "expires_at": null,
+    "plan_id": null,
+    "promo": {
+      "verified": false,
+      "promo_only_verified": false,
+      "other_consumption_bounded": false,
+      "verification_id": null,
+      "remaining_micro_usd": null,
+      "other_consumption_bound_micro_usd": null,
+      "safety_margin_micro_usd": null,
+      "observed_at": null,
+      "valid_until": null,
+      "grant_expires_at": null
+    },
+    "profiles": {
+      "text": {},
+      "vision": {},
+      "image": {}
+    }
+  }
+}

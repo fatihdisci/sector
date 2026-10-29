@@ -1,6 +1,9 @@
+import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
+import {localMedia} from '../src/local-adapters';
+import type {Env} from '../src/types';
+import {loadModelSelection,runModelJob} from './model_runner';
 import {isCardLayout} from '../src/card-layout';
 import {readFile,writeFile,mkdir,unlink,open} from 'node:fs/promises';
-import {spawn} from 'node:child_process';
 import {homedir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {png} from './render_local';
@@ -13,6 +16,9 @@ type Config={url:string;token:string;hermesPython:string;hermesRoot:string;profi
 const root=fileURLToPath(new URL('../',import.meta.url));
 const configPath=process.env.SECTOR_CONFIG??`${homedir()}/Library/Application Support/sector-haber/bridge.json`;
 const config=JSON.parse(await readFile(configPath,'utf8')) as Config;
+const modelSelection=await loadModelSelection(process.env);
+const visualEnv={MEDIA:await localMedia(`${homedir()}/Library/Application Support/sector-haber/media`)}as Env;
+visualEnv.OWNER_VISUAL=await createOwnerVisualRuntime(visualEnv,{root,python:config.hermesPython});
 const base=new URL(config.url);if(base.protocol!=='https:'&&!['127.0.0.1','localhost'].includes(base.hostname))throw new Error('https_required');
 async function api(path:string,payload:unknown):Promise<unknown> {
  const r=await fetch(new URL(path,base),{method:'POST',headers:{Authorization:'Bearer '+config.token,'Content-Type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(40_000)});
@@ -22,19 +28,12 @@ async function run():Promise<void> {
  if(Date.now()-lastOfficial>10*60_000){try{await scanOfficial(api,configPath+'.official-state');lastOfficial=Date.now();}catch{lastOfficial=Date.now()-8*60_000;}}
  const job=await api('/api/bridge/lease',{}) as Record<string,unknown>|null;if(!job)return;
  job.profile=config.profile;
- const output=await new Promise<string>((resolve,reject)=>{
-  const child=spawn(config.hermesPython,[root+'scripts/hermes_job.py'],{cwd:root,env:{PATH:process.env.PATH??'',HOME:homedir(),HERMES_HOME:config.profile,PYTHONPATH:config.hermesRoot},stdio:['pipe','pipe','pipe']});
-  let result='',bytes=0;const timer=setTimeout(()=>child.kill('SIGTERM'),500_000);
-  child.stdout.on('data',chunk=>{bytes+=chunk.length;if(bytes>500_000)child.kill('SIGTERM');else result+=chunk.toString();});
-  child.stderr.resume(); // Never expose credential-bearing diagnostics.
-  child.on('error',reject);child.on('close',code=>{clearTimeout(timer);code===0?resolve(result):reject(new Error('hermes_job_failed'));});
-  child.stdin.end(JSON.stringify(job));
- });
+ const output=await runModelJob(job,{python:config.hermesPython,root,home:homedir(),profile:config.profile,hermesRoot:config.hermesRoot,selection:modelSelection});
  const result=JSON.parse(output) as {draft:Draft;audit:unknown;runtime:unknown};
- const documents=job.documents as Document[];acceptHermes(result.draft,result.audit,documents);
- const date=new Date().toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'}),svgs=draftCards(result.draft,job.card_theme==='navy'||job.card_theme==='paper'?job.card_theme:undefined,isCardLayout(job.card_layout)?job.card_layout:undefined);
- const cards=[];for(const svg of svgs)cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});
- await api('/api/bridge/result',{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,...result,card_date:date,cards});
+ const documents=job.documents as Document[];result.draft=acceptHermes(result.draft,result.audit,documents,job.kind==='edit'?job.edit_request as string:null).draft;
+ const date=new Date().toLocaleDateString('tr-TR',{timeZone:'Europe/Istanbul'});
+ const rendered=await renderModelJob(visualEnv,job as any,result.draft,async()=>{const svgs=draftCards(result.draft,job.card_theme==='navy'||job.card_theme==='paper'?job.card_theme:undefined,isCardLayout(job.card_layout)?job.card_layout:undefined);const cards=[];for(const svg of svgs)cards.push({svg_hash:await sha256(svg),png_base64:Buffer.from(await png(svg)).toString('base64')});return cards;});const {cards}=rendered;
+ await api('/api/bridge/result',{id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,...result,...rendered,card_date:date,cards});
 }
 const lockPath=configPath+'.lock';let lock;
 try{lock=await open(lockPath,'wx',0o600);await lock.writeFile(String(process.pid));}

@@ -1,0 +1,48 @@
+{
+  "enabled": false,
+  "model": "gpt-6.1-terra",
+  "approved_models": [
+    "gpt-6.1-terra"
+  ],
+  "hard_limit_micro_usd": null,
+  "window_id": null,
+  "expires_at": null,
+  "input_token_ceiling": null,
+  "max_output_tokens": null,
+  "input_micro_usd_per_million": null,
+  "cached_micro_usd_per_million": null,
+  "output_micro_usd_per_million": null,
+  "budget_authorized": false,
+  "rate_table_model": null,
+  "rate_table_valid_from": null,
+  "rate_table_expires_at": null,
+  "rate_table_source": null,
+  "context_window_tokens": null,
+  "reasoning_effort": "medium",
+  "shared_budget": {
+    "version": 1,
+    "authorized": false,
+    "ledger_path": null,
+    "window_id": null,
+    "limit_micro_usd": null,
+    "expires_at": null,
+    "plan_id": null,
+    "promo": {
+      "verified": false,
+      "promo_only_verified": false,
+      "other_consumption_bounded": false,
+      "verification_id": null,
+      "remaining_micro_usd": null,
+      "other_consumption_bound_micro_usd": null,
+      "safety_margin_micro_usd": null,
+      "observed_at": null,
+      "valid_until": null,
+      "grant_expires_at": null
+    },
+    "profiles": {
+      "text": {},
+      "vision": {},
+      "image": {}
+    }
+  }
+}
