@@ -17,7 +17,7 @@ export function draftKeyboard(id:string,revision:number,docs:Document[],publish:
  const pub=(action:string,text:string):Button=>({text,callback_data:`dp:${action}:${id}:${revision}`});
  const more=menu('more','Diğer'),back=menu('main','Geri'),locked=state.published||!!state.api;
  if(view==='main')return {inline_keyboard:[state.api==='queued'?[{text:state.due_at?`İptal · ${new Date(state.due_at).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'short',timeStyle:'short'})}`:'Paylaşımı iptal et',callback_data:`xcancel:${id}:${revision}`},more]:locked?[menu('summary','Yayın özeti'),more]:state.deferred?[pub('undo','Hazıra al'),more]:[...(publish&&editable?[{text:'X’te paylaş',callback_data:`xpost:${id}:${revision}`}]:[]),...(editable&&!draft?.automated_daily&&draft?.tweet_style!=='owner_ready'?[{text:'Düzenle',callback_data:callback('edit',id,revision)}]:[]),more]]};
- const layouts=editable&&!draft?.automated_daily&&draft?.tweet_style!=='owner_ready'&&!locked&&draft?.template!=='circuit'&&!draft?.card_data?.report&&!draft?.card_data?.overview;
+ const layouts=!draft?.news_artwork&&editable&&!draft?.automated_daily&&draft?.tweet_style!=='owner_ready'&&!locked&&draft?.template!=='circuit'&&!draft?.card_data?.report&&!draft?.card_data?.overview;
  if(view==='layouts'&&layouts)return {inline_keyboard:[[{text:'Rastgele tasarım',callback_data:`design:${id}:${revision}`}],...CARD_LAYOUTS.map(l=>[{text:({editorial:'Standart',frame:'Çerçeveli',rail:'Sol şeritli',masthead:'Başlık bloğu',center:'Ortalanmış',brief:'Kısa haber'})[l],callback_data:`design:${id}:${revision}:${l}`}]),[back]]};
  const rows:Button[][]=[[sourceButton(docs)]];
  if(layouts)rows.push([menu('layouts','Tasarımı değiştir')]);

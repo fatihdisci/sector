@@ -1,3 +1,4 @@
+import {loadNewsArtwork} from './news_artwork';
 import {loadCircuitArtwork} from './circuit_artwork';
 import {pollCircuitAuto,circuitPollDelay} from '../src/circuit-auto';
 import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
@@ -54,6 +55,7 @@ const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
 const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(await readFile('migrations/0001_sector.sql','utf8'))+'\n'+(await readFile('migrations/0008_kap_previews.sql','utf8'))),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
 const workflowConfig=JSON.parse(await readFile('bot-workflow.json','utf8'));if(workflowConfig.version!==1)throw Error('invalid_bot_workflow');const workflow=process.env.SECTOR_BOT_WORKFLOW_MODE??workflowConfig.mode;if(!['full','news_only'].includes(workflow))throw Error('invalid_bot_workflow');env.BOT_WORKFLOW_MODE=workflow as 'full'|'news_only';if(workflowConfig.circuit_auto?.interval_seconds!==120)throw Error('invalid_circuit_interval');env.CIRCUIT_AUTO_ENABLED=workflowConfig.circuit_auto.enabled===true?'true':'false';
 if(env.CIRCUIT_AUTO_ENABLED==='true')env.CIRCUIT_GENERAL_IMAGE=await loadCircuitArtwork(process.cwd());
+env.NEWS_GENERAL_IMAGES=await loadNewsArtwork(process.cwd());
 const modelSelection=await loadModelSelection(process.env);
 env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;
 env.OWNER_VISUAL=await createOwnerVisualRuntime(env,{root:process.cwd()+'/',python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`});

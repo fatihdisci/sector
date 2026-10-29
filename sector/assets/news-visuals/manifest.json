@@ -1,47 +1,55 @@
 {
   "version": 1,
-  "enabled": false,
+  "enabled": true,
   "data_card_palette": [
     "#080908",
     "#F4F1E9"
   ],
   "pools": {
     "breaking": {
-      "requires_confirmed_breaking": true,
+      "requires_confirmed_breaking": false,
       "orientation": "landscape",
       "accent_allowed": "red",
       "assets": [
         {
           "id": "breaking-1",
           "library_id": "libfile_3ddc92e3eec08191a8c3c9c08c64fd60",
-          "local_path": null,
-          "sha256": null,
-          "verified": false,
-          "status": "remote_reference_only"
+          "local_path": "breaking-1.png",
+          "sha256": "fffe6cd54addd3820c08cad190bad7f4d2f2dde86d1974dd0a22dcc2801641a0",
+          "verified": true,
+          "status": "reviewed_local",
+          "width": 1672,
+          "height": 941
         },
         {
           "id": "breaking-2",
           "library_id": "libfile_e04c7292a92481919a1c9e22a5ad4177",
-          "local_path": null,
-          "sha256": null,
-          "verified": false,
-          "status": "remote_reference_only"
+          "local_path": "breaking-2.png",
+          "sha256": "f95b56bc5e485b21ef77278fe3d82a25102b8e754e77f7d74582d48dcc266927",
+          "verified": true,
+          "status": "reviewed_local",
+          "width": 1672,
+          "height": 941
         },
         {
           "id": "breaking-3",
           "library_id": "libfile_c99101c9cb8c8191a6c83c31528dda7f",
-          "local_path": null,
-          "sha256": null,
-          "verified": false,
-          "status": "remote_reference_only"
+          "local_path": "breaking-3.png",
+          "sha256": "0dc05619c41ff0681886ce216c7ff1f12bf72391b5502a55c96440432e17fe45",
+          "verified": true,
+          "status": "reviewed_local",
+          "width": 1672,
+          "height": 941
         },
         {
           "id": "breaking-4",
           "library_id": "libfile_13d9f52712e48191be154e9e8dd9d764",
-          "local_path": null,
-          "sha256": null,
-          "verified": false,
-          "status": "remote_reference_only"
+          "local_path": "breaking-4.png",
+          "sha256": "96904687414532a4d166d1ef662693d8aeaf585a6dfa1cd8c96a66ee7e656f30",
+          "verified": true,
+          "status": "reviewed_local",
+          "width": 1672,
+          "height": 941
         }
       ]
     },
@@ -51,5 +59,6 @@
       "assets": [],
       "status": "normal_news_visuals_missing"
     }
-  }
+  },
+  "policy": "all_news_random_once"
 }

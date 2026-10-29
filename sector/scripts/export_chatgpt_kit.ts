@@ -25,12 +25,10 @@ try{
  await source('market-session.ts');
  await source('channel-programme.ts');
  await source('brand-kit-registry.ts');await source('brand-kit-imagegen.ts');await source('editorial.ts');await source('news-visual-plan.ts');
- await mkdir(join(stage,'assets/news-visuals'),{recursive:true});
- await copyFile(join(root,'assets/news-visuals/manifest.json'),join(stage,'assets/news-visuals/manifest.json'));
- await copyFile(join(root,'assets/news-visuals/README.md'),join(stage,'assets/news-visuals/README.md'));
+ await cp(join(root,'assets/news-visuals'),join(stage,'assets/news-visuals'),{recursive:true});
  await cp(join(root,'assets/approved-typography'),join(stage,'assets/approved-typography'),{recursive:true});
  await cp(join(root,'assets/visual-templates'),join(stage,'assets/visual-templates'),{recursive:true});
- await writeFile(join(stage,'BRAND-KIT.md'),'Borsa Çakalı bc-typographic-v1: onaylı yatay/yoğun liste, siyah #080908, kırık beyaz #F4F1E9; Anton/Zilla Slab başlık ve Inter veri fontu; seyrek veri yatay, yoğun veri dikey, yalnız silik çapraz filigran. 12 tür ve mevcut girişler src/brand-kit-registry.ts içindedir. src/brand-kit-imagegen.ts aynı production tokenlarını kullanır. Veri satırları ve mevcut kapasite kapıları korunur. Normal haber görselleri ile son dakika varlıkları ayrı havuzlardır; assets/news-visuals manifesti kapalıdır.\n');
+ await writeFile(join(stage,'BRAND-KIT.md'),'Borsa Çakalı bc-typographic-v1: onaylı yatay/yoğun liste, siyah #080908, kırık beyaz #F4F1E9; Anton/Zilla Slab başlık ve Inter veri fontu; seyrek veri yatay, yoğun veri dikey, yalnız silik çapraz filigran. 12 tür ve mevcut girişler src/brand-kit-registry.ts içindedir. src/brand-kit-imagegen.ts aynı production tokenlarını kullanır. Veri satırları ve mevcut kapasite kapıları korunur. Normal haberler dört onaylı SON DAKİKA PNG’sinden birini bir kez rastgele seçer; assets/news-visuals manifesti ve kaynak PNG’ler pakettedir. Habere özel kart üretimi kullanılmaz.\n');
  for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','OFL.txt'])await copyFile(join(root,'assets',file),join(stage,'assets',file));
  for(const file of ['index.mjs','index_bg.wasm','package.json'])await copyFile(join(root,'node_modules/@resvg/resvg-wasm',file),join(stage,'runtime',file));
  execFileSync(join(root,'node_modules/.bin/esbuild'),['src/card-pages.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/cards.mjs')}`],{cwd:root});

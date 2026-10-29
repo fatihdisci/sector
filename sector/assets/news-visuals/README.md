@@ -1,7 +1,9 @@
-# Haber genel görsel havuzu — kapalı hazırlık
+# Haber görsel havuzu
 
-Dört Library referansı, koordinatörden aktarılan kırmızı vurgulu yatay SON DAKİKA görselleridir. Bu native çalışma ağacında dosyaları/pikselleri veya doğrulanmış hash'leri yoktur. `manifest.json` referans kaydıdır; indirildi, incelendi veya kullanılabilir kabul edildiği anlamına gelmez. Önceki Library/app erişim reddi nedeniyle başka erişim yolu veya tekrar denenmedi. Yeni görsel üretilmedi.
+Kullanıcının 29 Ekim 2026 kararıyla bütün normal haberlerde bu dört genel SON DAKİKA PNG'sinden biri rastgele seçilir. Habere özel yazılı kart veya yeni AI görseli üretilmez. Bu, haberin sınıflandırmasını veya seçki puanını değiştirmez.
 
-`src/news-visual-plan.ts` yalnız ayrımı açıklar. Son dakika sınıfı ayrıca doğrulanmadıkça bu havuz normal haberlere uygulanmaz. Normal haber için SON DAKİKA yazmayan ayrı yatay genel görseller eksiktir. Veri kartları siyah/kırık beyazdır; kırmızı izni yalnız gerçek son dakika varlıklarına aittir.
+Manifestte her görselin Library kimliği, yerel dosyası, SHA256 hash'i ve 1672×941 boyutu kayıtlıdır. Dosyalar kaynak PNG'lerin değiştirilmemiş kopyalarıdır. Kayıp/değişmiş dosya durumunda başka görsel veya üretim yolu kullanılmaz.
 
-Gelecekte desteklenen yolla dosyalar sağlanıp pikselleri, boyutları, hakları ve SHA256 doğrulandıktan sonra yerel `local_path`/`sha256` alanları doldurulmalıdır. Bu teslim bunları etkinleştirmez. X paylaşımı yalnız sahibin açık Paylaş eylemiyle yapılır.
+Seçim model sonucundan bağımsız yapılır; ilk seçim kalıcı kayıtla sabitlenir. Teslimat, tekrar deneme, metin düzenleme ve X planı aynı görsel byte'larını korur. Tasarım menüsü kapalıdır; tweet metni düzenlenebilir. X yalnız sahip Paylaş eylemiyle planlanır.
+
+DKB'nin ayrı sabit görseli, yapılandırılmış veri raporları ve /hazir paketlerinin birebir medyası bu havuza girmez. Bu kaynak değişikliği canlı servise kurulana kadar mevcut çalışan sürüm değişmez.

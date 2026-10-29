@@ -116,3 +116,42 @@ test('explicitly requested distinct channel posts each produce a deliverable and
  assert.notEqual(created[0],created[1]);assert.equal(sql.prepare('SELECT COUNT(*) n FROM drafts').get()!.n,3);assert.equal(objects.size,2);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM publication_log').get()!.n,0);
  assert.equal(sql.prepare("SELECT content FROM drafts WHERE id='old'").get()!.content,JSON.stringify(legacy));
 });
+
+import {loadNewsArtwork} from '../scripts/news_artwork';
+import {assertNewsArtwork,newsArtworkEligible,selectNewsArtwork} from '../src/news-artwork';
+import {renderModelJob} from '../scripts/owner_visual_runtime';
+import {draftKeyboard} from '../src/telegram-ui';
+test('news uses one reviewed PNG, persists choice across failed storage, retry and text edit; no rendering or X queue',async()=>{
+ const {env,sql,objects}=await environment();env.NEWS_GENERAL_IMAGES=await loadNewsArtwork('.');
+ sql.prepare('INSERT INTO sources(id,config) VALUES(?,?)').run('test','{}');
+ sql.prepare('INSERT INTO articles(id,source_id,url,title,summary,published_at,first_seen) VALUES(?,?,?,?,?,?,?)').run('a','test',document.url,document.title,'',document.published_at!,Date.now()/1000);
+ const input=JSON.stringify([document]),hash=await sha256(input),time=Math.floor(Date.now()/1000);
+ sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,state,lease_token,lease_until) VALUES('news-art','a',?,?,?,'leased','lease',?)").run(input,hash,time,time+600);
+ const payload={id:'news-art',lease_token:'lease',input_hash:hash,draft,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},cards:[]};
+ const rendered=await renderModelJob(env,{...payload,documents:[document],deadline:time+600} as any,draft,async()=>{throw Error('must_not_render')});assert.deepEqual(rendered,{cards:[]});
+ const put=env.MEDIA.put;env.MEDIA.put=async()=>{throw Error('storage_failure')};
+ await assert.rejects(submitJob(env,payload),/storage_failure/);
+ const reserved=JSON.parse(String(sql.prepare("SELECT value FROM system_state WHERE key='news_artwork_choice:news-art'").get()!.value));
+ env.MEDIA.put=put;env.NEWS_GENERAL_IMAGES.reverse();
+ const result=await submitJob(env,payload),row=sql.prepare('SELECT * FROM drafts WHERE id=?').get(result.id)!;const saved=JSON.parse(String(row.content));
+ assert.deepEqual(saved.news_artwork,reserved);const image=objects.get(String(row.media_key))!;assert.deepEqual(image,env.NEWS_GENERAL_IMAGES.find(a=>a.id===reserved.id)!.bytes);assert.equal(objects.size,1);
+ await assertNewsArtwork(String(row.content),[image]);await assert.rejects(assertNewsArtwork(String(row.content),[image,image]),/news_artwork_binding/);
+ const changed=image.slice();changed[100]^=1;await assert.rejects(assertNewsArtwork(String(row.content),[changed]),/news_artwork_binding/);
+ assert.equal((await submitJob(env,payload)).id,result.id);assert.equal(objects.size,1);
+ const edited={...draft,body:draft.body+' Şirket izin sürecini sürdürüyor.'};
+ sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,state,lease_token,lease_until,kind,draft_id,expected_revision,edit_request) VALUES('news-edit','a',?,?,?,'leased','lease',?,'edit',?,1,'Metni düzenle')").run(input,hash,time,time+600,result.id);
+ await assert.rejects(submitJob(env,{...payload,id:'news-edit',draft:{...draft,news_artwork:reserved}}),/owner_ready_model_forbidden/);
+ await submitJob(env,{...payload,id:'news-edit',draft:edited});
+ const after=sql.prepare('SELECT * FROM drafts WHERE id=?').get(result.id)!;assert.equal(after.revision,2);assert.deepEqual(JSON.parse(String(after.content)).news_artwork,reserved);assert.deepEqual(objects.get(String(after.media_key)),image);
+ const menu=JSON.stringify(draftKeyboard(result.id,2,[document],true,saved,{},'more'));assert(!menu.includes('layouts'));assert(!menu.includes('design:'));
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_schedules').get()!.n,0);
+});
+test('general news pool excludes DKB, owner packages and data; rejects missing or altered real assets',async()=>{
+ const {env}=await environment(),pool=await loadNewsArtwork('.');env.NEWS_GENERAL_IMAGES=pool;
+ assert(newsArtworkEligible(draft,[document]));assert(newsArtworkEligible({...draft,template:'kap'},[{...document,source_id:'kap'}]));
+ for(const d of [{...draft,tweet_style:'owner_ready' as const},{...draft,automated_daily:'circuit' as const},{...draft,template:'circuit' as const},{...draft,card_data:{report:{rows:[],footer:''}}}])assert(!newsArtworkEligible(d,[document]));
+ assert(!newsArtworkEligible(draft,[{...document,market_data:{kind:'akd'}}]));assert(!newsArtworkEligible(draft,[{...document,owner_visual:{} as any}]));
+ env.NEWS_GENERAL_IMAGES=pool.slice(0,3);await assert.rejects(selectNewsArtwork(env,'missing'),/unavailable/);
+ env.NEWS_GENERAL_IMAGES=pool;const chosen=await selectNewsArtwork(env,'stable');assert.equal((await selectNewsArtwork(env,'stable')).sha256,chosen.sha256);
+ chosen.bytes=chosen.bytes.slice();chosen.bytes[100]^=1;await assert.rejects(selectNewsArtwork(env,'stable'),/news_artwork_invalid/);
+});

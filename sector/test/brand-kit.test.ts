@@ -33,9 +33,9 @@ test('natural data headings can be statements or honest questions and repeated c
 test('imagegen and renderer share identity; unknown content type never silently chooses a template',()=>{
  const p=imagegenPrompt('takas','Doğrulanmış içerik');for(const token of[TOKENS.bg,TOKENS.ink,String(TOKENS.width)+'×'+TOKENS.height,String(TOKENS.watermarkAngle)+'°'])assert(p.includes(token));assert.throws(()=>imagegenPrompt('not-registered',''),/unknown_type/);
 });
-test('remote breaking assets are unavailable locally and never become normal-news illustrations',()=>{
- assert.equal(manifest.enabled,false);assert.equal(manifest.pools.breaking.assets.length,4);assert(manifest.pools.breaking.assets.every(a=>a.local_path===null&&a.sha256===null&&!a.verified));
- assert.equal(newsVisualPlan({template:'news'},{breakingConfirmed:true}).pool,'general');assert.equal(newsVisualPlan({template:'breaking'}).pool,'general');const plan=newsVisualPlan({template:'breaking'},{breakingConfirmed:true});assert.equal(plan.pool,'breaking');assert.equal(plan.ready,false);assert.equal(plan.reason,'library_assets_not_materialized');assert.equal(plan.references.length,4);
+test('reviewed four-image pool is explicitly enabled for all ordinary news',()=>{
+ assert.equal(manifest.enabled,true);assert.equal(manifest.pools.breaking.assets.length,4);assert(manifest.pools.breaking.assets.every(a=>!!a.local_path&&/^[a-f0-9]{64}$/.test(a.sha256)&&a.verified));
+ const plan=newsVisualPlan({template:'news'});assert.equal(plan.pool,'breaking');assert.equal(plan.ready,true);assert.equal(plan.reason,'all_news_random_once');assert.equal(plan.references.length,4);assert.equal(plan.requiresBreakingConfirmation,false);
 });
 
 test('uppercase Turkish breaking heading does not repeat a separate breaking label',()=>{const svg=draftCards(samples.find(s=>s.key==='son-dakika')!.draft as Draft)[0];assert.equal((svg.match(/>SON DAKİKA<\/text>/g)??[]).length,1);});

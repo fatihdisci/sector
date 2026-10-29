@@ -7,7 +7,7 @@ export async function requestRedesign(env:Env,data:string,messageId:number,updat
  const match=/^design:([a-f0-9-]{36}):(\d+)(?::([a-z]+))?$/.exec(data);if(!match)return 'Bu kart kullanılamıyor.';
  const row=await env.DB.prepare("SELECT id,revision,delivery_state,content,expires_at FROM drafts WHERE id=? AND revision=? AND message_id=? AND state='pending'").bind(match[1],Number(match[2]),messageId).first<{id:string;revision:number;delivery_state:string;content:string;expires_at:number}>();
  if(!row||row.delivery_state!=='sent')return 'Kart güncellenmiş veya hazırlanıyor. Güncel karttan tekrar deneyebilirsin.';
- const draft=JSON.parse(row.content) as Draft;if(draft.automated_daily||draft.tweet_style==='owner_ready')return 'Hazır paket sabittir. Değişiklik için yeni paket gönder.';if(draft.template==='circuit'||draft.card_data?.report||draft.card_data?.overview)return 'Bu şablon sabit düzen kullanır.';
+ const draft=JSON.parse(row.content) as Draft;if(draft.automated_daily||draft.tweet_style==='owner_ready')return 'Hazır paket sabittir. Değişiklik için yeni paket gönder.';if(draft.news_artwork)return 'Haber görseli sabittir; yalnız tweet metni düzenlenebilir.';if(draft.template==='circuit'||draft.card_data?.report||draft.card_data?.overview)return 'Bu şablon sabit düzen kullanır.';
  if(match[3]&&!isCardLayout(match[3]))return 'Geçersiz düzen.';
  const busy=await env.DB.prepare("SELECT id FROM model_jobs WHERE draft_id=? AND state IN ('queued','leased','retry_pending') UNION ALL SELECT CAST(update_id AS TEXT) id FROM card_redesigns WHERE draft_id=? AND state IN ('queued','rendering') LIMIT 1").bind(row.id,row.id).first();
  if(busy)return 'Kartın düzenlemesi zaten sırada.';
@@ -23,7 +23,7 @@ export async function redesignOne(env:Env,render:(svg:string)=>Promise<Uint8Arra
  const lock=await env.DB.prepare("UPDATE card_redesigns SET state='rendering',lease_until=? WHERE update_id=? AND state='queued'").bind(time+120,job.update_id).run();if(!lock.meta.changes)return;
  try{
   const row=await env.DB.prepare("SELECT content,documents,revision FROM drafts WHERE id=? AND revision=? AND message_id=? AND delivery_state='sent' AND state='pending'").bind(job.draft_id,job.revision,job.message_id).first<{content:string;documents:string;revision:number}>();if(!row)throw Error('stale_card');
-  const d=JSON.parse(row.content) as Draft;if(d.card_data?.overview)throw Error('fixed_layout');const theme=await savedTheme(env,'draft:'+job.draft_id)??legacyTheme(d.template);
+  const d=JSON.parse(row.content) as Draft;if(d.news_artwork)throw Error('fixed_news_artwork');if(d.card_data?.overview)throw Error('fixed_layout');const theme=await savedTheme(env,'draft:'+job.draft_id)??legacyTheme(d.template);
   const revision=row.revision+1,media=await revisionMediaKey(job.draft_id,revision,String(job.update_id));
   await renderMedia(env,media,d,render,theme,job.layout);
   // Keep old media for recovery. Content/evidence never change in a redesign.

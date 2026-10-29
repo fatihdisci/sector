@@ -1,3 +1,4 @@
+import {newsArtworkEligible,selectNewsArtwork} from './news-artwork';
 import {visualDocument,assertVisualReceipt} from './owner-visual';
 import {bytesHash} from './media-set';
 import {modelRoute} from './model-route';
@@ -119,7 +120,9 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
  const theme=existingCard?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(existingCard.content) as Draft).template)):(await savedTheme(env,job.article_id)??legacyTheme(draft.template));
  const layout=await savedLayout(env,job.kind==='edit'?'draft:'+job.draft_id:job.article_id)??'editorial';
  const cards=Array.isArray(input.cards)?input.cards as {svg_hash:string;png_base64:string}[]:[{svg_hash:input.svg_hash,png_base64:input.png_base64}]as {svg_hash:string;png_base64:string}[];const images:Uint8Array[]=[];
- if(visualDocument(documents)){
+ if(env.NEWS_GENERAL_IMAGES&&newsArtworkEligible(draft,documents)){
+  const a=await selectNewsArtwork(env,job.kind==='edit'?job.draft_id!:job.id,existingCard?JSON.parse(existingCard.content).news_artwork:undefined);draft.news_artwork={id:a.id,sha256:a.sha256};images.push(a.bytes);
+ }else if(visualDocument(documents)){
   await assertVisualReceipt({id:job.id,lease_token:job.lease_token,input_hash:job.input_hash,deadline:job.lease_until,kind:job.kind,draft_id:job.draft_id,expected_revision:job.expected_revision,documents},draft,input.visual_result,cards);
   const receipt=input.visual_result as import('./owner-visual').VisualReceipt;
   for(const [i,card]of cards.entries()){const p=receipt.pages[i],bytes=pngBytes(card.png_base64,p.width,p.height);if(await bytesHash(bytes)!==p.sha256)throw Error('owner_visual_image_hash_mismatch');images.push(bytes);}
