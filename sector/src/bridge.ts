@@ -67,6 +67,7 @@ export async function leaseJob(env:Env) {
 export async function enqueueEdit(env:Env,id:string,revision:number,request:string,ownerMessageId?:number):Promise<void> {
  if(!request.trim()||request.length>12_000)throw new Error('invalid_edit_request');
  const row=await env.DB.prepare("SELECT * FROM drafts WHERE id=? AND revision=? AND state='pending' AND expires_at>?").bind(id,revision,now()).first<{documents:string;content:string}>();if(!row)throw new Error('stale_edit');
+ if(JSON.parse(row.content).automated_daily||JSON.parse(row.content).tweet_style==='owner_ready')throw Error('owner_ready_immutable');
  const stored=JSON.parse(row.documents) as Document[];
  const ownerVisual=visualDocument(stored);
  if(!ownerVisual&&(await tryHashtagOnlyEdit(env,id,revision,request)||await tryPeriodOnlyEdit(env,id,revision,request)))return;

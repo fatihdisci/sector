@@ -1,3 +1,6 @@
+import {pollCircuitAuto} from './circuit-auto';
+import {keyboard,telegram} from './telegram';
+import {postText} from './editorial';
 import {saveGallery} from './gallery-save';
 import {readMedia} from './media-set';
 import {scheduledSelection} from './newsroom';
@@ -144,11 +147,13 @@ export async function deliver(env:Env):Promise<void> {
    }
   }
   const current=await env.DB.prepare("SELECT 1 FROM drafts WHERE id=? AND revision=? AND media_key=? AND content=? AND state='pending' AND delivery_state='sending' AND expires_at>?").bind(row.id,row.revision,row.media_key,row.content,now()).first();if(!current)return;
-  const message=await sendDraft(env,row.id,row.revision,JSON.parse(row.content),JSON.parse(row.documents),images.length>1?images:images[0],row.verification,target);
+  const textControl=await env.DB.prepare('SELECT 1 FROM system_state WHERE key=?').bind('draft_text_control:'+row.id).first();
+  const d=JSON.parse(row.content),docs=JSON.parse(row.documents);
+  const message=textControl?Number((await telegram(env,target?'editMessageText':'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,...(target?{message_id:String(target)}:{}),text:postText(d),reply_markup:JSON.stringify(keyboard(row.id,row.revision,docs,postText(d),env.X_PUBLISH_ENABLED==='true',d)),link_preview_options:JSON.stringify({is_disabled:true})}))).message_id??target):await sendDraft(env,row.id,row.revision,d,docs,images.length>1?images:images[0],row.verification,target);
   await env.DB.batch([
    env.DB.prepare("UPDATE drafts SET lease_until=0,delivery_state='sent',delivered_at=?,message_id=? WHERE id=? AND revision=? AND delivery_state='sending'").bind(time,message,row.id,row.revision),
    env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_photo:'+row.id,String(message),row.id,row.revision,message),
-   ...(images.length>1?[env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_control:'+row.id,String(message),row.id,row.revision,message)]:[])]);
+   ...(textControl||images.length>1||JSON.parse(row.content).tweet_style==='owner_ready'?[env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_control:'+row.id,String(message),row.id,row.revision,message)]:[])]);
  } catch(e) {
   // Retrying an ambiguous timeout can duplicate a card already accepted by
   // Telegram. Only an explicit API rejection is eligible for an automatic retry.
@@ -161,7 +166,7 @@ export async function tick(env:Env):Promise<void> {
  const time=now();
  const lease=await env.DB.prepare("INSERT INTO system_state(key,value) VALUES('tick_lease',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(value AS INTEGER)<?").bind(String(time+300),time).run();
  if(!lease.meta.changes)return;
- try {await seed(env);await poll(env);await announceNews(env);await scheduledSelection(env);await refreshNewsRequests(env);await prepare(env);await deliver(env);}
+ try {await seed(env);try{const status=await pollCircuitAuto(env);if(env.CIRCUIT_AUTO_ENABLED==='true')await env.DB.prepare("INSERT INTO system_state(key,value) VALUES('circuit_auto_health',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({ok:true,at:Date.now(),interval_ms:120000,...status})).run();}catch(e){await env.DB.prepare("INSERT INTO system_state(key,value) VALUES('circuit_auto_health',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify({ok:false,at:Date.now(),code:errorCode(e)})).run();}await poll(env);await announceNews(env);await scheduledSelection(env);await refreshNewsRequests(env);await prepare(env);await deliver(env);}
  finally {await env.DB.prepare("UPDATE system_state SET value='0' WHERE key='tick_lease'").run();}
  await env.DB.batch([
   env.DB.prepare('DELETE FROM edits WHERE expires_at<?').bind(now()),

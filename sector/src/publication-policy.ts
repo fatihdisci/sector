@@ -17,7 +17,7 @@ export function dailyAdvice(total:number,now=Date.now()) {
 export function publicationAdvice(last:number|null,total:number,now=Date.now()) {
  return cadence(last,now)+' '+dailyAdvice(total,now);
 }
-export const publicationPlan=`ENDEKS HABER · Yayın planı (İstanbul)
+export const publicationPlan=`Borsa Çakalı · Yayın planı (İstanbul)
 Normal gün 8–12; yoğun gün 12–16. Sakin gün 4–6, hafta sonu 1–3 kaliteli içerik yeterli olabilir. Bunlar deneme aralıkları; algoritma kuralı veya doldurulacak kota değil.
 Rutinler: 45–75 dk. Güçlü tablolar: 60–90 dk. Doğrulanmış son dakika bekletilmez.
 08:45–09:30 güne hazırlık

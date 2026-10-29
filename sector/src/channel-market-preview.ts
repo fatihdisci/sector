@@ -8,10 +8,10 @@ export function channelPostSQL(alias='a'):string{
  AND json_type(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.messages')='array'
  AND json_array_length(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.messages') BETWEEN 1 AND 10)`;
 }
-export function channelMarketPreviewSQL(alias='a'):string{
+export function channelMarketDataSQL(alias='a'):string{
  if(!/^[a-z]+$/.test(alias))throw Error('invalid_sql_alias');
  return `(${alias}.source_id='sermaye-telegram'
- AND julianday(${alias}.published_at) BETWEEN julianday('now','-1 day') AND julianday('now','+5 minutes')
+
  AND json_valid(${alias}.document)
  AND json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.version')=1
  AND json_extract(CASE WHEN json_valid(${alias}.document) THEN ${alias}.document ELSE '{}' END,'$.channel')='SermayeBorsasi'
@@ -23,6 +23,8 @@ export function channelMarketPreviewSQL(alias='a'):string{
  OR json_extract(cm.value,'$.text') LIKE '%Teorik Eşleşme — __:__%'
  OR json_extract(cm.value,'$.text') LIKE '%Piyasa Raporu — __:__%')))`;
 }
+export function channelMarketPreviewSQL(alias='a'):string{return `(${channelMarketDataSQL(alias)} AND julianday(${alias}.published_at) BETWEEN julianday('now','-1 day') AND julianday('now','+5 minutes'))`;}
+
 export function latestChannelVersionSQL(alias='a'):string{
  return `NOT EXISTS(SELECT 1 FROM articles newer WHERE newer.source_id=${alias}.source_id
  AND newer.id!=${alias}.id AND json_valid(newer.document)

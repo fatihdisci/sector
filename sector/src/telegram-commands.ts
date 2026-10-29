@@ -1,3 +1,4 @@
+import {botWorkflow} from './bot-workflow';
 import {telegram} from './telegram';
 import type {Env} from './types';
 
@@ -21,7 +22,9 @@ export const TELEGRAM_COMMANDS = [
  {command:'golgerapor',description:'Filtre karşılaştırma ve inceleme özeti'},
 ] as const;
 
+export function telegramCommands(env:Env){return botWorkflow(env)==='news_only'?[...TELEGRAM_COMMANDS.filter(c=>!['kurum','akd','takas','piyasayd','sorgular'].includes(c.command)),{command:'hazir',description:'Hazır tweet ve PNG paketini onay kartına al'}]:TELEGRAM_COMMANDS;}
+
 export async function registerTelegramCommands(env:Env,fetcher:typeof fetch=fetch):Promise<void>{
- const body=new URLSearchParams({commands:JSON.stringify(TELEGRAM_COMMANDS),scope:JSON.stringify({type:'all_private_chats'}),language_code:'tr'});
+ const body=new URLSearchParams({commands:JSON.stringify(telegramCommands(env)),scope:JSON.stringify({type:'all_private_chats'}),language_code:'tr'});
  await telegram(env,'setMyCommands',body,fetcher);
 }

@@ -14,7 +14,7 @@ async function effect<T>(env:Env,key:string,send:()=>Promise<T>):Promise<T>{
  catch(e){const state=e instanceof TelegramError?e.failure==='permanent'?'failed':e.failure:'uncertain';await env.DB.prepare('UPDATE system_state SET value=? WHERE key=?').bind(JSON.stringify({state}),key).run();throw e;}
 }
 export async function sendAlbum(env:Env,id:string,revision:number,draft:Draft,docs:Document[],images:Uint8Array[],oldMessage:number|undefined,fetcher:typeof fetch){
- if(images.length<2||images.length>4)throw Error('multi_card_capacity_exceeded');
+ if(images.length<(draft.tweet_style==='owner_ready'?1:2)||images.length>4)throw Error('multi_card_capacity_exceeded');
  const caption=postText(draft);if(caption.length>4096)throw Error('telegram_caption_too_long');
  const prefix=`telegram_bundle:${id}:${revision}`,hash=await sha256(JSON.stringify([draft,await Promise.all(images.map(bytesHash))]));
  const source=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(prefix).first<{value:string}>();
@@ -26,7 +26,8 @@ export async function sendAlbum(env:Env,id:string,revision:number,draft:Draft,do
  if(oldMessage)try{await telegram(env,'editMessageReplyMarkup',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(oldMessage),reply_markup:JSON.stringify({inline_keyboard:[]})}),fetcher);}catch(e){if(!(e instanceof TelegramError&&e.code===400))throw e;}
  const ids=await effect<number[]>(env,prefix+':album',async()=>{
   await eligible();const form=new FormData();form.set('chat_id',env.TELEGRAM_CHAT_ID!);
-  form.set('media',JSON.stringify(images.map((_,i)=>({type:'photo',media:`attach://p${i}`}))));images.forEach((b,i)=>form.set('p'+i,new Blob([b as BlobPart],{type:'image/png'}),`endeks-${i+1}.png`));
+  if(images.length===1){form.set('photo',new Blob([images[0] as BlobPart],{type:'image/png'}),'borsa-cakali.png');const single=await telegram(env,'sendPhoto',form,fetcher);if(!Number.isSafeInteger(single.message_id))throw new TelegramError(0,60,'uncertain');return [Number(single.message_id)];}
+  form.set('media',JSON.stringify(images.map((_,i)=>({type:'photo',media:`attach://p${i}`}))));images.forEach((b,i)=>form.set('p'+i,new Blob([b as BlobPart],{type:'image/png'}),`borsa-cakali-${i+1}.png`));
   const result=await telegram(env,'sendMediaGroup',form,fetcher) as unknown as {message_id:number}[];
   if(!Array.isArray(result)||result.length!==images.length||result.some(m=>!Number.isSafeInteger(m.message_id)))throw new TelegramError(0,60,'uncertain');return result.map(m=>m.message_id);
  });

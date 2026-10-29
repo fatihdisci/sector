@@ -7,7 +7,7 @@ export async function requestRedesign(env:Env,data:string,messageId:number,updat
  const match=/^design:([a-f0-9-]{36}):(\d+)(?::([a-z]+))?$/.exec(data);if(!match)return 'Bu kart kullanılamıyor.';
  const row=await env.DB.prepare("SELECT id,revision,delivery_state,content,expires_at FROM drafts WHERE id=? AND revision=? AND message_id=? AND state='pending'").bind(match[1],Number(match[2]),messageId).first<{id:string;revision:number;delivery_state:string;content:string;expires_at:number}>();
  if(!row||row.delivery_state!=='sent')return 'Kart güncellenmiş veya hazırlanıyor. Güncel karttan tekrar deneyebilirsin.';
- const draft=JSON.parse(row.content) as Draft;if(draft.template==='circuit'||draft.card_data?.report||draft.card_data?.overview)return 'Bu şablon sabit düzen kullanır.';
+ const draft=JSON.parse(row.content) as Draft;if(draft.automated_daily||draft.tweet_style==='owner_ready')return 'Hazır paket sabittir. Değişiklik için yeni paket gönder.';if(draft.template==='circuit'||draft.card_data?.report||draft.card_data?.overview)return 'Bu şablon sabit düzen kullanır.';
  if(match[3]&&!isCardLayout(match[3]))return 'Geçersiz düzen.';
  const busy=await env.DB.prepare("SELECT id FROM model_jobs WHERE draft_id=? AND state IN ('queued','leased','retry_pending') UNION ALL SELECT CAST(update_id AS TEXT) id FROM card_redesigns WHERE draft_id=? AND state IN ('queued','rendering') LIMIT 1").bind(row.id,row.id).first();
  if(busy)return 'Kartın düzenlemesi zaten sırada.';

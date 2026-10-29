@@ -14,7 +14,7 @@ def main():
     if result.returncode:raise SystemExit('X hesabı doğrulanamadı. Read and Write izinli OAuth 1.0 anahtarlarını kontrol et. Güvenli sonuç: '+result.stdout.strip()[:120])
     root=pathlib.Path.home()/'Library/Application Support/sector-haber'
     path=root/'x-credentials.json';tmp=path.with_suffix('.next');tmp.write_text(json.dumps(keys));tmp.chmod(0o600);os.replace(tmp,path)
-    print('ENDEKS HABER X bağlantısı doğrulandı ve kaydedildi. Yeni kartlarda Paylaş düğmesi açılacak. Uygulamada günlük paylaşım sınırı yok.')
+    print('Borsa Çakalı X bağlantısı doğrulandı ve kaydedildi. Yeni kartlarda Paylaş düğmesi açılacak. Uygulamada günlük paylaşım sınırı yok.')
 if __name__=='__main__':
     try:main()
     except (EOFError,KeyboardInterrupt):raise SystemExit('Kurulum iptal edildi.')

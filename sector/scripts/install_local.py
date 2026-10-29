@@ -89,7 +89,7 @@ class Installer:
             shutil.copytree(self.source/name,app/name,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         # UI regression tests need public assets; never copy panel credentials/config.
         shutil.copytree(self.source/'miniapp/public',app/'miniapp/public')
-        for name in ['sources.json','package.json','package-lock.json','tsconfig.json','requirements-pdf.txt','requirements-telegram.txt','wrangler.toml']:
+        for name in ['sources.json','package.json','package-lock.json','tsconfig.json','requirements-pdf.txt','requirements-telegram.txt','wrangler.toml','bot-workflow.json']:
             shutil.copy2(self.source/name,app/name)
         if not self.collector:
             shutil.copytree(self.source/'vendor/tweetkit',app/'vendor/tweetkit',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))

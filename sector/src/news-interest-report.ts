@@ -17,7 +17,7 @@ export async function interestReportData(env:Pick<Env,'DB'|'TELEGRAM_USER_ID'>){
 }
 export function formatInterestReport(data:Awaited<ReturnType<typeof interestReportData>>,at=Date.now()){
  const {records,actions,snapshots}=data;
- const lines=['ENDEKS HABER — AYRINTILI GERİ BİLDİRİM',`Rapor zamanı: ${date(at)}`,`Kayıt: ${records.length} | Beğendim: ${records.filter(r=>r.choice==='like').length} | Beğenmedim: ${records.filter(r=>r.choice==='dislike').length} | Kaldırılmış: ${records.filter(r=>!r.choice).length}`,
+ const lines=['Borsa Çakalı — AYRINTILI GERİ BİLDİRİM',`Rapor zamanı: ${date(at)}`,`Kayıt: ${records.length} | Beğendim: ${records.filter(r=>r.choice==='like').length} | Beğenmedim: ${records.filter(r=>r.choice==='dislike').length} | Kaldırılmış: ${records.filter(r=>!r.choice).length}`,
  'Güncel seçim oy sayılır; tıklama geçmişi ayrı gösterilir. Tıklanmama olumsuz değildir. Beğeni rota etiketi/onayı değildir. Otomatik kaynak/şirket/konu yasağı üretilmez.',
  'Mevcut karar en son kayıtlı değerlendirmedir, tıklama anındaki karar değildir. Eski kayıtlarda geçmiş görüntü yoksa yeniden oluşturulmaz. Son 100 aday sınırı uygulanmaz.'];
  for(const [i,r] of records.entries()){

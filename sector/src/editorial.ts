@@ -177,6 +177,7 @@ export function numericIssues(draft:Draft,documents:Document[]):string[] {
  return issues.slice(0,20);
 }
 export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;verification:string} {
+ if((value as Draft)?.automated_daily||(value as Draft)?.tweet_style==='owner_ready')throw Error('owner_ready_model_forbidden');
  if(!value||typeof value!=='object')throw new Error('invalid_draft');
  const d=value as Draft;
  validateCardData(d.card_data,documents);
@@ -284,6 +285,7 @@ function formattedPostText(d:Draft):string {
 }
 
 export function postText(d:Draft,_sources:string[]=[]):string {
+ if(d.tweet_style==='owner_ready')return d.body;
  const data=d.card_data;
  const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(['institutional','theoretical'].includes(d.template)?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
  const verifiedViewCodes=new Set([...codes,...(data?.report?.circuit?.selected_tickers??[]),...(data?.movers?[...data.movers.up,...data.movers.down].map(r=>r.symbol):[]),...(data?.overview?.panels.flatMap(p=>p.rows.map(r=>r.label))??[])].map(c=>c.toUpperCase()));

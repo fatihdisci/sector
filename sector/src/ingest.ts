@@ -1,3 +1,4 @@
+import {botWorkflow,isDataEvidence} from './bot-workflow';
 import {selectMarketDocument} from './market-input';
 import {outputPreferences} from './output-preferences';
 import {retryManualModel} from './model-recovery';
@@ -5,6 +6,7 @@ import type {Document,Env} from './types';
 import {sha256} from './utils/text';
 // Trusted local readers only. This is not an endpoint accepting arbitrary evidence.
 export async function enqueueEvidence(env:Env,documents:Document[],kind:'kap'|'manual',editorRequest='',idempotencyKey?:string):Promise<string> {
+ if(kind==='manual'&&botWorkflow(env)==='news_only'&&documents.some(isDataEvidence))throw Error('bot_data_workflow_disabled');
  if(!documents.length||documents.some(d=>!d.body?.trim()||!d.passages?.length||d.coverage&&!d.coverage.complete))throw Error('incomplete_source_evidence');
  if(editorRequest.length>12000||kind!=='manual'&&editorRequest)throw Error('invalid_editor_request');
  const preference=kind==='manual'?outputPreferences(editorRequest):undefined;

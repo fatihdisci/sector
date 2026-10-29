@@ -1,0 +1,8 @@
+/** Local/offline file builder. No Telegram, X, model or credential calls. */
+import {readFile,writeFile}from'node:fs/promises';import {pathToFileURL}from'node:url';import {resolve}from'node:path';
+import {readyPackageHash,validateReadyPackage,type ReadyPackage}from'../src/owner-ready-post';import {sha256}from'../src/utils/text';import {bytesHash}from'../src/media-set';
+export async function buildReadyPackage(id:string,text:string,sources:string[],images:Uint8Array[]):Promise<ReadyPackage>{const p={version:1 as const,kind:'owner_ready_post'as const,id,text,text_sha256:await sha256(text),sources,media:await Promise.all(images.map(async b=>({png_base64:Buffer.from(b).toString('base64'),sha256:await bytesHash(b)})))};const result={...p,sha256:await readyPackageHash(p)};await validateReadyPackage(result);return result;}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
+ const [manifest,output]=process.argv.slice(2);if(!manifest||!output||process.argv.length!==4)throw Error('ready_manifest_and_output_required');
+ const m=JSON.parse(await readFile(manifest,'utf8'))as {id:string;text_file:string;sources:string[];png_files:string[]};if(!Array.isArray(m.png_files)||m.png_files.length<1||m.png_files.length>4)throw Error('ready_media_capacity');const p=await buildReadyPackage(m.id,await readFile(m.text_file,'utf8'),m.sources,await Promise.all(m.png_files.map(f=>readFile(f))));const raw=JSON.stringify(p);if(new TextEncoder().encode(raw).length>18_000_000)throw Error('ready_file_limit');await writeFile(output,raw,{flag:'wx',mode:0o600});console.log(JSON.stringify({path:resolve(output),package_id:p.id,sha256:p.sha256,media_count:p.media.length,network:false}));
+}

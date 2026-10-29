@@ -1,3 +1,4 @@
+import {pollCircuitAuto,circuitPollDelay} from '../src/circuit-auto';
 import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
 import {loadModelSelection,runModelJob} from './model_runner';
 import {modelFailureCode,type ModelStage} from './model_failure';
@@ -50,6 +51,7 @@ import type {Env,Document,Draft} from '../src/types';
 const directory=`${homedir()}/Library/Application Support/sector-haber`;
 const secrets=JSON.parse(await readFile(directory+'/secrets.json','utf8'));
 const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(await readFile('migrations/0001_sector.sql','utf8'))+'\n'+(await readFile('migrations/0008_kap_previews.sql','utf8'))),MEDIA:await localMedia(directory+'/media'),MODE:'telegram_review',AI_MODEL:'gpt-6.1-terra',AI_EFFORT:'low',AI_DAILY_DRAFT_LIMIT:'240'} as Env;
+const workflowConfig=JSON.parse(await readFile('bot-workflow.json','utf8'));if(workflowConfig.version!==1)throw Error('invalid_bot_workflow');const workflow=process.env.SECTOR_BOT_WORKFLOW_MODE??workflowConfig.mode;if(!['full','news_only'].includes(workflow))throw Error('invalid_bot_workflow');env.BOT_WORKFLOW_MODE=workflow as 'full'|'news_only';if(workflowConfig.circuit_auto?.interval_seconds!==120)throw Error('invalid_circuit_interval');env.CIRCUIT_AUTO_ENABLED=workflowConfig.circuit_auto.enabled===true?'true':'false';
 const modelSelection=await loadModelSelection(process.env);
 env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;
 env.OWNER_VISUAL=await createOwnerVisualRuntime(env,{root:process.cwd()+'/',python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`});
@@ -90,6 +92,7 @@ async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof 
  }catch(e){if(job)await env.DB.prepare("UPDATE model_jobs SET state='needs_review',error=? WHERE id=? AND state='leased'").bind(modelFailureCode(e,stage),job.id).run();await status('model_health',{ok:false,at:new Date().toISOString(),code:modelFailureCode(e,stage),stage,duration_ms:Date.now()-started});if(e instanceof Error&&['quota_paused','hermes_auth_unavailable'].includes(e.message))await status('model_paused_until',Date.now()+3600_000);await pause(e instanceof Error&&['quota_paused','hermes_auth_unavailable','subscription_turn_failed','hermes_job_failed'].includes(e.message)?60_000:2_000);}
 }}
 async function newsLoop(){let official=0;while(!stopping()){try{await tick(env);await status('collector_health',{ok:true,at:new Date().toISOString()});if(Date.now()-official>10*60_000){try{await scanOfficial(async(_path,value)=>ingestOfficial(env,value as Record<string,unknown>),directory+'/official-state.json');official=Date.now();await status('official_health',{ok:true,at:new Date().toISOString()});}catch(e){await status('official_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}}}catch(e){await status('collector_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}if(Date.now()-lastArtifactCleanup>=60*60_000){try{await cleanupSourceArtifacts();lastArtifactCleanup=Date.now();}catch(e){await status('artifact_cleanup_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}}await pause(60_000);}}
+async function circuitLoop(){while(!stopping()){const started=Date.now();let result:{state:string;next_at?:number}={state:'failed'};try{result=await pollCircuitAuto(env);await status('circuit_auto_health',{ok:true,at:new Date().toISOString(),interval_ms:120000,...result});}catch(e){await status('circuit_auto_health',{ok:false,at:new Date().toISOString(),code:errorCode(e),interval_ms:120000});}await pause(circuitPollDelay(result,started,Date.now()));}}
 async function buybackLoop(){while(!stopping()){try{
  const result=await pollBuybacks(env,{readImage:readBuybackImage,indices:async()=>{let db:DatabaseSync|undefined;try{db=new DatabaseSync(directory+'/kap/kap.sqlite',{readOnly:true});if(Number(db.prepare('PRAGMA application_id').get()!.application_id)!==0x534B4150)return null;const row=db.prepare("SELECT value FROM settings WHERE key='indices'").get();return row?JSON.parse(String(row.value)):null;}catch{return null;}finally{db?.close();}}});
  await status('buyback_report_health',{ok:!['needs_review','blocked_existing'].includes(result.state),at:new Date().toISOString(),...result});
@@ -166,5 +169,5 @@ try{await withServiceLock(lock,()=>unlink(lockPath),async()=>{
   const stopCheck=setInterval(async()=>{const completed=await env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state='complete'").first<{n:number}>();if((completed?.n??0)>0){shutdown.stop();clearInterval(stopCheck);}},1000);
   try{await withModelHeartbeat(env,modelLoop);}finally{clearInterval(stopCheck);}return;
  }
- await Promise.all([channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),newsLoop(),withModelHeartbeat(env,modelLoop),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
+ await Promise.all([circuitLoop(),channelLoop(),buybackLoop(),spkXLoop(),fintablesXLoop(),newsLoop(),withModelHeartbeat(env,modelLoop),telegramLoop(),telegramCommandsLoop(),deliveryLoop(),kapLoop(),manualLoop(),reportCacheLoop(),requestsLoop(),designLoop(),xLoop()]);
 });}finally{shutdown.dispose();}

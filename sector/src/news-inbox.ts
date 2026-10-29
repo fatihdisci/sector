@@ -1,3 +1,5 @@
+import {channelMarketDataSQL} from './channel-market-preview';
+import {botWorkflow,BOT_DATA_MESSAGE} from './bot-workflow';
 import {notifyEditFailures} from './hashtag-edit';
 import {newsProgressNote,newsFailureNote,type NewsProgress} from './news-progress';
 export {newsProgressNote} from './news-progress';
@@ -41,6 +43,7 @@ async function showNewsProgress(env:Env,row:ProgressCard,note:string):Promise<bo
 }
 export async function requestNews(env:Env,id:string,messageId:number,confirmedRevision?:number):Promise<string> {
  const row=await env.DB.prepare('SELECT * FROM news_cards WHERE id=? AND message_id=?').bind(id,messageId).first<{article_id:string;state:string}>();
+ if(row&&botWorkflow(env)==='news_only'&&await env.DB.prepare(`SELECT 1 FROM articles a WHERE a.id=? AND ${channelMarketDataSQL('a')}`).bind(row.article_id).first())return BOT_DATA_MESSAGE;
  if(!row)return 'Bu haber kartı artık kullanılamıyor.';
  const existing=await env.DB.prepare('SELECT d.id,d.delivery_state,d.revision,a.url FROM articles a LEFT JOIN model_jobs j ON j.article_id=a.id AND j.expected_revision=0 JOIN drafts d ON d.id=COALESCE(a.draft_id,j.result_draft) WHERE a.id=?').bind(row.article_id).first<{id:string;delivery_state:string;revision:number;url:string}>();
  if(existing){

@@ -1,3 +1,5 @@
+import {readyPostMessage} from './owner-ready-post';
+import {botWorkflow,BOT_DATA_MESSAGE} from './bot-workflow';
 import {OUTPUT_LIMIT_MESSAGE,outputPreferences} from './output-preferences';
 import {splitManualText} from './manual-instructions';
 import {botQuery,BOT_QUERY_HELP} from './bot-query';
@@ -8,6 +10,7 @@ import type {Env} from './types';
 export interface InputMessage {media_group_id?:string;message_id:number;date?:number;text?:string;caption?:string;photo?:{file_id:string;file_size?:number;width:number;height:number}[];document?:{file_id:string;file_size?:number;file_name?:string;mime_type?:string};forward_origin?:{type:string;sender_user?:{is_bot?:boolean;username?:string}};from?:{id:number};chat?:{id:number;type:string};reply_to_message?:InputMessage;}
 export async function queueManual(env:Env,updateId:number,m:InputMessage):Promise<boolean> {
  if(!m.from||!m.chat||!isOwner(env,String(m.from.id),String(m.chat.id),m.chat.type)||!Number.isSafeInteger(m.message_id)||!Number.isSafeInteger(updateId))return false;
+ if(await readyPostMessage(env,updateId,m))return true;
  let text=(m.text??m.caption??'').trim();const focus=marketSelection(text);
  if(/^\/(devrekesici|genelgerial[ıi]m|gerial[ıi]m)(?:@[a-zA-Z0-9_]+)?(?:\s+.+)?$/iu.test(text)&&!m.forward_origin){
   let preferences;try{preferences=outputPreferences(text);}catch(e){if(!(e instanceof Error)||e.message!=='unsupported_output_limit')throw e;if(env.MODE==='telegram_review')await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:OUTPUT_LIMIT_MESSAGE}));return true;}
@@ -18,6 +21,7 @@ export async function queueManual(env:Env,updateId:number,m:InputMessage):Promis
  }
 
  if(text==='/sorgular'||/^\/(?:kurum|akd|takas|piyasayd)(?:@[a-zA-Z0-9_]+)?(?:\s|$)/iu.test(text)){
+  if(botWorkflow(env)==='news_only'){if(env.MODE==='telegram_review')await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:BOT_DATA_MESSAGE}));return true;}
   // Forwarded commands are source material, never authority to query a bot.
   if(m.forward_origin)return false;
   let query;try{query=botQuery(splitManualText(text).text);}catch{}
@@ -38,12 +42,14 @@ export async function queueManual(env:Env,updateId:number,m:InputMessage):Promis
  }catch{}
  const source=reply&&!reuse?reply:m;
  if(reply&&!reuse)text=(reply.text??reply.caption??'').trim();
+ if(botWorkflow(env)==='news_only'&&(focus||m.photo?.length||m.document?.mime_type?.startsWith('image/')||/\.(?:png|jpe?g|webp)$/i.test(m.document?.file_name??'')||marketInput(text))){if(env.MODE==='telegram_review')await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:BOT_DATA_MESSAGE}));return true;}
  if(text.startsWith('/start')||text==='/help'){
   if(env.MODE!=='telegram_review')return true;
   const source=text.match(/^\/start source_(\d+)$/);
   if(source){const id=Number(source[1]),row=await env.DB.prepare('SELECT message_id,input FROM manual_requests WHERE message_id=?').bind(id).first<{message_id:number;input:string}>();
    if(row){const target=JSON.parse(row.input).source_message_id??id;if(!Number.isSafeInteger(target)||target<=0)throw Error('manual_source_invalid');await telegram(env,'copyMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,from_chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(target)}));}
-  }else await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:'Haber veya KAP bağlantısını, PDF dosyasını, metni ya da görseli buraya gönder. Günlük KAP raporları: /devrekesici ve /gerialım. Otomatik bot sorgularını görmek için /sorgular yaz. Diğer botun /kurum, /akd ve /takas yanıtlarını da iletebilirsin. BoPT kurum analizini de iletebilirsin. Kaynak mesaja veya oluşan karta “Sadece alınanlar” / “Sadece satılanlar” diye yanıt vererek ayrı içerik isteyebilirsin. Kaynağı okuyup ENDEKS HABER tarzında tweet ve kart hazırlayacağım. Veri tarihini tahmin etmem; okunamayan sayıdan içerik üretmem.'}));
+  }else if(botWorkflow(env)==='news_only')await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:'Borsa Çakalı: haber metni, link veya PDF göndererek haber taslağı hazırlatabilirsin. Seçki ve KAP akışı sürer. Hazır tweet + PNG paketi için /hazir yaz. Paylaşım ve zamanlama yalnız onayınla yapılır.'}));
+  else await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:'Haber veya KAP bağlantısını, PDF dosyasını, metni ya da görseli buraya gönder. Günlük KAP raporları: /devrekesici ve /gerialım. Otomatik bot sorgularını görmek için /sorgular yaz. Diğer botun /kurum, /akd ve /takas yanıtlarını da iletebilirsin. BoPT kurum analizini de iletebilirsin. Kaynak mesaja veya oluşan karta “Sadece alınanlar” / “Sadece satılanlar” diye yanıt vererek ayrı içerik isteyebilirsin. Kaynağı okuyup Borsa Çakalı tarzında tweet ve kart hazırlayacağım. Veri tarihini tahmin etmem; okunamayan sayıdan içerik üretmem.'}));
   return true;
  }
  if(focus&&!reply&&!m.photo?.length&&!m.document&&!/https:\/\//.test(text)&&text.length<240){

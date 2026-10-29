@@ -1,3 +1,4 @@
+import {botWorkflow} from '../src/bot-workflow';
 import {collectVisualAlbum} from '../src/owner-visual-album';
 import {readMedia} from '../src/media-set';
 import {OUTPUT_LIMIT_MESSAGE} from '../src/output-preferences';
@@ -17,7 +18,7 @@ import {pdfBytes,boundedBytes} from '../src/pdf-transport';
 import {telegram,sendDraft} from '../src/telegram';
 import {enqueueEvidence} from '../src/ingest';
 import {readImage,type ImageEvidence} from './image_reader';
-import {withMarketText,marketSelection,selectMarketDocument} from '../src/market-input';
+import {withMarketText,marketSelection,marketInput,selectMarketDocument} from '../src/market-input';
 import type {Env,Document,Source} from '../src/types';
 async function telegramFile(env:Env,file:{file_id:string;file_size?:number}):Promise<Uint8Array>{
  if(!file?.file_id||(file.file_size!==undefined&&(!Number.isSafeInteger(file.file_size)||file.file_size<0||file.file_size>20_000_000)))throw Error('manual_file_size_limit');
@@ -29,8 +30,9 @@ async function telegramFile(env:Env,file:{file_id:string;file_size?:number}):Pro
 }
 export async function manualDocuments(env:Env,kind:string,input:string,messageId:number,extractImage:(bytes:Uint8Array)=>Promise<ImageEvidence>=readImage,loadImageFile:typeof telegramFile=telegramFile):Promise<Document[]> {
  const value=JSON.parse(input) as {owner_text_original?:string;owner_message_text?:string;source_caption_original?:string;source_message_id?:number;source_message_ids?:number[];images?:{file_id:string;file_size?:number;source_message_id:number;caption:string}[];url?:string;text:string;editor_request?:string;query_key?:string;submitted_at?:number;origin_bot?:string;focus?:'buy'|'sell'|'both';draft_id?:string;image?:{file_id:string;file_size?:number};document?:{file_id:string;file_name?:string;file_size?:number}};
+ if(botWorkflow(env)==='news_only'&&(kind==='bot_query'||kind==='image'||kind==='market_reuse'||kind==='text'&&!!marketInput(value.text)))throw Error('bot_data_workflow_disabled');
  if(kind==='bot_query')return botDocuments(value.text,value.query_key??'',value.submitted_at);
- if(env.OWNER_VISUAL&&['image','text'].includes(kind)){
+ if(env.OWNER_VISUAL&&(kind==='image'||kind==='text'&&(!!marketInput(value.text)||botWorkflow(env)==='full'&&env.OWNER_VISUAL.enabled))){
   if(!env.OWNER_VISUAL.enabled)throw Error('owner_visual_api_disabled');
   const images=kind==='image'?(value.images??[{...value.image!,source_message_id:value.source_message_id??messageId,caption:value.source_caption_original??value.owner_text_original??value.text}]).map(async image=>({bytes:await loadImageFile(env,image),source_message_id:image.source_message_id,caption:image.caption})):[];
   return env.OWNER_VISUAL.analyze({kind:kind as 'image'|'text',message_id:messageId,source_message_ids:value.source_message_ids??[value.source_message_id??messageId],owner_text:value.owner_message_text??value.owner_text_original??value.text,source_text:value.text,instructions:value.editor_request?.trim()?value.editor_request:(value.owner_message_text??value.owner_text_original??''),submitted_at:value.submitted_at??Math.floor(Date.now()/1000),images:await Promise.all(images)});

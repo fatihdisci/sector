@@ -134,7 +134,7 @@ export default {
    let newsFilter:{mode:'active'|'shadow'|'unavailable';reason:string|null};
    try{const p=await newsPreferences(env);newsFilter=newsFilterHealth(p.mode,p.readiness_reasons??[]);}
    catch{newsFilter=newsFilterHealth('unavailable',[]);}
-   return json({service:'ENDEKS HABER',mode:env.MODE,x_publishing:xEnabled(env),model:'Hermes / '+env.AI_MODEL,news_filter:newsFilter});
+   return json({service:'Borsa Çakalı',mode:env.MODE,x_publishing:xEnabled(env),model:'Hermes / '+env.AI_MODEL,news_filter:newsFilter});
   }
   if(url.pathname==='/telegram/webhook'&&request.method==='POST'){try{return await webhook(request,env);}catch(e){const failure=e instanceof TelegramError?e.failure:e instanceof SyntaxError||['invalid_request','request_too_large','empty_request','manual_input_limit'].includes(errorCode(e))?'permanent':'retryable';return json({error:errorCode(e),failure,retry_after:e instanceof TelegramError?e.retryAfter:30},failure==='retryable'?503:400);}}
   const bridge=url.pathname.startsWith('/api/bridge/');

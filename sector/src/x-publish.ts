@@ -1,3 +1,4 @@
+import {assertReadyPost} from './owner-ready-post';
 import {readMedia,bytesHash} from './media-set';
 import {xTextValid} from './x-text';
 import {preparePublication,snapshotStatement} from './publication-snapshot';
@@ -39,7 +40,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   else {
    const now=Date.now(),due=now+Number(choice[1])*60_000,day=xDay(due),postId=crypto.randomUUID();
    try{
-    const {images}=await readMedia(env,row.media_key!,row.content);
+    const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);
     if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
     const hashes=JSON.stringify(await Promise.all(images.map(bytesHash)));
     const results=await env.DB.batch([
@@ -75,7 +76,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const draft=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
-  const {images}=await readMedia(env,row.media_key,draft.content);
+  const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);
   if(row.media_hashes&&JSON.stringify(await Promise.all(images.map(bytesHash)))!==row.media_hashes)throw Error('x_image_changed');
   api.preflight?.(row.content,images.length);
   const identity=await api.identity();if(identity.username.toLowerCase()!=='borsacakali'||identity.id!=='335502216')throw Error('x_wrong_account');
