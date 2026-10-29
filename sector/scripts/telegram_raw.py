@@ -1,13 +1,13 @@
 """Explicit data-only Telegram collection. No OCR, model, publishing or resend."""
-import asyncio,hashlib,json,pathlib,re,time
+import asyncio,hashlib,json,pathlib,time
+from telegram_raw_protocol import is_placeholder,payload_matches
 MAX_BYTES=20_000_000
 
 def event_types():
     from telethon import events
     return events
 
-def placeholder(text):
-    return bool(re.search(r'hazırlanıyor|hazirlaniyor|yükleniyor|yukleniyor|işleniyor',text or '',re.I))
+placeholder=is_placeholder
 
 def save_json(path,value):
     temp=path.with_suffix('.next');temp.write_text(json.dumps(value,ensure_ascii=False));temp.chmod(0o600);temp.replace(path)
@@ -26,10 +26,13 @@ async def query_raw(client,db,root,value,*,validate,resume,error,clock=time.mono
     pin=db.execute('SELECT peer_id FROM peers WHERE username=?',(bot,)).fetchone()
     if not pin:raise error('bot_query_peer_unverified')
     if pin['peer_id']!=peer.id:raise error('bot_query_peer_invalid')
-    if db.execute("SELECT 1 FROM requests WHERE bot=? AND state IN ('sending','sent','uncertain') AND created_at>?",(bot,time.time()-300)).fetchone():raise error('bot_query_busy')
+    if db.execute("SELECT 1 FROM requests WHERE state IN ('sending','sent','uncertain') AND created_at>?",(time.time()-300,)).fetchone():raise error('bot_query_busy')
     latest=db.execute('SELECT MAX(created_at) FROM requests WHERE bot=?',(bot,)).fetchone()[0]
     if latest and time.time()-latest<10:raise error('bot_query_rate_limited')
+    baseline=await client.get_messages(peer,limit=1)
+    baseline_id=max((m.id for m in baseline if m is not None),default=0)
     queue=asyncio.Queue(maxsize=40);overflow=False;sent=None;pending_item=None;phase='send';snapshots={};evidence=[];deleted=set();missing=0;changed=clock();deadline=None
+    rejection=None;unthreaded_root=None
     directory=pathlib.Path(root)/'responses'/hashlib.sha256(key.encode()).hexdigest()
     async def enqueue(kind,event):
         nonlocal overflow
@@ -38,17 +41,33 @@ async def query_raw(client,db,root,value,*,validate,resume,error,clock=time.mono
     async def new(event):await enqueue('new',event)
     async def edit(event):await enqueue('edit',event)
     async def deletion(event):await enqueue('delete',event)
-    def diagnostics(reason):return json.dumps({'reason':reason,'phase':phase,'message_ids':list(snapshots),'missing_reads':missing,'deleted_ids':sorted(deleted)})
+    def diagnostics(reason):return json.dumps({'reason':reason,'phase':phase,'message_ids':list(snapshots),'missing_reads':missing,'deleted_ids':sorted(deleted),'rejection':rejection,'baseline_id':baseline_id})
     def persist():
         directory.mkdir(parents=True,exist_ok=True,mode=0o700)
         save_json(directory/'evidence.json',{'key':key,'bot':bot,'command':command,'peer_id':peer.id,'sent_id':sent.id,'snapshots':evidence})
     async def capture(message,kind):
-        nonlocal changed
+        nonlocal changed,rejection,unthreaded_root
         mid=getattr(message,'id',None)
-        if not isinstance(mid,int)or mid<=sent.id:raise error('bot_query_reply_mismatch')
-        if getattr(message,'out',False):raise error('bot_query_ambiguous')
-        # First observations and every edit require the complete exact binding.
-        if any(getattr(message,k,None)!=v for k,v in [('sender_id',peer.id),('chat_id',peer.id),('reply_to_msg_id',sent.id)]):raise error('bot_query_reply_mismatch')
+        def reject(field,reason='bot_query_reply_mismatch'):
+            nonlocal rejection
+            rejection={'field':field,'message_id':mid if isinstance(mid,int)else None,'has_reply':getattr(message,'reply_to_msg_id',None)is not None,'out':bool(getattr(message,'out',False))}
+            raise error(reason)
+        if not isinstance(mid,int)or mid<=sent.id:reject('message_id')
+        if getattr(message,'out',False):reject('outbound','bot_query_ambiguous')
+        for field in ['sender_id','chat_id']:
+            if getattr(message,field,None)!=peer.id:reject(field)
+        reply=getattr(message,'reply_to_msg_id',None)
+        if reply is not None and reply!=sent.id:reject('reply_to_msg_id')
+        previous=snapshots.get(mid)
+        media=bool(message.photo or (message.file and (message.file.mime_type or '') in ('image/jpeg','image/png','image/webp')))
+        binding='reply'if reply==sent.id else previous['binding']if previous else None
+        if binding=='serialized_profile' and (message.raw_text or '').strip() and not placeholder(message.raw_text) and not payload_matches(bot,command,message.raw_text,media):reject('payload_profile')
+        if binding is None:
+            # A headerless new final needs the command-specific source schema,
+            # plus the locked query, baseline and outgoing-conflict checks.
+            if not payload_matches(bot,command,message.raw_text or '',media):reject('payload_profile')
+            if unthreaded_root is not None:reject('multiple_final_candidates','bot_query_ambiguous')
+            unthreaded_root=mid;binding='serialized_profile'
         previous=snapshots.get(mid)
         version=getattr(message,'edit_date',None)or getattr(message,'date',None)
         if previous and previous.get('version')and version and version.timestamp()<previous['version']:return
@@ -60,7 +79,7 @@ async def query_raw(client,db,root,value,*,validate,resume,error,clock=time.mono
         if mid in snapshots and snapshots[mid]['digest']==digest:return
         if len(evidence)>=80:raise error('bot_query_size_limit')
         changed=clock()
-        snap={'id':mid,'sender_id':message.sender_id,'chat_id':message.chat_id,'reply_to_msg_id':message.reply_to_msg_id,'out':False,'date':message.date.isoformat()if getattr(message,'date',None)else None,'edit_date':message.edit_date.isoformat()if getattr(message,'edit_date',None)else None,'kind':kind,'version':version.timestamp()if version else None,'text':text,'has_media':media,'media_id':media_id,'digest':digest,'image':None,'media_state':'pending'if media else 'none','placeholder':placeholder(text)}
+        snap={'id':mid,'sender_id':message.sender_id,'chat_id':message.chat_id,'reply_to_msg_id':message.reply_to_msg_id,'out':False,'date':message.date.isoformat()if getattr(message,'date',None)else None,'edit_date':message.edit_date.isoformat()if getattr(message,'edit_date',None)else None,'kind':kind,'binding':binding,'version':version.timestamp()if version else None,'text':text,'has_media':media,'media_id':media_id,'digest':digest,'image':None,'media_state':'pending'if media else 'none','placeholder':placeholder(text)}
         previous=snapshots.get(mid)
         if previous and previous['media_id']==media_id and previous['image']:
             snap.update(image=previous['image'],media_state='saved')
@@ -100,10 +119,25 @@ async def query_raw(client,db,root,value,*,validate,resume,error,clock=time.mono
                 if kind=='delete':
                     deleted.update(i for i in event.deleted_ids if i in snapshots);continue
                 message=getattr(event,'message',event)
-                if getattr(message,'id',0)<=sent.id:continue
+                if getattr(message,'id',0)<=sent.id:
+                    if getattr(message,'out',False)and baseline_id<message.id<sent.id:
+                        rejection={'field':'outbound_baseline','message_id':message.id,'has_reply':False,'out':True}
+                        raise error('bot_query_ambiguous')
+                    continue
                 await capture(message,kind)
             finals=[s for s in snapshots.values()if not s['placeholder']and(s['text'].strip()or s['image'])]
             if finals and clock()-changed>=8:
+                # Reconcile the bounded baseline window: another device can send
+                # a command before our own send response/event is delivered.
+                remaining=deadline-clock()
+                if remaining<=0:raise error('bot_query_timeout')
+                history=await asyncio.wait_for(client.get_messages(peer,min_id=baseline_id,limit=60),remaining)
+                if len(history)>=60:raise error('bot_query_ambiguous')
+                for other in history:
+                    if other is not None and other.out and other.id>baseline_id and other.id!=sent.id:
+                        rejection={'field':'outbound_history','message_id':other.id,'has_reply':bool(other.reply_to_msg_id),'out':True}
+                        raise error('bot_query_ambiguous')
+                if not queue.empty():continue
                 result={'data_only':True,'bot':bot,'command':command,'sent_id':sent.id,'sent_at':sent.date.isoformat()if getattr(sent,'date',None)else None,'message_ids':[s['id']for s in finals],'text':'\n\n'.join(dict.fromkeys(s['text']for s in finals if s['text'])),'images':[s['image']for s in finals if s['image']],'messages':finals,'settle_seconds':8,'evidence_path':str((directory/'evidence.json').relative_to(root))}
                 db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result
             remaining=deadline-clock()

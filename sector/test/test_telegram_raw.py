@@ -123,6 +123,69 @@ class RawQueries(unittest.IsolatedAsyncioTestCase):
         self.db.execute('DELETE FROM requests');self.db.commit();client=self.client([('new',self.msg(id=11+i))for i in range(41)])
         with self.assertRaisesRegex(account.QueryError,'size_limit'):await self.run_query(client)
         self.assertEqual(client.send_message.await_count,1);self.assertEqual(self.handlers,{})
+    def protocol_fixtures(self):return json.loads((pathlib.Path(__file__).parent/'fixtures/telegram-raw-source-protocol.json').read_text())
+    async def test_three_source_frames_with_no_reply_header_match_payload_and_preserve_full_data(self):
+        for fixture in self.protocol_fixtures():
+            self.peer=7 if fixture['bot']=='b0pt_bot'else 8;self.clock=0
+            message=self.image(raw_text=fixture['text'],reply_to_msg_id=None)if fixture['media']else self.msg(raw_text=fixture['text'],reply_to_msg_id=None)
+            client=self.client([('new',message)])
+            result=await self.run_query(client,dict(self.value,bot=fixture['bot'],command=fixture['command']))
+            self.assertEqual(result['text'],fixture['text']);self.assertIsNone(result['messages'][0]['reply_to_msg_id']);self.assertEqual(result['messages'][0]['binding'],'serialized_profile');self.assertEqual(client.send_message.await_count,1)
+            self.db.execute('DELETE FROM requests');self.db.commit()
+    async def test_correlated_loading_then_unthreaded_source_final_and_deletion(self):
+        fixture=self.protocol_fixtures()[2]
+        initial=self.msg(raw_text='🔄 En çok yükselen ve düşen hisseler için veri alınıyor...')
+        final=self.image(id=12,raw_text=fixture['text'],reply_to_msg_id=None)
+        client=self.client([('new',initial),('new',final),('delete',11),('delete',12)])
+        result=await self.run_query(client)
+        self.assertEqual(result['message_ids'],[12]);self.assertEqual(result['text'],fixture['text'])
+        evidence=json.loads((self.root/result['evidence_path']).read_text());self.assertTrue(evidence['snapshots'][0]['placeholder'])
+    def test_loading_variants_and_all_eight_source_profiles(self):
+        from telegram_raw_protocol import is_placeholder,payload_matches
+        for text in ['VERİ ALINIYOR','Veriler alınıyor...','Hazırlanıyor','Yükleniyor']:
+            self.assertTrue(is_placeholder(text))
+        for fixture in self.protocol_fixtures():self.assertTrue(payload_matches(fixture['bot'],fixture['command'],fixture['text'],fixture['media']))
+        for command,text,media in [('/detay ASELS','📊 ASELS Detaylı Hisse Bilgisi',True),('/doviz','DÖVİZ KURLARI USD:49 EUR:55 ALTIN:6499 XU100:11165 VIOP:13982 Bitcoin:80226',True)]:self.assertTrue(payload_matches('b0pt_bot',command,text,media))
+        for command,text,media in [('/teorik ASELS','#ASELS Teorik Eşleşme Verileri Güncel:358 Önceki Kapanış:340 Fiyat:358 Miktar:1 Alış:0 Satış:1',False),('/akd ASTOR','ASTOR - Aracı Kurum Dağılımı (Günlük)',True),('/kurum','Borsa İstanbul Aracı Kurum Verileri 22 Ekim 2026 En Çok Net Alış Yapanlar 5 En Çok Net Satış Yapanlar 5',False)]:self.assertTrue(payload_matches('ucretsizderinlikbot',command,text,media))
+    async def test_unthreaded_wrong_ticker_generic_and_image_only_fail_without_capture(self):
+        self.peer=8
+        for text,media in [('THYAO - 25 Kademe Derinlik',True),('Saat 14:03 fiyat 358.50',False),('',True)]:
+            message=self.image(raw_text=text,reply_to_msg_id=None)if media else self.msg(raw_text=text,reply_to_msg_id=None)
+            client=self.client([('new',message)])
+            with self.assertRaisesRegex(account.QueryError,'reply_mismatch'):await self.run_query(client,dict(self.value,bot='ucretsizderinlikbot',command='/derinlik ASELS'))
+            record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0]);self.assertEqual(record['rejection']['field'],'payload_profile');self.assertNotIn('THYAO',json.dumps(record))
+            client.download_media.assert_not_awaited();self.db.execute('DELETE FROM requests');self.db.commit()
+    async def test_explicit_wrong_reply_never_falls_back_to_payload_matching(self):
+        self.peer=8;client=self.client([('new',self.image(raw_text='ASELS - 25 Kademe Derinlik',reply_to_msg_id=9))])
+        with self.assertRaisesRegex(account.QueryError,'reply_mismatch'):await self.run_query(client,dict(self.value,bot='ucretsizderinlikbot',command='/derinlik ASELS'))
+        record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0]);self.assertEqual(record['rejection']['field'],'reply_to_msg_id')
+    async def test_manual_other_device_command_between_baseline_and_send_is_conflict(self):
+        self.peer=8;client=self.client([('new',self.image(raw_text='ASELS - 25 Kademe Derinlik',reply_to_msg_id=None))])
+        async def reads(peer,**kwargs):
+            if kwargs.get('limit')==1:return [self.msg(id=8)]
+            if 'min_id'in kwargs:return [self.msg(id=9,out=True)]
+            return [None]
+        client.get_messages=AsyncMock(side_effect=reads)
+        with self.assertRaisesRegex(account.QueryError,'ambiguous'):await self.run_query(client,dict(self.value,bot='ucretsizderinlikbot',command='/derinlik ASELS'))
+        record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0]);self.assertEqual(record['rejection']['field'],'outbound_history');self.assertEqual(client.send_message.await_count,1)
+    async def test_multiple_unthreaded_finals_are_ambiguous(self):
+        self.peer=8;first=self.image(raw_text='ASELS - 25 Kademe Derinlik',reply_to_msg_id=None);second=self.image(id=12,raw_text=first.raw_text,reply_to_msg_id=None)
+        client=self.client([('new',first),('new',second)])
+        with self.assertRaisesRegex(account.QueryError,'ambiguous'):await self.run_query(client,dict(self.value,bot='ucretsizderinlikbot',command='/derinlik ASELS'))
+        record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0]);self.assertEqual(record['rejection']['field'],'multiple_final_candidates')
+    async def test_same_id_image_edit_can_keep_verified_placeholder_chain_without_header(self):
+        initial=self.msg(raw_text='Veriler alınıyor...');final=self.image(reply_to_msg_id=None)
+        client=self.client([('new',initial),('edit',final),('delete',11)])
+        result=await self.run_query(client);self.assertEqual(result['message_ids'],[11]);self.assertEqual(len(result['images']),1);self.assertEqual(result['messages'][0]['binding'],'reply')
+    async def test_unthreaded_same_id_edit_cannot_switch_ticker(self):
+        self.peer=8;initial=self.image(raw_text='ASELS - 25 Kademe Derinlik',reply_to_msg_id=None);edited=self.image(raw_text='THYAO - 25 Kademe Derinlik',reply_to_msg_id=None)
+        client=self.client([('new',initial),('edit',edited)])
+        with self.assertRaisesRegex(account.QueryError,'reply_mismatch'):await self.run_query(client,dict(self.value,bot='ucretsizderinlikbot',command='/derinlik ASELS'))
+    async def test_other_bot_pending_query_blocks_raw_send_globally(self):
+        self.db.execute('INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)',('999','ucretsizderinlikbot','/takas ASTOR','sent',8,9,None,time.time()));self.db.commit()
+        client=self.client([])
+        with self.assertRaisesRegex(account.QueryError,'busy'):await self.run_query(client)
+        client.send_message.assert_not_awaited()
     async def test_unknown_send_is_never_retried_and_handlers_are_removed(self):
         client=self.client([]);client.send_message=AsyncMock(side_effect=TimeoutError())
         with self.assertRaisesRegex(account.QueryError,'delivery_uncertain'):await self.run_query(client)
