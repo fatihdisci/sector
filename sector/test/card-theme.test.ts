@@ -13,13 +13,13 @@ test('theme is saved once and survives repeat requests and a changed content tem
  assert.equal(await chooseTheme(env,'old-light','info'),'paper');
  assert.equal(await chooseTheme(env,'old-dark','company'),'navy');
 });
-test('both palettes work for the same story and preserve text and dimensions',()=>{
+test('saved palette keys retain compatibility while approved monochrome identity preserves text and dimensions',()=>{
  const card={headline:'Örnek Holding yeni yatırımını duyurdu',body:'Yeni tesis için izin süreci devam ediyor.',template:'company' as const};
  for(const theme of ['navy','paper'] as const){
   const svg=cardSvg(card,[],'',false,theme);
-  assert(svg.includes(`<rect width="1080" height="1350" fill="${COLORS[theme]}"/>`));
+  assert(svg.includes(`<rect width="1600" height="900" fill="#080908"/>`));
   assert(svg.includes('Örnek Holding'));assert(svg.includes('izin süreci'));
-  assert(svg.includes('viewBox="0 0 1080 1350"'));
+  assert(svg.includes('viewBox="0 0 1600 900"'));
  }
  assert.equal(legacyTheme('info'),'paper');assert.equal(legacyTheme('breaking'),'navy');
 });

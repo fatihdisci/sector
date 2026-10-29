@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -49,7 +50,7 @@ test('ten ranked stocks on one or both sides render full PNGs in every layout an
   const d=draft(focus),svg=draftCard(d,[],'',false,theme,layout);
   assert.equal(svg.includes('THYAO'),focus!=='buy');assert.equal(svg.includes('CITAS'),focus!=='sell');
   if(focus!=='sell')assert(svg.includes('ALARK'));if(focus!=='buy')assert(svg.includes('TOASO'));
-  const bytes=Buffer.from(await png(svg));assert.equal(bytes.readUInt32BE(16),1080);assert.equal(bytes.readUInt32BE(20),1350);
+  const bytes=Buffer.from(await png(svg));assertCardPng(bytes,svg);
  }
 });
 test('separately requested buy/sell views and updated snapshots are not swallowed by headline deduplication',async()=>{
@@ -63,7 +64,7 @@ test('market cards retain the broker subject and single-stock AKD/takas captions
  const fixed=repairDraftStyle({...draft('buy'),card_headline:'Alım tarafında öne çıkan hisseler'},[selectMarketDocument(doc,'buy')]);
  assert.equal(fixed.card_data?.broker,'BANK OF AMERICA');assert(fixed.card_headline.includes('BANK OF AMERICA'));
  const d={...draft(),template:'custody' as const,headline:'📊 THYAO takas dağılımı',card_data:{ticker:'THYAO'},hashtags:['#Borsa','#BIST','#THYAO']};
- assert(postText(d).startsWith('📊 #THYAO\nTakas dağılımı'));assert.equal(postText(d).split('#THYAO').length-1,1);
+ assert(postText(d).startsWith('📊 #thyao\nTakas dağılımı'));assert.equal(postText(d).split('#thyao').length-1,1);
 });
 test('a currency-free screenshot uses source ranks instead of ambiguous monetary amounts',()=>{
  const body=doc.body.replace(/ TL\b/g,''),image={...doc,body,passages:[{id:'market_units',text:body}],market_data:{...doc.market_data!,focus:'buy' as const,rows:doc.market_data!.rows!.map(r=>({...r,volume:r.volume.replace(/ TL$/,'')}))}};
@@ -79,23 +80,23 @@ test('institutional captions list five hashtagged stocks on each selected side w
    const selected=focus!==(side==='buy'?'sell':'buy');
    const line=text.split('\n').find(l=>l.startsWith(side==='buy'?'Alınanlar:':'Satılanlar:'));
    assert.equal(!!line,selected);
-   if(selected){assert.equal((line!.match(/#[A-Z][A-Z0-9]{3,4}/g)??[]).length,5);assert.equal(d.card_data![side]!.length,10);}
+   if(selected){assert.equal((line!.match(/#[a-z][a-z0-9]{3,4}/g)??[]).length,5);assert.equal(d.card_data![side]!.length,10);}
   }
-  assert(!text.includes('#ALARK'));assert(!text.includes('#TOASO'));
+  assert(!text.includes('#alark'));assert(!text.includes('#toaso'));
  }
 });
 test('general multi-stock captions hashtag mentioned codes once and circuit captions limit only the visible list',()=>{
  const d={...draft(),template:'news' as const,headline:'📢 CITAS için açıklama',body:'BIMAS ve SELEC gelişmeleri.',hashtags:['#Borsa','#BIST','#CITAS','#BIMAS','#SELEC']};
- const text=postText(d);for(const code of ['CITAS','BIMAS','SELEC'])assert.equal(text.split('#'+code).length-1,1);
+ const text=postText(d);for(const code of ['CITAS','BIMAS','SELEC'])assert.equal(text.split('#'+code.toLowerCase()).length-1,1);
  const codes=['CITAS','BIMAS','SELEC','GARAN','AKBNK','ENKAI'];
  const circuit={...draft(),template:'circuit' as const,card_data:{tickers:codes},hashtags:['#Borsa','#BIST',...codes.map(c=>'#'+c)]};
- assert(!postText(circuit).includes('#ENKAI'));assert.equal(circuit.card_data.tickers.length,6);
+ assert(!postText(circuit).includes('#enkai'));assert.equal(circuit.card_data.tickers.length,6);
 });
 
 test('source rank determines the five displayed stocks even if model card rows arrive reversed',()=>{
  const input=draft();input.card_data!.buy!.reverse();input.card_data!.sell!.reverse();
  const fixed=repairDraftStyle(input,[doc]),text=postText(fixed);
  assert.equal(fixed.card_data!.buy![0].label,'CITAS');assert.equal(fixed.card_data!.sell![0].label,'THYAO');
- assert(text.includes('Alınanlar: #CITAS #SELEC #KTLEV #SASA #ENKAI'));
+ assert(text.includes('Alınanlar: #citas #selec #ktlev #sasa #enkai'));
  assert.equal(input.card_data!.buy![0].label,'ALARK');
 });

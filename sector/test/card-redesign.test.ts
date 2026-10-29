@@ -13,7 +13,7 @@ async function seed(e:Env){await e.DB.prepare("INSERT INTO drafts(id,event_key,f
 test('six layouts preserve dimensions and escape source text in both palettes',()=>{
  for(const theme of ['navy','paper'] as const){const outputs=CARD_LAYOUTS.map(layout=>{
  const svg=cardSvg({headline:'Türkiye ve Japonya enerji alanındaki yatırımlarda iş birliğini genişletmek için yeni adımlar atmayı planlıyor',body:'Şirketin açıklamasına göre yeni dönemde yatırımların kapsamı genişletilecek. Gerekli izinler ve finansman koşulları tamamlandıktan sonra çalışmalar başlayacak.',template:'breaking'},[],'',false,theme,layout);
- assert.match(svg,/width="1080" height="1350"/);assert(!/linearGradient|filter=/.test(svg));assert.match(svg,/SON DAKİKA/);return svg;
+ assert.match(svg,/width="1600" height="900"/);assert(!/linearGradient|filter=/.test(svg));assert.match(svg,/SON DAKİKA/);return svg;
  });assert.equal(new Set(outputs).size,6);}
  assert.match(cardSvg({headline:'A < B & C',body:'D & E',template:'company'},[],'',false,'navy','frame'),/A &lt; B &amp; C/);
 });
@@ -47,7 +47,7 @@ test('data card redesign preserves every structured figure and generates no mode
  const data={...content,template:'akd',card_headline:'ABCD aracı kurum dağılımı',card_body:'Kurumların net işlem miktarları açıklandı.',card_data:{ticker:'ABCD',as_of:'22 Ekim 2026',buy:[{label:'Alfa Yatırım',value:'1.250.000 adet'}],sell:[{label:'Beta Menkul',value:'890.000 adet'}]}};
  await e.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify(data),id).run();
  await requestRedesign(e,`design:${id}:1`,90,88);
- await redesignOne(e,async svg=>{assert.match(svg,/1.250.000/);assert.match(svg,/890.000/);assert.match(svg,/NET ADET/);assert.match(svg,/ARACI|HİSSE \/ AKD/);return new Uint8Array([1,2,3]);});
+ await redesignOne(e,async svg=>{assert.match(svg,/1.250.000/);assert.match(svg,/890.000/);assert.match(svg,/NET ADET/);assert.match(svg,/aracı kurum dağılımı/);return new Uint8Array([1,2,3]);});
  assert.equal((await e.DB.prepare('SELECT content FROM drafts').first<any>()).content,JSON.stringify(data));
  assert.equal((await e.DB.prepare('SELECT revision FROM drafts').first<any>()).revision,2);
  assert.equal((await e.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);

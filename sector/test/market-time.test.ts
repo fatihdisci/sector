@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from'node:test';import assert from'node:assert/strict';import{execFileSync}from'node:child_process';import{marketTimeContext,marketTimeIssues}from'../src/market-time';import{editorialPolicy}from'../src/style';import{validateDraft}from'../src/editorial';import{acceptHermes}from'../src/ai';import{draftCards}from'../src/card-pages';import{png}from'../scripts/render_local';import type{Draft,Document}from'../src/types';
 // Public message 26431 excerpt; original pixels inspected separately. Source
 // dates/forward variants below are synthetic, not recovered production metadata.
@@ -44,5 +45,5 @@ test('KAP, standard news and non-overview AKD flows are outside this narrow snap
  for(const d of[{...doc,source_id:'kap',official:true},{...doc,source_id:'rss'},{...doc,source_layout:{kind:'institution_summary' as const,panels:[],minimum_rows:0}}]){assert.deepEqual(marketTimeContext([d]),[]);assert.deepEqual(marketTimeIssues(draft,[d]),[]);}
 });
 test('date-free direct market card renders a real PNG without inventing an as-of or footer',async()=>{
- const svg=draftCards(draft,'navy','editorial')[0];assert(!svg.includes('Kaynak tablosunda'));assert(svg.includes('BIST 100')); assert(!svg.includes('26 Ekim'));assert(!svg.includes('14:00'));const image=await png(svg);assert(image.length>10000);assert.equal(new DataView(image.buffer,image.byteOffset).getUint32(16),1080);
+ const svg=draftCards(draft,'navy','editorial')[0];assert(!svg.includes('Kaynak tablosunda'));assert(svg.includes('BIST 100')); assert(!svg.includes('26 Ekim'));assert(!svg.includes('14:00'));const image=await png(svg);assert(image.length>10000);assertCardPng(image,svg);
 });

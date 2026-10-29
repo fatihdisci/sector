@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -33,14 +34,14 @@ test('bounded historical manual command renders all 59 rows and delivers one fak
   await queueManual(env,1,{message_id:8,from:{id:7},chat:{id:42,type:'private'},date:fixture.at/1000,text:'/devrekesici'});await runManual(env);
   const row=await DB.prepare('SELECT content FROM drafts').first<any>(),saved=JSON.parse(row.content);assert.equal(saved.card_data.report.events.length,real().draft.card_data!.report!.events!.length);assert.equal(saved.card_data.report.circuit.all_rows.length,59);assert.equal(saved.card_data.report.rows.length,59);assert.equal(renders,2);assert.equal(files.size,2);
   await deliver(env);await runManual(env);await deliver(env);await runManual(env);assert.equal((await DB.prepare('SELECT state FROM manual_requests').first<any>()).state,'complete',JSON.stringify({calls,manual:await DB.prepare('SELECT state,error FROM manual_requests').first(),draft:await DB.prepare('SELECT state,delivery_state FROM drafts').first()}));assert.equal(calls.filter(m=>m==='sendMediaGroup').length,1);assert.equal((await DB.prepare('SELECT COUNT(*) n FROM x_posts').first<any>()).n,0);assert.equal((await DB.prepare('SELECT COUNT(*) n FROM drafts').first<any>()).n,1);
-  const published=await DB.prepare('SELECT id,revision,message_id FROM drafts').first<any>();let uploads=0,posts=0;const transport={identity:async()=>({id:'335502216',username:'endeks_haber'}),upload:async()=>String(++uploads),post:async(text:string,media:string|string[])=>{posts++;assert.equal(text,postText(saved));assert(twitter.parseTweet(text).valid);assert.deepEqual(media,['1','2']);return '123456';}};
+  const published=await DB.prepare('SELECT id,revision,message_id FROM drafts').first<any>();let uploads=0,posts=0;const transport={identity:async()=>({id:'335502216',username:'borsacakali'}),upload:async()=>String(++uploads),post:async(text:string,media:string|string[])=>{posts++;assert.equal(text,postText(saved));assert(twitter.parseTweet(text).valid);assert.deepEqual(media,['1','2']);return '123456';}};
   await publishX(env,transport);assert.equal(posts,0);await requestX(env,`xchoose:0:${published.id}:${published.revision}`,published.message_id,'cb');await publishX(env,transport);await publishX(env,transport);assert.equal(posts,1);assert.equal(uploads,2);assert.equal((await DB.prepare('SELECT state FROM x_posts').first<any>()).state,'sent');
 
  }finally{globalThis.fetch=old;}
 });
 test('two real PNGs preserve every ticker and repeat value without an omission note',async()=>{
  const d=real().draft;d.output_preferences={show_footer:false};const svgs=draftCards(d);assert.equal(svgs.length,2);const labels:string[]=[];
- for(const svg of svgs){assert.doesNotMatch(svg,/gösterilmedi/);assert.doesNotMatch(svg,/BIST 50|itibarıyla|\d{2}:\d{2}/);for(const row of svg.matchAll(/data-report-row="\d+"><text[^>]*>(#[A-Z0-9]+)<\/text>/g))labels.push(row[1]);for(const m of svg.matchAll(/<text[^>]*y="(\d+)"/g))assert(Number(m[1])<1350);const image=await png(svg);assert.equal(Buffer.from(image).readUInt32BE(16),1080);assert.equal(Buffer.from(image).readUInt32BE(20),1350);assert(image.length<5_000_000);}
+ for(const svg of svgs){assert.doesNotMatch(svg,/gösterilmedi/);assert.doesNotMatch(svg,/BIST 50|itibarıyla|\d{2}:\d{2}/);for(const row of svg.matchAll(/data-report-row="\d+"><text[^>]*>(#[A-Z0-9]+)<\/text>/g))labels.push(row[1]);for(const m of svg.matchAll(/<text[^>]*y="(\d+)"/g))assert(Number(m[1])<Number(svg.match(/height="(\d+)"/)![1]));const image=await png(svg);assertCardPng(image,svg);assert(image.length<5_000_000);}
  assert.deepEqual(labels,d.card_data!.report!.rows.map(r=>r.label));assert.equal(new Set(labels).size,59);
 });
 test('ranking is 30 then 100 then others, repeats descending, ASCII ticker ties; BIST50 never adds a tier',()=>{
@@ -50,7 +51,7 @@ test('ranking is 30 then 100 then others, repeats descending, ASCII ticker ties;
 test('missing, stale, future, malformed or untrusted membership blocks nonempty selection; empty and small data do not invent members',()=>{
  for(const i of [null,{...fixture.indices,checkedAt:new Date(fixture.at-37*3600_000).toISOString()},{...fixture.indices,checkedAt:new Date(fixture.at+600_000).toISOString()},{...fixture.indices,bist30:[]},{...fixture.indices,source:'https://example.test/indices'}])assert.throws(()=>report('circuit',records,i,fixture.at,''),/circuit_report_indices_unavailable/);
  const empty=report('circuit',[],null,fixture.at,'');assert.equal(empty.draft.card_data!.report!.rows.length,0);assert.match(postText(empty.draft),/bildirimi yok/);assert.equal(draftCards(empty.draft).length,1);
- const one=report('circuit',records.filter(r=>r.disclosure.subjectCodes.includes('EREGL')),fixture.indices,fixture.at,'');assert.equal(one.draft.card_data!.report!.rows.length,1);assert.match(postText(one.draft),/#EREGL/);assert.equal(one.draft.card_data!.report!.circuit!.omitted,0);assert.deepEqual(real().draft.card_data!.report!.rows,report('circuit',bounded,fixture.indices,fixture.at,'',{list:'all'}).draft.card_data!.report!.rows);
+ const one=report('circuit',records.filter(r=>r.disclosure.subjectCodes.includes('EREGL')),fixture.indices,fixture.at,'');assert.equal(one.draft.card_data!.report!.rows.length,1);assert.match(postText(one.draft),/#eregl/);assert.equal(one.draft.card_data!.report!.circuit!.omitted,0);assert.deepEqual(real().draft.card_data!.report!.rows,report('circuit',bounded,fixture.indices,fixture.at,'',{list:'all'}).draft.card_data!.report!.rows);
  const first=report('circuit',bounded,fixture.indices,fixture.at,'',{list:'first',count:3});assert.throws(()=>draftCards(first.draft),/circuit_report_subset_requires_recalculation/);
 });
 test('more than four cards yields an explicit capacity diagnostic without truncation',()=>{

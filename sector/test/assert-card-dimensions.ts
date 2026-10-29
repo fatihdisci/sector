@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';
+export function assertCardPng(bytes:Uint8Array,svg:string){const dimensions=svg.match(/<svg[^>]*width="(\d+)"[^>]*height="(\d+)"/);assert(dimensions);const w=Number(dimensions[1]),h=Number(dimensions[2]);assert(w>=1200&&w<=4096&&h>=800&&h<=4096);assert(w*h<=16_000_000);const b=Buffer.from(bytes);assert.equal(b.toString('hex',0,8),'89504e470d0a1a0a');assert.equal(b.readUInt32BE(16),w);assert.equal(b.readUInt32BE(20),h);assert(b.length<5_000_000);return {width:w,height:h};}

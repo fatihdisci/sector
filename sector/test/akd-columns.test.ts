@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {akdColumns} from '../src/akd-columns';
@@ -19,7 +20,7 @@ test('AKD keeps structured headers and known cells when one row has missing valu
  const svg=cardSvg({template:'akd',headline:'KTLEV aracı kurum dağılımı',body:'Tablo',card_data:{ticker:'KTLEV',buy:rows}},[],'',false,'paper');
  for(const h of ['KURUM','ORAN','NET LOT','MALİYET'])assert(svg.includes('>'+h+'</text>'));
  for(const value of ['Tam satır','%20','123 lot','4,70','%15','90 lot','%5','75 lot','—'])assert(svg.includes(value));
- const image=Buffer.from(await png(svg));assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+ const image=Buffer.from(await png(svg));assertCardPng(image,svg);
 });
 test('AKD legacy/unrecognized rows fall back without discarding source text',()=>{
  const svg=cardSvg({template:'akd',headline:'KTLEV dağılımı',body:'Tablo',card_data:{buy:[{label:'Tam',value:'%20 · 123 lot · 4,70'},{label:'Eski biçim',value:'Alıcı ağırlıklı, maliyet açıklanmadı'}]}},[],'',false,'paper');
@@ -30,7 +31,7 @@ test('market tables reject row counts beyond safe template capacity without trun
  const render=(template:Template,n:number,field:'buy'|'holdings'='buy')=>cardSvg({template,headline:'Örnek başlık',body:'Örnek içerik',card_data:{[field]:rows(n)}},[],'',false,'navy');
  for(const [template,field,capacity] of [['akd','buy',5],['broker_flow','buy',5],['custody','holdings',5],['institutional','buy',10]] as const){
   const svg=render(template,capacity,field);assert(svg.includes(`HISSE${capacity-1}`),`${template} preserves final boundary row`);
-  const image=Buffer.from(await png(svg));assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+  const image=Buffer.from(await png(svg));assertCardPng(image,svg);
   assert.throws(()=>render(template,capacity+1,field),new RegExp(`market_card_capacity_${template}`));
  }
 });
@@ -38,13 +39,13 @@ test('market card keeps BofA canonical identity and renders negative signs as AS
  for(const broker of ['Bank of America','BANK OF AMERICA','BofA']){
   const svg=cardSvg({template:'institutional',headline:'Kurum işlem özeti',body:'Tablo',card_data:{broker,buy:[{label:'ABCD',value:'-12 milyon TL'}]}},[],'',false,'paper');
   assert(svg.includes('BofA ÜZERİNDEN ALIM'));assert(svg.includes('>-12 milyon TL</text>'));assert(!svg.includes('−'));
-  const image=Buffer.from(await png(svg));assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+  const image=Buffer.from(await png(svg));assertCardPng(image,svg);
  }
  const akd=cardSvg({template:'akd',headline:'Negatif katkı',body:'Tablo',card_data:{buy:[{label:'Kurum',value:'%−1,25 · −123 lot · −4,50'}]}},[],'',false,'navy');
  assert(akd.includes('%-1,25'));assert(akd.includes('-123 lot'));assert(akd.includes('-4,50'));assert(!akd.includes('−'));
- const image=Buffer.from(await png(akd));assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+ const image=Buffer.from(await png(akd));assertCardPng(image,akd);
  const points=cardSvg({template:'volume',headline:'Endeks katkısı',body:'Kaynağın açıkladığı puan katkısı.',card_data:{metrics:[{label:'BIST 100 puan katkısı',value:'−0,42 puan'}]}},[],'',false,'paper');
- assert(points.includes('-0,42 puan'));assert(!points.includes('−'));const pointsPng=Buffer.from(await png(points));assert.equal(pointsPng.readUInt32BE(16),1080);assert.equal(pointsPng.readUInt32BE(20),1350);
+ assert(points.includes('-0,42 puan'));assert(!points.includes('−'));const pointsPng=Buffer.from(await png(points));assertCardPng(pointsPng,points);
 });
 test('market cards reject labels too long to fit instead of drawing past the canvas',()=>{
  const rows=[{label:'Kurum '.repeat(40),value:'%20 · 123 lot · 4,70'}];
@@ -56,6 +57,6 @@ test('AKD tables label each column, omit footer prose and render every theme/lay
   const svg=cardSvg({template:'akd',headline:'Gün ortası — KTLEV aracı kurum dağılımı',body:'Sıra: oran · net lot · maliyet. Gereksiz alt açıklama.',card_data:{ticker:'KTLEV',buy:rows,sell:rows}},[],'',false,theme,layout);
   for(const h of ['KURUM','ORAN','NET LOT','MALİYET'])assert(svg.includes('>'+h+'</text>'));
   assert(!svg.includes('Gereksiz'));assert(!svg.includes('Sıra:'));assert(svg.includes('>7.419.604 lot</text>'));assert(svg.includes('>4,70</text>'));
-  const bytes=Buffer.from(await png(svg));assert.equal(bytes.readUInt32BE(16),1080);assert.equal(bytes.readUInt32BE(20),1350);
+  const bytes=Buffer.from(await png(svg));assertCardPng(bytes,svg);
  }
 });

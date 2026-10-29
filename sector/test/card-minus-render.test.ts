@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cardSvg} from '../src/card';
@@ -16,7 +17,7 @@ test('news cards normalize unsupported minus glyphs in every layout and render r
   const ascii=cardSvg({headline:asciiHeadline,body:asciiBody,template:'market'},[], '', false, 'paper',layout);
   assert.equal(unicode,ascii,`${layout} output should normalize the numeric minus`);
   assert(unicode.includes('—'),'em dash for missing data should remain intact');assert(!unicode.includes('−'));
-  const image=Buffer.from(await png(unicode));assert.equal(image.toString('ascii',1,4),'PNG');assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+  const image=Buffer.from(await png(unicode));assert.equal(image.toString('ascii',1,4),'PNG');assertCardPng(image,unicode);
  }
 });
 

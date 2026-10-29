@@ -1,0 +1,13 @@
+{
+  "source": "https://github.com/google/fonts",
+  "license": "OFL files included",
+  "role": "Portable Impact-like and Rockwell-like directions; original approved study files remain the visual references.",
+  "files": {
+    "Inter-OFL.txt": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+    "ZillaSlab-Bold.ttf": "4ec3a04a4eef37074b42ef542e4d874e13646668cfe65256e0bf100441cf8719",
+    "Anton-Regular.ttf": "a4ba3a92350ebb031da0cb47630ac49eb265082ca1bc0450442f4a83ab947cab",
+    "Inter.ttf": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+    "Anton-OFL.txt": "ee67e6ee22790b7929f1a3769ca2801d565c64b5a9096942c1adf5596de9c9e4",
+    "ZillaSlab-OFL.txt": "240b385d3ec8c8d5c1d4af2bbba6ac72bac0309a80c1a8ff112c168643cc6811"
+  }
+}

@@ -1,0 +1,873 @@
+[
+  {
+    "key": "akd",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "ASTOR / AKD",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "akd",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "ticker": "ASTOR",
+        "buy": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          }
+        ],
+        "sell": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "key": "takas",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "ASTOR",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "custody",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "tweet_style": "custody_query",
+      "output_preferences": {
+        "show_time": true
+      },
+      "card_data": {
+        "ticker": "ASTOR",
+        "as_of": "28.10.2026",
+        "metrics": [
+          {
+            "label": "Toplam takas",
+            "value": "426,42 milyon lot"
+          }
+        ],
+        "holdings": [
+          {
+            "label": "Citi",
+            "value": "175,09 milyon lot · %41,04"
+          },
+          {
+            "label": "Deutsche",
+            "value": "59,81 milyon lot · %14,02"
+          },
+          {
+            "label": "TEB",
+            "value": "35,71 milyon lot · %8,37"
+          },
+          {
+            "label": "İş",
+            "value": "20,40 milyon lot · %4,78"
+          },
+          {
+            "label": "Yat. Fon.",
+            "value": "13,79 milyon lot · %3,23"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "key": "kurum",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Kurum analizi",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "institutional",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "broker": "Örnek Kurum",
+        "buy": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          },
+          {
+            "label": "A0005",
+            "value": "6,25 milyon TL"
+          },
+          {
+            "label": "A0006",
+            "value": "7,25 milyon TL"
+          },
+          {
+            "label": "A0007",
+            "value": "8,25 milyon TL"
+          },
+          {
+            "label": "A0008",
+            "value": "9,25 milyon TL"
+          },
+          {
+            "label": "A0009",
+            "value": "10,25 milyon TL"
+          }
+        ],
+        "sell": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          },
+          {
+            "label": "A0005",
+            "value": "6,25 milyon TL"
+          },
+          {
+            "label": "A0006",
+            "value": "7,25 milyon TL"
+          },
+          {
+            "label": "A0007",
+            "value": "8,25 milyon TL"
+          },
+          {
+            "label": "A0008",
+            "value": "9,25 milyon TL"
+          },
+          {
+            "label": "A0009",
+            "value": "10,25 milyon TL"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "key": "piyasayd",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Piyasanın iki yönü",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "market",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "movers": {
+          "up": [
+            {
+              "symbol": "A0000",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0001",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0002",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0003",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0004",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0005",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0006",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0007",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0008",
+              "price": "10,00",
+              "change": "+%1,00"
+            },
+            {
+              "symbol": "A0009",
+              "price": "10,00",
+              "change": "+%1,00"
+            }
+          ],
+          "down": [
+            {
+              "symbol": "B0000",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0001",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0002",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0003",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0004",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0005",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0006",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0007",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0008",
+              "price": "10,00",
+              "change": "-%1,00"
+            },
+            {
+              "symbol": "B0009",
+              "price": "10,00",
+              "change": "-%1,00"
+            }
+          ],
+          "sourceTime": null
+        }
+      }
+    }
+  },
+  {
+    "key": "para-akisi",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Net para akışı",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "broker_flow",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "buy": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          }
+        ],
+        "sell": [
+          {
+            "label": "A0000",
+            "value": "1,25 milyon TL"
+          },
+          {
+            "label": "A0001",
+            "value": "2,25 milyon TL"
+          },
+          {
+            "label": "A0002",
+            "value": "3,25 milyon TL"
+          },
+          {
+            "label": "A0003",
+            "value": "4,25 milyon TL"
+          },
+          {
+            "label": "A0004",
+            "value": "5,25 milyon TL"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "key": "devre-kesici",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Devre kesici",
+      "card_body": "30 farklı hisse · 30 bildirim",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "info",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "report": {
+          "rows": [
+            {
+              "label": "#A0000",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0001",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0002",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0003",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0004",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0005",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0006",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0007",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0008",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0009",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0010",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0011",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0012",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0013",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0014",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0015",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0016",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0017",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0018",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0019",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0020",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0021",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0022",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0023",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0024",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0025",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0026",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0027",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0028",
+              "value": "1 bildirim"
+            },
+            {
+              "label": "#A0029",
+              "value": "1 bildirim"
+            }
+          ],
+          "footer": "",
+          "circuit": {
+            "version": 1,
+            "rule": "bist30-bist100-repeats-code-v1",
+            "limit": 120,
+            "total_events": 30,
+            "total_tickers": 30,
+            "selected_tickers": [
+              "A0000",
+              "A0001",
+              "A0002",
+              "A0003",
+              "A0004",
+              "A0005",
+              "A0006",
+              "A0007",
+              "A0008",
+              "A0009",
+              "A0010",
+              "A0011",
+              "A0012",
+              "A0013",
+              "A0014",
+              "A0015",
+              "A0016",
+              "A0017",
+              "A0018",
+              "A0019",
+              "A0020",
+              "A0021",
+              "A0022",
+              "A0023",
+              "A0024",
+              "A0025",
+              "A0026",
+              "A0027",
+              "A0028",
+              "A0029"
+            ],
+            "omitted": 0,
+            "all_rows": [
+              {
+                "label": "#A0000",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0001",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0002",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0003",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0004",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0005",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0006",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0007",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0008",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0009",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0010",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0011",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0012",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0013",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0014",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0015",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0016",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0017",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0018",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0019",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0020",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0021",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0022",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0023",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0024",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0025",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0026",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0027",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0028",
+                "value": "1 bildirim"
+              },
+              {
+                "label": "#A0029",
+                "value": "1 bildirim"
+              }
+            ],
+            "indices": {
+              "status": "missing",
+              "snapshot": null
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "key": "tavan",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Tavanda kapananlar",
+      "card_body": "Örnek veri",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "circuit",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "tickers": [
+          "A0000",
+          "A0001",
+          "A0002",
+          "A0003",
+          "A0004",
+          "A0005",
+          "A0006",
+          "A0007",
+          "A0008",
+          "A0009"
+        ]
+      }
+    }
+  },
+  {
+    "key": "bilanco",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Bilanço özeti",
+      "card_body": "Sentetik dönem verisi",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "info",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "report": {
+          "rows": [
+            {
+              "label": "Hasılat",
+              "value": "1,20 milyar TL"
+            },
+            {
+              "label": "Net kâr",
+              "value": "180 milyon TL"
+            },
+            {
+              "label": "Faaliyet kârı",
+              "value": "240 milyon TL"
+            }
+          ],
+          "footer": ""
+        }
+      }
+    }
+  },
+  {
+    "key": "haber-kap",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Yeni yatırım programı",
+      "card_body": "Şirket, üretim kapasitesini artırmaya yönelik yatırım programını duyurdu. Rakamlar ve tarihler gerçek kullanımda doğrulanmış kaynaktan gelir.",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "news",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": []
+    }
+  },
+  {
+    "key": "son-dakika",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "SON DAKİKA",
+      "card_body": "Örnek şirket üretim tesisini açtı. Bu metin gerçek bir haber değildir.",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "breaking",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": []
+    }
+  },
+  {
+    "key": "artis",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Hasılat artışı",
+      "card_body": "Sentetik yıllık değişim örneği.",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "economic_data",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "metrics": [
+          {
+            "label": "Yıllık değişim",
+            "value": "+%18,4"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "key": "azalis",
+    "draft": {
+      "headline": "DEMO",
+      "body": "Sentetik örnek",
+      "card_headline": "Maliyet geriledi",
+      "card_body": "Sentetik dönem karşılaştırması örneği.",
+      "hashtags": [],
+      "category": "bist",
+      "importance": 80,
+      "template": "economic_data",
+      "event_key": "demo",
+      "entities": [],
+      "claims": [],
+      "uncertainties": [],
+      "card_data": {
+        "metrics": [
+          {
+            "label": "Dönemlik değişim",
+            "value": "-%7,2"
+          }
+        ]
+      }
+    }
+  }
+]

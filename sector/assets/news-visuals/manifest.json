@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "enabled": false,
+  "data_card_palette": [
+    "#080908",
+    "#F4F1E9"
+  ],
+  "pools": {
+    "breaking": {
+      "requires_confirmed_breaking": true,
+      "orientation": "landscape",
+      "accent_allowed": "red",
+      "assets": [
+        {
+          "id": "breaking-1",
+          "library_id": "libfile_3ddc92e3eec08191a8c3c9c08c64fd60",
+          "local_path": null,
+          "sha256": null,
+          "verified": false,
+          "status": "remote_reference_only"
+        },
+        {
+          "id": "breaking-2",
+          "library_id": "libfile_e04c7292a92481919a1c9e22a5ad4177",
+          "local_path": null,
+          "sha256": null,
+          "verified": false,
+          "status": "remote_reference_only"
+        },
+        {
+          "id": "breaking-3",
+          "library_id": "libfile_c99101c9cb8c8191a6c83c31528dda7f",
+          "local_path": null,
+          "sha256": null,
+          "verified": false,
+          "status": "remote_reference_only"
+        },
+        {
+          "id": "breaking-4",
+          "library_id": "libfile_13d9f52712e48191be154e9e8dd9d764",
+          "local_path": null,
+          "sha256": null,
+          "verified": false,
+          "status": "remote_reference_only"
+        }
+      ]
+    },
+    "general": {
+      "requires_confirmed_breaking": false,
+      "orientation": "landscape",
+      "assets": [],
+      "status": "normal_news_visuals_missing"
+    }
+  }
+}

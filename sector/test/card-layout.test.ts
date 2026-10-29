@@ -14,14 +14,14 @@ test('long Turkish headlines and six-line summaries stay inside separate artwork
  for(const template of ['company','economic_data','global','info','breaking'] as const){
   const svg=cardSvg({headline,body,template});const {document}=parseHTML(svg);
   const texts=[...document.querySelectorAll('text')];
-  const heading=texts.filter(n=>Number(n.getAttribute('font-size'))>=60);
-  const summary=texts.filter(n=>n.getAttribute('font-size')==='36');
+  const heading=[...document.querySelectorAll('[data-kit-role="headline"] text')];
+  const summary=[...document.querySelectorAll('[data-kit-role="body"] text')];
   assert.equal(heading.map(n=>n.textContent).join(' '),headline);
   assert.equal(summary.map(n=>n.textContent).join(' '),body);
-  const panel=[...document.querySelectorAll('rect')].find(n=>n.getAttribute('width')==='1080'&&n.hasAttribute('y'))!;
-  const panelY=Number(panel.getAttribute('y'));
-  for(const n of heading)assert(Number(n.getAttribute('y'))+Number(n.getAttribute('font-size'))*.25<panelY);
-  for(const n of summary){assert(Number(n.getAttribute('y'))-36>panelY);assert(Number(n.getAttribute('y'))+12<1310);}
+  const lastHeading=Math.max(...heading.map(n=>Number(n.getAttribute('y'))+Number(n.getAttribute('font-size'))*.25));
+  const firstBody=Math.min(...summary.map(n=>Number(n.getAttribute('y'))-36));
+  assert(lastHeading<firstBody);
+  for(const n of summary)assert(Number(n.getAttribute('y'))+12<1310);
  }
 });
 test('artwork escapes publisher text and never silently clips impossible content',()=>{

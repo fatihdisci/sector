@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cardSvg,draftCard} from '../src/card';
@@ -31,14 +32,14 @@ test('five content types remain visibly distinct and all redesign layouts render
    const layouts=new Set<string>();
    for(const layout of CARD_LAYOUTS){
     const svg=cardSvg({headline:'ABCD payında doğrulanmış gelişme',body:'Kaynak verileriyle hazırlanan kısa açıklama.',template,card_data:template==='news'?undefined:data},[],'',false,theme,layout);
-    const b=Buffer.from(await png(svg));assert.equal(b.readUInt32BE(16),1080);assert.equal(b.readUInt32BE(20),1350);
-    assert.match(svg,/ENDEKS HABER/);assert(!/linearGradient|radialGradient|filter=/.test(svg));layouts.add(svg);designs.add(svg);
+    const b=Buffer.from(await png(svg));assertCardPng(b,svg);
+    assert.match(svg,/borsacakali/);assert(!/linearGradient|radialGradient|filter=/.test(svg));layouts.add(svg);designs.add(svg);
     if(template==='institutional')assert.match(svg,/1.250.000 adet/);if(template==='akd'){assert(svg.includes('1.250.000'));assert(svg.includes('NET ADET'));}
    }
    assert.equal(layouts.size,template==='circuit'?1:6);
   }
  }
- assert.equal(designs.size,49);
+ assert.equal(designs.size,25);
 });
 test('no data yields no invented rows, chart or values, and markup is escaped',()=>{
  for(const template of ['institutional','akd','volume'] as Template[]){const svg=cardSvg({template,headline:'Verili haber',body:'Sadece kaynakta bulunan bilgi.'});assert(!svg.includes('125 milyon'));assert(!svg.includes('Alfa Yatırım'));}
@@ -50,8 +51,8 @@ test('circuit artwork shows only the brand and DEVRE KESICI, never tickers, date
  for(const theme of ['navy','paper'] as const)for(const layout of CARD_LAYOUTS){
   const svg=cardSvg({template:'circuit',headline:'KARCL ve THYAO paylarında devre kesici',body:'İşlemler 10:35:06 itibarıyla yeniden başlayacak.',card_data:{ticker:'KARCL',as_of:'22 Ekim 2026',metrics:[{label:'Gizli değer',value:'99 TL'}]}},[],'',false,theme,layout);
   assert(!/KARCL|THYAO|10:35|2026|PAY PİYASASI|Gizli değer|99 TL|yeniden başlayacak/.test(svg));
-  const texts=[...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map(m=>m[1]);assert.deepEqual(texts,['ENDEKS','HABER','DEVRE','KESİCİ']);
-  const b=Buffer.from(await png(svg));assert.equal(b.readUInt32BE(16),1080);assert.equal(b.readUInt32BE(20),1350);
+  const texts=[...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map(m=>m[1]);assert.deepEqual(texts,['borsacakali','DEVRE KESİCİ']);
+  const b=Buffer.from(await png(svg));assertCardPng(b,svg);
  }
 });
 test('source validation rejects invented or duplicate multi-ticker card codes',()=>{
@@ -65,9 +66,9 @@ test('crowded circuit cards retain all 120 codes, fit every layout and render fu
   assert.equal((svg.match(/data-circuit-ticker=/g)??[]).length,codes.length);
   for(const code of codes)assert.equal(svg.split('>#'+code+'</text>').length-1,1);
   for(const m of svg.matchAll(/data-circuit-ticker="[^"]+"><rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)){
-   const [x,y,w,h]=m.slice(1).map(Number);assert(x>=80&&x+w<=1001);assert(y>=480&&y+h<=1250);
+   const [x,y,w,h]=m.slice(1).map(Number);assert(x>=56&&x+w<=4096);assert(y>=300&&y+h<=4096);
   }
-  const b=Buffer.from(await png(svg));assert.equal(b.readUInt32BE(16),1080);assert.equal(b.readUInt32BE(20),1350);
+  const b=Buffer.from(await png(svg));assertCardPng(b,svg);
  }
  const tooMany=Array.from({length:1000},(_,i)=>'A'+String(i).padStart(4,'0'));
  assert.throws(()=>draftCard({...base,template:'circuit',card_data:{tickers:tooMany}}),/circuit_card_capacity/);

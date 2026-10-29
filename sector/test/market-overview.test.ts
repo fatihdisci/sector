@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -17,8 +18,8 @@ const docs=withOverviewEvidence([source]),draft=repairDraftStyle(raw,docs);
 test('public cached reader fixture becomes a substantive dashboard and tweet, with no public source filler',()=>{
  assert.equal(fixture.provenance.includes('not independent official data'),true);assert.deepEqual(numericIssues(draft,docs),[]);assert.equal(validateDraft(draft,docs).verification,'single_source_attributed');
  const text=postText(draft);assert(!/kaynak tablos|görselde|belirtiliyor/iu.test(text));assert(text.includes('11.004,37'));assert(text.includes('49,7 milyar TL'));assert(text.includes('163 hisse yükseldi, 449 hisse geriledi'));
- assert.equal(twitter.parseTweet(text).valid,true);assert.equal((text.match(/#[A-Z][A-Z0-9]{3,4}\b/g)??[]).filter(c=>c!=='#BIST').length,10);
- assert(text.includes('Pozitif katkı: #ASTOR #FROTO #CVKMD #TCKRC #RYSAS'));assert(text.includes('Negatif katkı: #ASELS #EREGL #ISCTR #GUBRF #TUPRS'));
+ assert.equal(twitter.parseTweet(text).valid,true);assert.equal((text.match(/#[a-z][a-z0-9]{3,4}\b/g)??[]).filter(c=>c!=='#BIST').length,10);
+ assert(text.includes('Pozitif katkı: #astor #froto #cvkmd #tckrc #rysas'));assert(text.includes('Negatif katkı: #asels #eregl #isctr #gubrf #tuprs'));
  assert.equal(draft.card_headline,'Öğleden sonra');assert.equal(draft.card_data!.overview!.panels.flatMap(p=>p.rows).length,15);assert.equal(tableView(draft,docs).length,25);
  assert(draft.source_notes!.includes(raw.source_notes![0]));assert.deepEqual(repairDraftStyle(draft,docs),draft);assert.deepEqual(withOverviewEvidence(docs),docs);assert.deepEqual(marketTimeIssues(draft,docs),[]);
 });
@@ -39,7 +40,7 @@ test('real navy and paper PNGs contain every panel and row, remain date/source-f
   for(const p of o.panels)for(const r of p.rows)assert(svg.includes(r.label),r.label);
   for(const b of o.brokers)for(const r of b.rows)assert(svg.includes(r.name),r.name);
   assert(svg.includes('ENDEKS'));assert(svg.includes('NET HACİM'));assert(svg.includes('TOPLAM TL'));assert(!/Kaynak tablosunda|Görselde|14:00|26 Ekim|2026-10-26/u.test(svg));assert(!svg.includes('0.9.'));assert(!svg.includes('67.2.'));
-  assert.equal(svg,draftCards(draft,theme,'brief')[0]);const bytes=await png(svg);assert(bytes.length>20000);const v=new DataView(bytes.buffer,bytes.byteOffset);assert.equal(v.getUint32(16),1080);assert.equal(v.getUint32(20),1350);
+  assert.equal(svg,draftCards(draft,theme,'brief')[0]);const bytes=await png(svg);assert(bytes.length>20000);const v=new DataView(bytes.buffer,bytes.byteOffset);assertCardPng(bytes,svg);
  }
  const long=structuredClone(draft);long.card_data!.overview!.brokers[0].rows[0].name='Çok uzun kurum adı '.repeat(15);assert.throws(()=>draftCards(long),/cell_capacity/);
  const overflow=structuredClone(draft);overflow.card_data!.overview!.panels[0].rows.push({label:'EXTRA',value:'+1 puan'});assert.throws(()=>draftCards(overflow),/capacity/);
@@ -79,7 +80,7 @@ test('channel programme selects only opening metrics, first moves or close from 
   assert.equal(o.view,view);assert.deepEqual(marketTimeIssues(out,ds),[]);assert.deepEqual(numericIssues(out,ds),[]);assert.equal(validateDraft(out,ds).verification,'single_source_attributed');assert(twitter.parseTweet(postText(out)).valid);
   const svg=draftCards(out)[0];assert((await png(svg)).length>15000);assert(!svg.includes('Diğer'));assert(!svg.includes('20:00'));
   if(view==='opening'){assert.equal(o.panels.length,0);assert.equal(o.brokers.length,0);assert(!svg.includes('HACİM'));assert(!svg.includes('BAŞLADI'));assert(!svg.includes('AÇILIŞ SEVİYESİ'));assert(postText(out).includes('11.004,37 puan; %1,01 düşüş'));assert(!/güne.*başladı/u.test(postText(out)));}
-  if(view==='first_moves'){assert.deepEqual(o.panels.map(p=>p.key),['gainers','losers','volume']);assert.equal(o.brokers.length,0);for(const p of o.panels)for(const r of p.rows){assert(svg.includes('#'+r.label));assert(postText(out).includes('#'+r.label));}}
+  if(view==='first_moves'){assert.deepEqual(o.panels.map(p=>p.key),['gainers','losers','volume']);assert.equal(o.brokers.length,0);for(const p of o.panels)for(const r of p.rows){assert(svg.includes('#'+r.label));assert(postText(out).includes('#'+r.label.toLowerCase()));}}
   if(view==='close'){assert.equal(out.card_headline,'Gün sonu');assert(!svg.includes('YÜKSELENLER'));assert(!svg.includes('DÜŞENLER'));}
  }
 });
@@ -102,7 +103,7 @@ test('legacy 17:00 reader format preserves signed percent, combined contribution
  const ds=withOverviewEvidence([d]),out=repairDraftStyle(raw,ds),o=out.card_data!.overview!;
  assert.equal(o.view,'close');assert.equal(o.brokers[0].rows[3].name,'A1');assert.equal(o.brokers[0].rows[3].net,'325,27 milyon');
  assert(o.brokers.flatMap(b=>b.rows).every(r=>r.name.trim()));assert.equal(validateDraft(out,ds).verification,'single_source_attributed');
- const svg=draftCards(out)[0];assert(svg.includes('>A1</text>'));assert((await png(svg)).length>20000);
+ const svg=draftCards(out)[0];assert(svg.includes(' / A1</text>'));assert((await png(svg)).length>20000);
  const broken=structuredClone(d);for(const p of broken.passages)p.text=p.text.replace(/A1:/g,':');assert.throws(()=>parseMarketOverview(broken),/broker_coverage/);
  });
 
