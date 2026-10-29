@@ -22,6 +22,17 @@ def validate_query(value):
     else:raise QueryError('bot_query_invalid')
     return bot,command,key
 
+def validate_raw_query(value):
+    bot=value.get('bot');command=value.get('command','')
+    if bot=='b0pt_bot' and command=='/doviz':return bot,command,validate_query(dict(value,command='/piyasayd'))[2]
+    ticker=re.fullmatch(r'/(detay|teorik|derinlik|akd|takas) ([A-Za-z][A-Za-z0-9]{3,4})',command)
+    if ticker:
+        verb,symbol=ticker.groups();expected='b0pt_bot' if verb=='detay' else 'ucretsizderinlikbot'
+        if bot!=expected:raise QueryError('bot_query_invalid')
+        key=validate_query(dict(value,bot='b0pt_bot',command='/piyasayd'))[2]
+        return bot,'/'+verb+' '+symbol.upper(),key
+    return validate_query(value)
+
 def private_json(path,value):
     tmp=path.with_suffix('.next');tmp.write_text(json.dumps(value,ensure_ascii=False));tmp.chmod(0o600);os.replace(tmp,path)
 
@@ -323,8 +334,8 @@ async def main(mode,root=ROOT):
                 from telegram_channel import scan,read
                 print(json.dumps(await(scan(client,value)if mode=='channel-scan'else read(client,value)),ensure_ascii=False));return
             if mode=='query-data':
-                if validate_query(value)[:2]!=('b0pt_bot','/piyasayd'):raise QueryError('bot_query_invalid')
-                result=await query_movers(client,db,value,data_only=True,root=root)
+                from telegram_raw import query_raw
+                result=await query_raw(client,db,root,value,validate=validate_raw_query,resume=resume_state,error=QueryError)
             else:result=await query(client,db,root,value)
             print(json.dumps(result,ensure_ascii=False))
         except FloodWaitError as error:
