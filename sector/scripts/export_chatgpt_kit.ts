@@ -19,17 +19,25 @@ try{
  async function source(file:string){
   const abs=join(root,'src',file);if(visited.has(abs))return;visited.add(abs);
   const text=await readFile(abs,'utf8');const out=join(stage,'src',file);await mkdir(dirname(out),{recursive:true});await writeFile(out,text);
-  for(const m of text.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g)){let dep=join(dirname(abs),m[1]);if(!extname(dep))dep+='.ts';await source(relative(join(root,'src'),dep));}
+  for(const m of [...text.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g),...text.matchAll(/import\(\s*['"](\.[^'"]+)['"]\s*\)/g)]){let dep=join(dirname(abs),m[1]);if(!extname(dep))dep+='.ts';await source(relative(join(root,'src'),dep));}
  }
  await source('card-pages.ts');
  await source('market-session.ts');
  await source('channel-programme.ts');
- for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','OFL.txt','profile.svg','profile.png','banner.svg','banner.png'])await copyFile(join(root,'assets',file),join(stage,'assets',file));
+ await source('brand-kit-registry.ts');await source('brand-kit-imagegen.ts');await source('editorial.ts');await source('news-visual-plan.ts');
+ await mkdir(join(stage,'assets/news-visuals'),{recursive:true});
+ await copyFile(join(root,'assets/news-visuals/manifest.json'),join(stage,'assets/news-visuals/manifest.json'));
+ await copyFile(join(root,'assets/news-visuals/README.md'),join(stage,'assets/news-visuals/README.md'));
+ await cp(join(root,'assets/approved-typography'),join(stage,'assets/approved-typography'),{recursive:true});
+ await cp(join(root,'assets/visual-templates'),join(stage,'assets/visual-templates'),{recursive:true});
+ await writeFile(join(stage,'BRAND-KIT.md'),'Borsa Çakalı bc-typographic-v1: onaylı yatay/yoğun liste, siyah #080908, kırık beyaz #F4F1E9; Anton/Zilla Slab başlık ve Inter veri fontu; seyrek veri yatay, yoğun veri dikey, yalnız silik çapraz filigran. 12 tür ve mevcut girişler src/brand-kit-registry.ts içindedir. src/brand-kit-imagegen.ts aynı production tokenlarını kullanır. Veri satırları ve mevcut kapasite kapıları korunur. Normal haber görselleri ile son dakika varlıkları ayrı havuzlardır; assets/news-visuals manifesti kapalıdır.\n');
+ for(const file of ['NotoSans-Regular.ttf','NotoSans-Bold.ttf','OFL.txt'])await copyFile(join(root,'assets',file),join(stage,'assets',file));
  for(const file of ['index.mjs','index_bg.wasm','package.json'])await copyFile(join(root,'node_modules/@resvg/resvg-wasm',file),join(stage,'runtime',file));
  execFileSync(join(root,'node_modules/.bin/esbuild'),['src/card-pages.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/cards.mjs')}`],{cwd:root});
+ execFileSync(join(root,'node_modules/.bin/esbuild'),['src/editorial.ts','--bundle','--platform=node','--format=cjs',`--outfile=${join(stage,'runtime/caption.cjs')}`],{cwd:root});
  execFileSync(join(root,'node_modules/.bin/esbuild'),['src/market-session.ts','--bundle','--platform=node','--format=esm',`--outfile=${join(stage,'runtime/market-session.mjs')}`],{cwd:root});
  await writeFile(join(stage,'render.mjs'),String.raw`import {readFile,writeFile} from 'node:fs/promises';import {cardSvgs} from './runtime/cards.mjs';import {initWasm,Resvg} from './runtime/index.mjs';
-const base=new URL('./',import.meta.url),input=process.argv[2],output=process.argv[3]??'kart.png';if(!input)throw Error('Usage: node render.mjs content.json kart.png');const d=JSON.parse(await readFile(input,'utf8'));const svgs=cardSvgs(d,d.theme??'navy',d.layout??'editorial');await initWasm(await readFile(new URL('runtime/index_bg.wasm',base)));const fonts=await Promise.all(['Regular','Bold'].map(n=>readFile(new URL('assets/NotoSans-'+n+'.ttf',base))));for(let i=0;i<svgs.length;i++){const svg=svgs[i],name=svgs.length===1?output:output.replace(/\.png$/i,'')+'-'+(i+1)+'.png',r=new Resvg(svg,{font:{fontBuffers:fonts,defaultFontFamily:'Noto Sans'}});try{const image=r.render();try{await writeFile(name,image.asPng());await writeFile(name.replace(/\.png$/i,'')+'.svg',svg);}finally{image.free();}}finally{r.free();}}
+const base=new URL('./',import.meta.url),input=process.argv[2],output=process.argv[3]??'kart.png';if(!input)throw Error('Usage: node render.mjs content.json kart.png');const d=JSON.parse(await readFile(input,'utf8'));const svgs=cardSvgs(d,d.theme??'navy',d.layout??'editorial');await initWasm(await readFile(new URL('runtime/index_bg.wasm',base)));const fonts=await Promise.all(['NotoSans-Regular.ttf','NotoSans-Bold.ttf','approved-typography/Anton-Regular.ttf','approved-typography/ZillaSlab-Bold.ttf','approved-typography/Inter.ttf'].map(n=>readFile(new URL('assets/'+n,base))));for(let i=0;i<svgs.length;i++){const svg=svgs[i],name=svgs.length===1?output:output.replace(/\.png$/i,'')+'-'+(i+1)+'.png',r=new Resvg(svg,{font:{fontBuffers:fonts,defaultFontFamily:'Noto Sans'}});try{const image=r.render();try{await writeFile(name,image.asPng());await writeFile(name.replace(/\.png$/i,'')+'.svg',svg);}finally{image.free();}}finally{r.free();}}
 `);
  const samples:any[]=[];
  for(const layout of CARD_LAYOUTS)for(const theme of ['navy','paper'])samples.push({name:`haber-${layout}-${theme}`,template:'news',headline:'Şirket yeni yatırım programını açıkladı',body:'Üretim kapasitesini artıracak yatırım için izin ve finansman çalışmaları sürüyor.',theme,layout});
@@ -46,7 +54,7 @@ const base=new URL('./',import.meta.url),input=process.argv[2],output=process.ar
  samples.push({name:'devre-kesici-raporu-59',provenance:{...circuitFixture.provenance,note:'DEMO: 23 Ekim 2026 tarihli geçmiş fixture alt kümesi; güncel veri değildir.'},...report('circuit',demoDisclosures.map((disclosure:any)=>({disclosure})),circuitFixture.indices,circuitFixture.at,'').draft});
  for(const s of samples){const {name:n,...d}=s;await writeFile(join(stage,'examples',n+'.json'),JSON.stringify(d,null,2));const svgs=cardSvgs(d,d.theme,d.layout);for(let i=0;i<svgs.length;i++){const svg=svgs[i],page=svgs.length===1?n:n+'-'+(i+1);await writeFile(join(stage,'examples',page+'.svg'),svg);await writeFile(join(stage,'examples',page+'.png'),await png(svg));}}
  await copyFile(join(root,'docs/chatgpt-kit-prompt.txt'),join(stage,'CHATGPT-PROMPT.txt'));await copyFile(join(root,'docs/chatgpt-kit-readme.txt'),join(stage,'ONCE-BUNU-OKU.txt'));
- await writeFile(join(stage,'THIRD-PARTY.txt'),'PNG renderer: @resvg/resvg-wasm 2.6.2, MPL-2.0. Noto Sans: SIL OFL, assets/OFL.txt.\n');
+ await writeFile(join(stage,'THIRD-PARTY.txt'),'PNG renderer: @resvg/resvg-wasm 2.6.2, MPL-2.0. Noto Sans: SIL OFL, assets/OFL.txt. Anton, Zilla Slab, Inter: SIL OFL; assets/approved-typography/*OFL* and provenance.json.\n');
  const files:string[]=[];async function walk(dir:string){for(const e of await readdir(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())await walk(p);else files.push(relative(stage,p).split('\\').join('/'));}}await walk(stage);
  const hashes=Object.fromEntries(await Promise.all(files.sort().map(async f=>[f,createHash('sha256').update(await readFile(join(stage,f))).digest('hex')])));
  await writeFile(join(stage,'SHA256.json'),JSON.stringify(hashes,null,2)+'\n');
