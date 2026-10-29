@@ -54,11 +54,14 @@ def movers_complete(text):
     rows=re.findall(r'(?m)^[^\n]*?\b([A-Z][A-Z0-9]{3,4})(?:\.E)?\s*[:|–—-]?\s*\d+[.,]\d{2}',text)
     return bool(re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and len(rows)==20 and len(set(rows))==20)
 
-async def query_movers(client,db,value):
-    # One explicit command and one correlated event; no message polling or
-    # automatic resend after a timeout/uncertain outcome.
+async def query_movers(client,db,value,*,data_only=False,root=ROOT):
+    # One explicit command, correlated replies and bounded same-ID refetches.
+    # Never resend after timeout/uncertainty; raw mode does not parse or use AI.
     bot,command,key=validate_query(value);row=resume_state(db,key,bot,command)
-    if row and row['state']=='complete':return json.loads(row['result'])
+    if row and row['state']=='complete':
+        result=json.loads(row['result'])
+        if bool(result.get('data_only'))!=data_only:raise QueryError('bot_query_invalid')
+        return result
     if row:raise QueryError('bot_query_delivery_uncertain')
     limit=db.execute("SELECT until FROM limits WHERE key='flood'").fetchone()
     if limit and limit['until']>time.time():raise QueryError('bot_query_rate_limited')
@@ -80,11 +83,23 @@ async def query_movers(client,db,value):
             db.execute("UPDATE requests SET state='uncertain' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_delivery_uncertain')
         db.execute("UPDATE requests SET state='sent',sent_id=? WHERE key=?",(sent.id,key));db.commit()
         ids=[];texts={};hashes={};received=None;deadline=monotonic()+90
+        phase='initial';missing={'initial':0,'followup':0,'refetch':0}
+        messages={};unavailable=set();changed=monotonic() if data_only else 0
+        def raw_messages():
+            return [messages[i] for i in ids if i not in unavailable and not re.search(r'hazırlanıyor|hazirlaniyor|yükleniyor|yukleniyor|işleniyor',messages[i].raw_text or '',re.I)]
+        def diagnostic(reason):
+            return json.dumps({'reason':reason,'phase':phase,'missing_counts':missing,'message_ids':ids})
+        async def wait_missing():
+            # A missing SDK result grants no provenance; avoid immediate-None loops.
+            remaining=deadline-monotonic()
+            if remaining>0:await asyncio.sleep(min(3,remaining))
         async def accept(message,refetch=False):
-            nonlocal received
+            nonlocal received,changed
             def mismatch(reason):
                 error=QueryError('bot_query_reply_mismatch');error.reason=reason;raise error
-            if message is None:mismatch('missing_message')
+            if message is None:
+                missing[phase]+=1
+                return False
             mid=getattr(message,'id',None)
             if not isinstance(mid,int) or mid<=sent.id or (refetch and mid not in ids):mismatch('message_id')
             sender=getattr(message,'sender_id',None);chat=getattr(message,'chat_id',None);reply=getattr(message,'reply_to_msg_id',None)
@@ -96,11 +111,16 @@ async def query_movers(client,db,value):
             if message.id not in ids:
                 if len(ids)>=20:raise QueryError('bot_query_size_limit')
                 ids.append(message.id)
+            if data_only and message.id in unavailable:changed=monotonic()
+            unavailable.discard(message.id)
+            messages[message.id]=message
             text=message.raw_text or ''
             if len(text)>30000:raise QueryError('bot_query_size_limit')
-            digest=hashlib.sha256(text.encode('utf-8')).digest()
+            media_id=str(getattr(getattr(message,'photo',None),'id',None))+':'+str(getattr(getattr(message,'document',None),'id',None))
+            digest=hashlib.sha256((text+'\0'+media_id).encode('utf-8')).digest()
             if hashes.get(message.id)==digest:return
             hashes[message.id]=digest
+            if data_only:changed=monotonic()
             if re.search(r'(?:abonelik|üyelik|üye ol|paket|sorgu limiti|günlük limit|kota).{0,60}(?:gerek|doldu|aşıldı|bitti|yetersiz|ulaştı)',text,re.I):raise QueryError('bot_query_provider_limit')
             if '\n' not in text and re.search(r'yükselen',text,re.I) and re.search(r'düşen',text,re.I) and not re.search(r'\d',text):text=''
             texts[message.id]=text
@@ -108,25 +128,52 @@ async def query_movers(client,db,value):
             if text and getattr(message,'date',None):received=message.date.isoformat()
         try:
             first=await conversation.get_reply(sent,timeout=max(0.01,deadline-monotonic()))
-            await accept(first)
+            if first is None:
+                await accept(first);await wait_missing()
+            else:await accept(first)
             while True:
                 combined='\n'.join(dict.fromkeys(texts.get(i,'') for i in ids if texts.get(i)))
-                if movers_complete(combined):break
+                if data_only:
+                    available=raw_messages()
+                    media_ready=any(m.photo or (m.file and (m.file.mime_type or '') in ('image/jpeg','image/png','image/webp')) for m in available)
+                    if available and (any((m.raw_text or '').strip() for m in available) or media_ready) and monotonic()-changed>=8:break
+                elif movers_complete(combined):break
                 remaining=deadline-monotonic()
                 if remaining<=0:raise QueryError('bot_query_text_incomplete_movers')
+                phase='followup'
                 try:
                     message=await conversation.get_reply(sent,timeout=min(3,remaining))
-                except (asyncio.TimeoutError,TimeoutError):message=None
-                if message is not None:await accept(message)
+                except (asyncio.TimeoutError,TimeoutError):pass
+                else:
+                    await accept(message)
+                    if message is None:await wait_missing()
                 if monotonic()>=deadline:raise QueryError('bot_query_text_incomplete_movers')
-                refreshed=await asyncio.wait_for(client.get_messages(peer,ids=ids),timeout=max(0.01,deadline-monotonic()))
-                for message in refreshed:await accept(message,True)
+                if ids:
+                    phase='refetch'
+                    refreshed=await asyncio.wait_for(client.get_messages(peer,ids=ids),timeout=max(0.01,deadline-monotonic()))
+                    for index,message in enumerate(refreshed):
+                        if message is None and index<len(ids):unavailable.add(ids[index])
+                        await accept(message,True)
+                    if any(message is None for message in refreshed):await wait_missing()
         except (asyncio.TimeoutError,TimeoutError):
-            db.execute("UPDATE requests SET state='expired' WHERE key=?",(key,));db.commit();raise QueryError('bot_query_timeout')
+            db.execute("UPDATE requests SET state='expired',result=? WHERE key=?",(diagnostic('timeout'),key));db.commit();raise QueryError('bot_query_timeout')
         except QueryError as error:
             state='reply_mismatch' if str(error)=='bot_query_reply_mismatch' else 'ambiguous' if str(error)=='bot_query_size_limit' else 'expired'
-            db.execute("UPDATE requests SET state=?,result=? WHERE key=?",(state,json.dumps({'reason':getattr(error,'reason','unspecified')}) if state=='reply_mismatch' else None,key));db.commit();raise
+            db.execute("UPDATE requests SET state=?,result=? WHERE key=?",(state,diagnostic(getattr(error,'reason','deadline' if str(error)=='bot_query_text_incomplete_movers' else 'unspecified')),key));db.commit();raise
         result={'bot':bot,'command':command,'message_ids':ids,'text':combined,'images':[]}
+        if data_only:
+            kept=raw_messages()
+            result.update(data_only=True,message_ids=[m.id for m in kept],text='\n\n'.join(dict.fromkeys(m.raw_text for m in kept if m.raw_text)),messages=[{'id':m.id,'reply_to_msg_id':m.reply_to_msg_id,'sender_id':m.sender_id,'chat_id':m.chat_id,'date':m.date.isoformat() if getattr(m,'date',None) else None,'edit_date':m.edit_date.isoformat() if getattr(m,'edit_date',None) else None} for m in kept])
+            directory=root/'responses'/hashlib.sha256(key.encode()).hexdigest()
+            for message in kept:
+                if not (message.photo or (message.file and (message.file.mime_type or '') in ('image/jpeg','image/png','image/webp'))):continue
+                if len(result['images'])>=2 or not message.file or message.file.size>MAX_BYTES:raise QueryError('bot_query_size_limit')
+                async def progress(current,total):
+                    if current>MAX_BYTES or total>MAX_BYTES:raise QueryError('bot_query_size_limit')
+                data=await client.download_media(message,file=bytes,progress_callback=progress)
+                if not data or len(data)>MAX_BYTES:raise QueryError('bot_query_size_limit')
+                directory.mkdir(parents=True,exist_ok=True,mode=0o700)
+                path=directory/(str(message.id)+'.image');path.write_bytes(data);path.chmod(0o600);result['images'].append(str(path.relative_to(root)))
         if received:result['received_at']=received
         db.execute("UPDATE requests SET state='complete',result=? WHERE key=?",(json.dumps(result,ensure_ascii=False),key));db.commit();return result
 
@@ -275,7 +322,11 @@ async def main(mode,root=ROOT):
             if mode in ('channel-scan','channel-read'):
                 from telegram_channel import scan,read
                 print(json.dumps(await(scan(client,value)if mode=='channel-scan'else read(client,value)),ensure_ascii=False));return
-            print(json.dumps(await query(client,db,root,value),ensure_ascii=False))
+            if mode=='query-data':
+                if validate_query(value)[:2]!=('b0pt_bot','/piyasayd'):raise QueryError('bot_query_invalid')
+                result=await query_movers(client,db,value,data_only=True,root=root)
+            else:result=await query(client,db,root,value)
+            print(json.dumps(result,ensure_ascii=False))
         except FloodWaitError as error:
             db.execute("INSERT OR REPLACE INTO limits VALUES('flood',?)",(time.time()+error.seconds,));db.commit();raise QueryError('bot_query_rate_limited')
         except Exception as error:

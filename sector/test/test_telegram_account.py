@@ -78,7 +78,7 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
         client,_=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError()]);client.get_messages=AsyncMock(return_value=[self.message(chat_id=8,raw_text='secret-content')])
         with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
-        row=self.db.execute('select state,result from requests').fetchone();self.assertEqual(row['state'],'reply_mismatch');self.assertEqual(json.loads(row['result']),{'reason':'chat'});self.assertNotIn('secret-content',row['result'])
+        row=self.db.execute('select state,result from requests').fetchone();self.assertEqual(row['state'],'reply_mismatch');self.assertEqual(json.loads(row['result']),{'reason':'chat','phase':'refetch','missing_counts':{'initial':0,'followup':0,'refetch':0},'message_ids':[11]});self.assertNotIn('secret-content',row['result'])
     async def test_piyasayd_rejects_refetch_from_wrong_sender(self):
         self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
         client,_=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError()])
@@ -95,6 +95,128 @@ class AccountQueries(unittest.IsolatedAsyncioTestCase):
         client,_=self.movers_client([self.message(raw_text='En çok yükselen ve düşen hisseler'),self.message(id=12,raw_text=self.movers_text())])
         result=await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
         self.assertEqual(result['text'],self.movers_text());self.assertEqual(result['message_ids'],[11,12])
+    async def test_piyasayd_placeholder_none_then_same_id_edits_and_cache(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        initial=self.message(raw_text='Hazırlanıyor');partial=self.message(raw_text=self.movers_text().split('En Çok Düşenler')[0]);final=self.message(raw_text=self.movers_text())
+        client,conv=self.movers_client([initial,TimeoutError(),TimeoutError(),TimeoutError(),TimeoutError()])
+        client.get_messages=AsyncMock(side_effect=[[None],[partial],[partial],[final]])
+        elapsed=[0]
+        async def advance(seconds):elapsed[0]+=seconds
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]),patch.object(m.asyncio,'sleep',side_effect=advance) as sleep:
+            value=dict(self.value,command='/piyasayd');result=await m.query(client,self.db,self.root,value)
+            again=await m.query(client,self.db,self.root,value)
+        self.assertEqual(result,again);self.assertEqual(result['text'],self.movers_text());self.assertEqual(result['message_ids'],[11])
+        self.assertEqual(conv.send_message.await_count,1);self.assertEqual(client.get_messages.await_count,4);sleep.assert_awaited_once_with(3)
+    async def test_piyasayd_initial_none_grants_no_provenance_and_can_recover(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        client,conv=self.movers_client([None,self.message(raw_text=self.movers_text())])
+        with patch.object(m.asyncio,'sleep',new=AsyncMock()) as sleep:
+            result=await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+        self.assertEqual(result['message_ids'],[11]);self.assertEqual(conv.send_message.await_count,1);sleep.assert_awaited_once()
+    async def test_piyasayd_none_until_deadline_is_bounded_and_never_replayed(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit();value=dict(self.value,command='/piyasayd')
+        client,conv=self.movers_client(None);elapsed=[0]
+        async def advance(seconds):elapsed[0]+=seconds
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]),patch.object(m.asyncio,'sleep',side_effect=advance) as sleep:
+            with self.assertRaisesRegex(m.QueryError,'text_incomplete_movers'):await m.query(client,self.db,self.root,value)
+        record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0])
+        self.assertEqual(elapsed[0],90);self.assertEqual(sleep.await_count,30);self.assertEqual(record['missing_counts']['initial'],1);self.assertEqual(record['phase'],'followup');self.assertEqual(record['message_ids'],[])
+        client.get_messages.assert_not_awaited()
+        with self.assertRaisesRegex(m.QueryError,'expired'):await m.query(client,self.db,self.root,value)
+        self.assertEqual(conv.send_message.await_count,1)
+    async def test_piyasayd_refetch_none_does_not_weaken_sender_or_query_binding(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        for fields in ({'sender_id':8},{'chat_id':8},{'reply_to_msg_id':9},{'id':12}):
+            self.db.execute('DELETE FROM requests');self.db.commit()
+            client,conv=self.movers_client([self.message(raw_text='Hazırlanıyor'),TimeoutError(),TimeoutError()])
+            client.get_messages=AsyncMock(side_effect=[[None],[self.message(raw_text='private-content',**fields)]])
+            with patch.object(m.asyncio,'sleep',new=AsyncMock()):
+                with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
+            record=self.db.execute('SELECT result FROM requests').fetchone()[0]
+            self.assertNotIn('private-content',record);self.assertEqual(json.loads(record)['phase'],'refetch');self.assertEqual(json.loads(record)['missing_counts']['refetch'],1);self.assertEqual(conv.send_message.await_count,1)
+    async def test_data_only_text_media_and_caption_preserved_without_parser(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        for caption,media in [('Kaynak tarih: 28.10.2026',False),('',True),('Tablo açıklaması',True)]:
+            self.db.execute('DELETE FROM requests');self.db.commit()
+            msg=self.message(raw_text=caption,photo=N(id=55) if media else None,file=N(mime_type='image/png',size=3) if media else None)
+            client,conv=self.movers_client(msg);client.download_media=AsyncMock(return_value=b'png')
+            elapsed=[0]
+            async def reply(*args,**kwargs):elapsed[0]+=kwargs['timeout'];raise TimeoutError()
+            conv.get_reply=AsyncMock(side_effect=[msg])
+            first=[True]
+            async def replies(*args,**kwargs):
+                if first[0]:first[0]=False;return msg
+                return await reply(*args,**kwargs)
+            conv.get_reply=AsyncMock(side_effect=replies);client.get_messages=AsyncMock(return_value=[msg])
+            with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]):
+                result=await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+                again=await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+            self.assertEqual(result,again);self.assertEqual(result['text'],caption);self.assertEqual(result['message_ids'],[11]);self.assertEqual(result['messages'][0]['reply_to_msg_id'],10);self.assertEqual(bool(result['images']),media);self.assertEqual(conv.send_message.await_count,1)
+            if media:self.assertEqual((self.root/result['images'][0]).read_bytes(),b'png')
+    async def test_data_only_placeholder_none_media_edit_then_delayed_caption(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        initial=self.message(raw_text='Hazırlanıyor');image=self.message(raw_text='',photo=N(id=55),file=N(mime_type='image/png',size=3));caption=self.message(id=12,raw_text='Ayrı kaynak açıklaması')
+        elapsed=[0];events=[initial,TimeoutError(),caption]
+        async def replies(*args,**kwargs):
+            elapsed[0]+=kwargs['timeout'] if not events else 3
+            event=events.pop(0) if events else TimeoutError()
+            if isinstance(event,Exception):raise event
+            return event
+        async def sleep(seconds):elapsed[0]+=seconds
+        client,conv=self.movers_client(initial);conv.get_reply=AsyncMock(side_effect=replies);client.get_messages=AsyncMock(side_effect=[[None],[image,caption],[image,caption],[image,caption],[image,caption]])
+        client.download_media=AsyncMock(return_value=b'png')
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]),patch.object(m.asyncio,'sleep',side_effect=sleep):
+            result=await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+        self.assertEqual(result['text'],'Ayrı kaynak açıklaması');self.assertEqual(result['message_ids'],[11,12]);self.assertEqual(len(result['images']),1);self.assertEqual(conv.send_message.await_count,1)
+    async def test_data_only_wrong_sender_or_query_still_fails_closed(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        for fields in ({'sender_id':8},{'chat_id':8},{'reply_to_msg_id':9}):
+            self.db.execute('DELETE FROM requests');self.db.commit()
+            client,conv=self.movers_client(self.message(raw_text='',photo=N(id=55),**fields))
+            with self.assertRaisesRegex(m.QueryError,'reply_mismatch'):await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+            client.download_media.assert_not_awaited();self.assertEqual(conv.send_message.await_count,1)
+    async def test_data_only_placeholder_until_deadline_never_downloads_or_replays(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        msg=self.message(raw_text='Hazırlanıyor',photo=N(id=55));client,conv=self.movers_client(msg);elapsed=[0]
+        async def reply(*args,**kwargs):elapsed[0]+=kwargs['timeout'];raise TimeoutError()
+        first=[True]
+        async def replies(*args,**kwargs):
+            if first[0]:first[0]=False;return msg
+            return await reply(*args,**kwargs)
+        conv.get_reply=AsyncMock(side_effect=replies);client.get_messages=AsyncMock(return_value=[msg])
+        value=dict(self.value,command='/piyasayd')
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]):
+            with self.assertRaisesRegex(m.QueryError,'text_incomplete_movers'):await m.query_movers(client,self.db,value,data_only=True,root=self.root)
+        with self.assertRaisesRegex(m.QueryError,'expired'):await m.query_movers(client,self.db,value,data_only=True,root=self.root)
+        self.assertEqual(elapsed[0],90);client.download_media.assert_not_awaited();self.assertEqual(conv.send_message.await_count,1)
+    async def test_data_only_missing_refetch_until_deadline_never_returns_stale_placeholder(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        msg=self.message(raw_text='Hazırlanıyor');client,conv=self.movers_client(msg);client.get_messages=AsyncMock(return_value=[None]);elapsed=[0];first=[True]
+        async def replies(*args,**kwargs):
+            if first[0]:first[0]=False;return msg
+            elapsed[0]+=kwargs['timeout'];raise TimeoutError()
+        async def sleep(seconds):elapsed[0]+=seconds
+        conv.get_reply=AsyncMock(side_effect=replies)
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]),patch.object(m.asyncio,'sleep',side_effect=sleep):
+            with self.assertRaisesRegex(m.QueryError,'text_incomplete_movers'):await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+        record=json.loads(self.db.execute('SELECT result FROM requests').fetchone()[0])
+        self.assertEqual(elapsed[0],90);self.assertGreater(record['missing_counts']['refetch'],0);self.assertEqual(record['missing_counts']['initial'],0);self.assertEqual(conv.send_message.await_count,1);client.download_media.assert_not_awaited()
+    async def test_data_only_wrong_bot_is_rejected_before_send(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        client,conv=self.movers_client(self.message());client.get_entity=AsyncMock(return_value=N(id=7,bot=True,username='other_bot'))
+        with self.assertRaisesRegex(m.QueryError,'peer_invalid'):await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+        conv.send_message.assert_not_awaited();client.download_media.assert_not_awaited()
+    async def test_data_only_separate_final_reply_excludes_loading_placeholder(self):
+        self.db.execute("INSERT INTO peers VALUES('b0pt_bot',7)");self.db.commit()
+        initial=self.message(raw_text='Hazırlanıyor');final=self.message(id=12,raw_text='Kaynağın tamamlanan metni');events=[initial,final];elapsed=[0]
+        client,conv=self.movers_client(initial)
+        async def replies(*args,**kwargs):
+            if events:return events.pop(0)
+            elapsed[0]+=kwargs['timeout'];raise TimeoutError()
+        conv.get_reply=AsyncMock(side_effect=replies);client.get_messages=AsyncMock(return_value=[initial,final])
+        with patch.object(m,'monotonic',side_effect=lambda:elapsed[0]):
+            result=await m.query_movers(client,self.db,dict(self.value,command='/piyasayd'),data_only=True,root=self.root)
+        self.assertEqual(result['text'],final.raw_text);self.assertEqual(result['message_ids'],[12]);self.assertEqual(conv.send_message.await_count,1)
     async def test_piyasayd_requires_bound_identity_before_send(self):
         client=N(get_entity=AsyncMock(return_value=self.peer),conversation=unittest.mock.Mock())
         with self.assertRaisesRegex(m.QueryError,'peer_unverified'):await m.query(client,self.db,self.root,dict(self.value,command='/piyasayd'))
