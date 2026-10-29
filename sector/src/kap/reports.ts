@@ -35,7 +35,7 @@ export function purchases(page:ReturnType<typeof fullText>):Purchase[]{
  if(!found)throw Error('kap_report_table_missing');return out;
 }
 export interface ReportRecord {disclosure:Disclosure;purchases?:Purchase[];error?:string;}
-export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences):{draft:Draft;documents:Document[]}{
+export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences,generalArtwork=false):{draft:Draft;documents:Document[]}{
  const limit=(n:number)=>preferences?.list==='all'?Infinity:preferences?.count??n;
  const day=istanbulDay(at),time=new Date(at).toLocaleTimeString('tr-TR',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit'});
  const relevant=records.filter(r=>istanbulDay(Date.parse(r.disclosure.publishedAt))===day&&Date.parse(r.disclosure.publishedAt)<=at&&(kind==='circuit'?normalize(r.disclosure.title+' '+r.disclosure.summary).includes('DEVRE KESICI'):/PAYLARIN GERI ALINMASINA/.test(normalize(r.disclosure.title))));
@@ -44,7 +44,7 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
  const current=unique.filter(r=>!r.disclosure.oid||!replaced.has(r.disclosure.oid));
  const rows:{label:string;value:string}[]=[],parts:string[]=[];
  let heading='',footer='KAP kayıtları • '+day+' '+time+' itibarıyla';
- if(kind==='circuit')return circuitDailyReport(current.map(r=>r.disclosure),indices,at,coverage,preferences);
+ if(kind==='circuit')return circuitDailyReport(current.map(r=>r.disclosure),indices,at,coverage,preferences,generalArtwork);
  {
   const failed=current.filter(r=>!r.purchases||r.error).length;
   // Each programme table is a snapshot. Later disclosures replace earlier
@@ -77,9 +77,9 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
  return {draft,documents:[doc]};
 }
 
-function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences):{draft:Draft;documents:Document[]}{
+function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences,generalArtwork=false):{draft:Draft;documents:Document[]}{
  const events=current.map(d=>({id:d.id,tickers:[...d.subjectCodes],published_at:d.publishedAt}));
- const {rows,selection}=selectCircuitReport(events,indices,at,CIRCUIT_REPORT_LIMIT);
+ const {rows,selection}=selectCircuitReport(events,indices,at,generalArtwork?10000:CIRCUIT_REPORT_LIMIT,generalArtwork);
  const reportDate=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long'}).format(new Date(at));
  const headline=`${reportDate} günü kaç hissede devre kesici çalıştı?`,note='';
  const codes=selection.selected_tickers.slice(0,20);

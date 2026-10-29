@@ -44,6 +44,6 @@ export class KapReports {
    const official=(d:Disclosure)=>normalize(d.title+' '+(d.summary??'')).includes('DEVRE KESICI')&&['BORSA ISTANBUL BISTECH DEVRE KESICI UYGULAMASI','BORSA ISTANBUL AS'].includes(normalize(d.company??''));
    for(const d of fetched){if(Date.parse(d.publishedAt)<dayStart||Date.parse(d.publishedAt)>at||!official(d))throw Error('circuit_report_source_incomplete');entries.push({disclosure:d,purchases:undefined,error:undefined});}
   }
-  const indices=this.store.get<Indices>('indices');if(kind==='general_buyback'){const result=generalBuyback(kind,entries,indices,at,coverage);if(preferences)result.draft.output_preferences=preferences;return result;}return report(kind,entries,indices,at,coverage,preferences);
+  const indices=this.store.get<Indices>('indices');if(kind==='general_buyback'){const result=generalBuyback(kind,entries,indices,at,coverage);if(preferences)result.draft.output_preferences=preferences;return result;}return report(kind,entries,indices,at,coverage,preferences,kind==='circuit');
  }
 }

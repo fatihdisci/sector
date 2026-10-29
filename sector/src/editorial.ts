@@ -177,7 +177,7 @@ export function numericIssues(draft:Draft,documents:Document[]):string[] {
  return issues.slice(0,20);
 }
 export function validateDraft(value:unknown,documents:Document[]):{draft:Draft;verification:string} {
- if((value as Draft)?.automated_daily||(value as Draft)?.tweet_style==='owner_ready')throw Error('owner_ready_model_forbidden');
+ if((value as Draft)?.circuit_artwork||(value as Draft)?.automated_daily||(value as Draft)?.tweet_style==='owner_ready')throw Error('owner_ready_model_forbidden');
  if(!value||typeof value!=='object')throw new Error('invalid_draft');
  const d=value as Draft;
  validateCardData(d.card_data,documents);

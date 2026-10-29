@@ -1,3 +1,4 @@
+import {assertCircuitArtwork} from './circuit-artwork';
 import {assertReadyPost} from './owner-ready-post';
 import {readMedia,bytesHash} from './media-set';
 import {xTextValid} from './x-text';
@@ -31,16 +32,16 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   const draftId=menu?.[1]??choice?.[2],revision=Number(menu?.[2]??choice?.[3]);
   const row=draftId?await env.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(draftId).first<DraftRow&{delivery_state:string}>():null;
   if(!row||row.message_id!==messageId||!xDraftEligible(row,revision,row.media_key))text='Kart güncellenmiş, süresi dolmuş veya paylaşılabilir değil. Güncel kartı kullan.';
-  else if(menu){
+  else if(menu&&!JSON.parse(row.content).circuit_artwork){
    const buttons=[['Hemen',0],['15 dakika sonra',15],['30 dakika sonra',30],['60 dakika sonra',60]] as const;
    await telegram(env,'editMessageReplyMarkup',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(messageId),reply_markup:JSON.stringify({inline_keyboard:[buttons.map(([label,n])=>({text:label,callback_data:`xchoose:${n}:${row.id}:${revision}`})),[{text:'Geri',callback_data:`dm:main:${row.id}:${revision}`}]]})}));
    text='Paylaşım zamanını seç.';
-  }else if(!choice)text='Geçersiz seçim.';
+  }else if(!choice&&!JSON.parse(row.content).circuit_artwork)text='Geçersiz seçim.';
   else if(!xTextValid(postText(JSON.parse(row.content))))text='Metin geçersiz veya 25.000 karakter sınırını aşıyor. Metin kesilmedi; otomatik zincir oluşturulmaz.';
   else {
-   const now=Date.now(),due=now+Number(choice[1])*60_000,day=xDay(due),postId=crypto.randomUUID();
+   const now=Date.now(),due=now+(JSON.parse(row.content).circuit_artwork?0:Number(choice?.[1]??0)*60_000),day=xDay(due),postId=crypto.randomUUID();
    try{
-    const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);
+    const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);await assertCircuitArtwork(env,row.media_key!,row.content,images);
     if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
     const hashes=JSON.stringify(await Promise.all(images.map(bytesHash)));
     const results=await env.DB.batch([
@@ -76,7 +77,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const draft=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
-  const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);
+  const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);await assertCircuitArtwork(env,row.media_key,draft.content,images);
   if(row.media_hashes&&JSON.stringify(await Promise.all(images.map(bytesHash)))!==row.media_hashes)throw Error('x_image_changed');
   api.preflight?.(row.content,images.length);
   const identity=await api.identity();if(identity.username.toLowerCase()!=='borsacakali'||identity.id!=='335502216')throw Error('x_wrong_account');

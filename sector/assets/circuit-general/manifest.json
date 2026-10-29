@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "enabled": true,
+  "purpose": "circuit_daily",
+  "file": "general.png",
+  "sha256": "d92438757373919adbe59b2335116bdb62c62cbfa96ee07b84c34616b73ed6c7",
+  "width": 1672,
+  "height": 941,
+  "origin_library_id": "libfile_c1bae7c47c508191a5d2aa645cd06c3d"
+}

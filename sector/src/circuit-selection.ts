@@ -12,8 +12,8 @@ export const CIRCUIT_REPORT_LIMIT=120;
 const code=/^[A-Z][A-Z0-9]{3,4}$/;
 export function circuitOmissionNote(s:Pick<CircuitSelection,'total_tickers'|'omitted'>):string{return s.omitted?`${s.total_tickers} hisse; ${s.omitted} gösterilmedi.`:'';}
 /** Selection affects presentation only. Every event and aggregate remains archived. */
-export function selectCircuitReport(events:readonly CircuitEvent[],indices:CircuitIndices|null,at:number,limit=CIRCUIT_REPORT_LIMIT){
- if(!Number.isSafeInteger(limit)||limit<1||limit>CIRCUIT_REPORT_LIMIT)throw Error('invalid_output_limit');
+export function selectCircuitReport(events:readonly CircuitEvent[],indices:CircuitIndices|null,at:number,limit=CIRCUIT_REPORT_LIMIT,generalArtwork=false){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>(generalArtwork?10000:CIRCUIT_REPORT_LIMIT))throw Error('invalid_output_limit');
  const counts=new Map<string,number>();for(const event of events)for(const ticker of new Set(event.tickers)){if(!code.test(ticker))throw Error('circuit_report_ticker_invalid');counts.set(ticker,(counts.get(ticker)??0)+1);}
  const members=(values:unknown,n:number):values is string[]=>Array.isArray(values)&&values.length===n&&new Set(values).size===n&&values.every(v=>typeof v==='string'&&code.test(v));
  const checked=indices?Date.parse(indices.checkedAt):NaN;
