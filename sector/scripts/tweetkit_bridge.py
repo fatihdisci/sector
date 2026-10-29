@@ -64,9 +64,9 @@ def main():
   if any(not pairs.get(name) for name in ('auth_token','ct0','twid')): send(error='x_keychain_invalid'); return
   tk=TweetKit(cookie=cookie,timeout=20)
   if tk.whoami().get('user_id')!=EXPECTED: send(error='x_wrong_account'); return
-  profile=tk.user_profile('endeks_haber')
-  if not profile.get('ok') or str(profile.get('id'))!=EXPECTED or str(profile.get('username','')).lower()!='endeks_haber': send(error='x_identity_unverified'); return
-  if op=='identity': send(id=EXPECTED,username='endeks_haber'); return
+  profile=tk.user_profile('borsacakali')
+  if not profile.get('ok') or str(profile.get('id'))!=EXPECTED or str(profile.get('username','')).lower()!='borsacakali': send(error='x_identity_unverified'); return
+  if op=='identity': send(id=EXPECTED,username='borsacakali'); return
   if op=='upload':
    img=base64.b64decode(req.get('image',''),validate=True)
    if len(img)>5000000 or not img.startswith(b'\x89PNG\r\n\x1a\n'): raise ValueError()
@@ -99,7 +99,7 @@ def main():
    send(error='x_post_uncertain',diagnostic=diag);return
   if not re.fullmatch(r'\d+',str(result.get('id',''))):send(error='x_post_uncertain',diagnostic=diag);return
   rid=str(result['id']); receipt=tk.get_tweet(rid)
-  if not receipt.get('ok') or str(receipt.get('author_id'))!=EXPECTED or str(receipt.get('author','')).lower()!='endeks_haber' or (not note and not (receipt.get('text')==text or bool(re.fullmatch(re.escape(text)+r' https://t\.co/[A-Za-z0-9]+',str(receipt.get('text','')))))):
+  if not receipt.get('ok') or str(receipt.get('author_id'))!=EXPECTED or str(receipt.get('author','')).lower()!='borsacakali' or (not note and not (receipt.get('text')==text or bool(re.fullmatch(re.escape(text)+r' https://t\.co/[A-Za-z0-9]+',str(receipt.get('text','')))))):
    send(error='x_post_uncertain',id=rid,diagnostic={**diag,'stage':'readback'});return
   q=C.QUERY_IDS['TweetResultByRestId']; path=f'/i/api/graphql/{q}/TweetResultByRestId'
   params={'variables':json.dumps({'tweetId':rid,'withCommunity':False,'includePromotedContent':False,'withVoice':False}), 'features':json.dumps(C.USER_TWEETS_FEATURES), 'fieldToggles':json.dumps({'withArticleRichContentState':False})}

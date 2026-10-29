@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -68,7 +69,7 @@ test('ENDEKS topics include global tech, domestic funds and central banks',()=>{
  assert.equal(topicScore('Anlık hisse verisi AKD kurum dağılımı').score,0);
 });
 test('all five brand cards render actual 1080×1350 PNG with licensed fonts',async()=>{
- for(const template of ['breaking','economic_data','company','global','info'] as const){const svg=cardSvg({...draft,template},['Kaynak'],'21.10.2026',true);assert(svg.includes('#112333'));assert(!/linearGradient|radialGradient|filter=/.test(svg));const image=await png(svg);const view=new DataView(image.buffer,image.byteOffset,image.byteLength);assert.equal(view.getUint32(16),1080);assert.equal(view.getUint32(20),1350);assert.equal(pngBytes(Buffer.from(image).toString('base64')).length,image.length);}
+ for(const template of ['breaking','economic_data','company','global','info'] as const){const svg=cardSvg({...draft,template},['Kaynak'],'21.10.2026',true);assert(svg.includes('#080908'));assert(!/linearGradient|radialGradient|filter=/.test(svg));const image=await png(svg);const view=new DataView(image.buffer,image.byteOffset,image.byteLength);const dimensions=assertCardPng(image,svg);assert.equal(pngBytes(Buffer.from(image).toString('base64'),dimensions.width,dimensions.height).length,image.length);}
  assert.throws(()=>cardSvg({...draft,body:'Çok uzun '.repeat(800)},['Kaynak'],'21.10.2026'),/overflow/);
 });
 test('card content and dimensions are mandatory',()=>{

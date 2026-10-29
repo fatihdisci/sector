@@ -36,7 +36,7 @@ export async function publicationAction(env:Env,action:string,id:string,update:n
   ]);
  }
  await refreshPublicationCard(env,id);
- const s=await publicationSummary(env,now);return `${action==='mark'?'✅ ':action==='undo'?'↩️ ':action==='defer'?'⏸ ':''}${s.total} yayın (${s.manual} elle/${s.api} API), bütçe ${s.reserved}/20. Son ${s.last?new Date(s.last).toLocaleTimeString('tr-TR',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit'}):'—'}. ${cadence(action==='mark'?before.last:s.last,now)} ${dailyAdvice(s.total,now)}`;
+ const s=await publicationSummary(env,now);return `${action==='mark'?'✅ ':action==='undo'?'↩️ ':action==='defer'?'⏸ ':''}${s.total} yayın (${s.manual} elle/${s.api} API), ${s.reserved} X işlemi. Son ${s.last?new Date(s.last).toLocaleTimeString('tr-TR',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit'}):'—'}. ${cadence(action==='mark'?before.last:s.last,now)} ${dailyAdvice(s.total,now)}`;
 }
 export async function publicationMessage(env:Env,m:any,update:number){
  const link=/^\/yayinurl ([a-f0-9-]{36}) (https:\/\/x\.com\/endeks_haber\/status\/\d+)$/i.exec(m.text??'');
@@ -50,7 +50,7 @@ export async function publicationMessage(env:Env,m:any,update:number){
   await telegram(env,'sendDocument',form);return true;
  }
 
- if(m.text==='/yayinlar'||m.text==='/yayınlar'){const s=await publicationSummary(env);await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:`Bugün ${s.total} paylaşım: ${s.manual} manuel / ${s.api} API. API bütçesi ${s.reserved}/20. Son yayın: ${s.last?new Date(s.last).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'}):'—'}. ${s.note}`}));return true;}
+ if(m.text==='/yayinlar'||m.text==='/yayınlar'){const s=await publicationSummary(env);await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:`Bugün ${s.total} paylaşım: ${s.manual} manuel / ${s.api} API. ${s.reserved} X işlemi; uygulamada günlük sınır yok. Son yayın: ${s.last?new Date(s.last).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'}):'—'}. ${s.note}`}));return true;}
  const start=m.text?.match(/^\/start pub_(mark|undo|defer|time|stats)_([a-f0-9-]{36})$/);
  if(start){const text=await publicationAction(env,start[1],start[2],update);await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text}));return true;}
  const edit=await env.DB.prepare('SELECT * FROM publication_time_edits WHERE user_id=? AND expires_at>? AND prompt_message_id=?').bind(env.TELEGRAM_USER_ID!,Date.now(),m.reply_to_message?.message_id??0).first<any>();if(!edit)return false;

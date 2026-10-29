@@ -4,8 +4,8 @@ const d:Draft={headline:'🚨 Devre kesici uygulandı',body:'Sürekli işleme ar
 test('circuit stock list occurs only once at top, even if model repeated subject in headline and body',()=>{
  for(const body of ["KARCL ve KTLEV paylarında sürekli işleme ara verildi.","#KARCL, #KTLEV'de sürekli işleme ara verildi.","KARCL.E / KTLEV.E paylarında sürekli işleme ara verildi."]){
   const output=postText({...d,headline:"🚨 KARCL ve KTLEV'de devre kesici uygulandı",body});
-  assert.equal(output,'🚨 #KARCL #KTLEV\nDevre kesici uygulandı\n\nSürekli işleme ara verildi.\n\n#Borsa #BIST');
-  for(const c of ['KARCL','KTLEV'])assert.equal(output.split(c).length-1,1);
+  assert.equal(output,'🚨 #karcl #ktlev\nDevre kesici uygulandı\n\nSürekli işleme ara verildi.\n\n#Borsa #BIST');
+  for(const c of ['KARCL','KTLEV'])assert.equal(output.split(c.toLowerCase()).length-1,1);
  }
  assert.equal(postText({...d,body:'Sürekli işleme ara verildi.\nHisseler: KARCL, KTLEV'}),postText(d));
 });
@@ -19,7 +19,7 @@ test('tweet ticker tagging applies to single stock news, AKD, institutional and 
  for(const template of ['news','akd','custody'] as const){const value={...news,template,...(template!=='news'?{card_data:{ticker:'KARCL'}}:{})};const before=JSON.stringify(value),text=postText(value);assert(!/(?<!#)\bKARCL\b/u.test(text));assert.equal(JSON.stringify(value),before);}
  assert.equal(hashtagTickers("OMD, #OMD ve OMD.E; OMDX; https://example.org/OMD.E",['OMD']),"#OMD, #OMD ve #OMD; OMDX; https://example.org/OMD.E");
  assert.equal(hashtagTickers("karcl ve KARCL'nin açıklaması",['KARCL']),"#KARCL ve #KARCL'nin açıklaması");
- const report={...news,template:'info' as const,card_data:{report:{rows:[],footer:''}}};assert.match(postText(report),/#KARCL'nin/);
+ const report={...news,template:'info' as const,card_data:{report:{rows:[],footer:''}}};assert.match(postText(report),/#karcl'nin/);
  const institutional={...news,template:'institutional' as const,card_data:{buy:[{label:'KARCL',value:'10 TL'}]}};assert(!/(?<!#)\bKARCL\b/u.test(postText(institutional)));
 });
 

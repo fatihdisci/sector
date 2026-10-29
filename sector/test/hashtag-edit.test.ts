@@ -11,24 +11,24 @@ test('exact owner SELEC edit appends once, preserves image bytes/card hash and q
  const env=await fixture(),original=globalThis.fetch;globalThis.fetch=async()=>{throw Error('no network allowed');};try{
   await enqueueEdit(env,id,1,'tweetin sonuna #SELEC ekle görseli değiştirme');
   const row=await env.DB.prepare('SELECT content,media_key,revision,documents FROM drafts WHERE id=?').bind(id).first<any>();const out=JSON.parse(row.content) as Draft;
-  assert.deepEqual(out.hashtags,['#Borsa','#BIST','#SPK','#SELEC']);assert(postText(out).endsWith('#SELEC'));assert.deepEqual({...out,hashtags:draft.hashtags},draft);assert.equal(out.body,draft.body);assert.equal(out.card_headline,draft.card_headline);assert.equal(out.card_body,draft.card_body);assert.deepEqual(out.claims,draft.claims);assert.equal(row.documents,JSON.stringify([doc]));
+  assert.deepEqual(out.hashtags,['#Borsa','#BIST','#SPK','#SELEC']);assert(postText(out).endsWith('#selec'));assert.deepEqual({...out,hashtags:draft.hashtags},draft);assert.equal(out.body,draft.body);assert.equal(out.card_headline,draft.card_headline);assert.equal(out.card_body,draft.card_body);assert.deepEqual(out.claims,draft.claims);assert.equal(row.documents,JSON.stringify([doc]));
   assert.equal(await bytesHash((await readMedia(env,key)).images[0]),await bytesHash((await readMedia(env,row.media_key,row.content)).images[0]));assert.equal(draftCard(out),draftCard(draft));assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);
-  await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #SELEC ekle görseli değiştirme'),/stale_edit/);
+  await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #selec ekle görseli değiştirme'),/stale_edit/);
   await env.DB.prepare("UPDATE drafts SET delivery_state='sent' WHERE id=?").bind(id).run();await enqueueEdit(env,id,2,'tweetin sonuna #SELEC ekle görseli değiştirme');assert.equal((await env.DB.prepare('SELECT revision FROM drafts WHERE id=?').bind(id).first<any>()).revision,2);
   assert.throws(()=>validateDraft(out,[doc]),/incomplete_draft/); // Automatic generation still has its original limit.
  }finally{globalThis.fetch=original;}
 });
 test('unrelated/negated edits stay on existing flow and unsupported symbols cannot complete',async()=>{
  for(const request of ['tweetin sonuna #SELEC ekleme görseli değiştirme','görseli değiştir','tweeti kısalt'])assert.equal(hashtagOnlyRequest(request),null);
- const env=await fixture();await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #THYAO ekle görseli değiştirme'),/unsupported_editor_hashtag/);assert.equal((await env.DB.prepare('SELECT revision FROM drafts WHERE id=?').bind(id).first<any>()).revision,1);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);
+ const env=await fixture();await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #thyao ekle görseli değiştirme'),/unsupported_editor_hashtag/);assert.equal((await env.DB.prepare('SELECT revision FROM drafts WHERE id=?').bind(id).first<any>()).revision,1);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);
 });
 
 test('missing source identity and damaged preserved media do not report a completed edit',async()=>{
  const env=await fixture();await env.DB.prepare('UPDATE drafts SET documents=? WHERE id=?').bind(JSON.stringify([{...doc,body:'Başka bir şirket açıklaması',title:'Başka şirket'}]),id).run();
- await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #SELEC ekle görseli değiştirme'),/unsupported_editor_hashtag/);
+ await assert.rejects(enqueueEdit(env,id,1,'tweetin sonuna #selec ekle görseli değiştirme'),/unsupported_editor_hashtag/);
  assert.equal((await env.DB.prepare('SELECT revision FROM drafts WHERE id=?').bind(id).first<any>()).revision,1);
  const broken=await fixture(),put=broken.MEDIA.put.bind(broken.MEDIA);(broken.MEDIA as any).put=async(k:any,b:any,o:any)=>put(k,new Uint8Array([137,80,99]),o);
- await assert.rejects(enqueueEdit(broken,id,1,'tweetin sonuna #SELEC ekle görseli değiştirme'),/media_set_invalid|editor_image_changed/);
+ await assert.rejects(enqueueEdit(broken,id,1,'tweetin sonuna #selec ekle görseli değiştirme'),/media_set_invalid|editor_image_changed/);
  assert.equal((await broken.DB.prepare('SELECT revision FROM drafts WHERE id=?').bind(id).first<any>()).revision,1);
 });
 test('parallel owner edits use revision CAS and a racing state change blocks the edit',async()=>{

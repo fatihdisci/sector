@@ -1,3 +1,4 @@
+import {EDITORIAL_GUIDE} from './editorial-prose';
 import {akdProse} from './akd-tweet';
 import twitter from 'twitter-text';
 import {hashtagTickers,circuitWithoutRepeatedTickers} from './tweet-tickers';
@@ -6,8 +7,9 @@ import {cardDataFields,validateCardData} from './card-data';
 import {styleIssues,editorialPolicy,headlineWithEmoji,normalizeHashtagPlacement} from './style';
 import type {Document,Draft,Category} from './types';
 export const MIN_DRAFT_IMPORTANCE=50;
-export const PROMPT_VERSION='endeks-editor-21-market-axis-context';
-export const EDITOR_PROMPT=`ENDEKS HABER'in Borsa İstanbul ve finans haberleri editörüsün.
+export const PROMPT_VERSION='borsa-cakali-editor-23-typographic';
+export const EDITOR_PROMPT=`Borsa Çakalı hesabının Borsa İstanbul ve finans haberleri editörüsün.
+${EDITORIAL_GUIDE}
 editorial_policy.output_preferences sahibin güvenilir çıktı tercihidir. list=all ise ilk 5/30 sınırlarını uygulama; list=first ise count satırını seç. side=buy/sell/both seçimini hem tweet hem card_data üzerinde aynı kaynak satırlarından uygula. Kaynakta olmayan satır veya değer ekleme; sığmayan tek görsel için satır eksiltme veya çoklu kart/thread üretme. show_time/show_footer true değilse dekoratif saat/alt not ekleme. Verinin kısmi oluşunu ve çelişkileri source_notes içinde koru.
 Teorik template için tweet gövdesine hisse kodu veya Yükselenler/Düşenler listesi yazma: sistem ilk beşer kodu etiketli gruplar halinde otomatik ekler. Gövde en fazla bir kısa cümle olsun (ör. 'Fiyatlar teorik eşleşme verisidir.'); kaynaktaki genel 228/131 toplamları tweet için gerekli değildir. Kartlardaki tüm seçilmiş satırlar korunur.
 Sermaye Borsası source_layout.kind=theoretical ise template=theoretical, category=bist kullan. card_data.buy yükselen teorik eşleşme satırları, sell düşen teorik eşleşme satırlarıdır; GERÇEK ALIM/SATIM değildir. label kaynaktaki kod, value='94,05 TL|+%10,00|13.383' düzeninde teorik fiyat|değişim|kalan değeridir. Değişimin işaretini kaynakta nasılsa öyle koru; yalnız kırmızı renk/yön başlığından sayıya eksi işareti ekleme. Düşüş yönünü panel başlığı gösterir; eksik hücre — kalır. Kalan birimi kaynaksız lot/adet yapılmaz. Kaynaktaki tüm seçilmiş satırlar görselde korunur; motor her kartta taraf başına beş satırla en çok dört karta böler; fazla veride kapasite uyarısı, sessiz kırpma yok. Tweet varsayılan olarak sınıflanmış ilk beş #kod içerir. Başlık 'Teorik eşleşmede öne çıkanlar' gibi olsun; gerçekleşmiş işlem/kesin açılış veya kapanış iddiası kurma.
@@ -284,5 +286,6 @@ function formattedPostText(d:Draft):string {
 export function postText(d:Draft,_sources:string[]=[]):string {
  const data=d.card_data;
  const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(['institutional','theoretical'].includes(d.template)?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
- return hashtagTickers(formattedPostText(d),codes);
+ const verifiedViewCodes=new Set([...codes,...(data?.report?.circuit?.selected_tickers??[]),...(data?.movers?[...data.movers.up,...data.movers.down].map(r=>r.symbol):[]),...(data?.overview?.panels.flatMap(p=>p.rows.map(r=>r.label))??[])].map(c=>c.toUpperCase()));
+ return hashtagTickers(formattedPostText(d),codes).replace(/#[\p{L}\p{N}_]+/gu,tag=>verifiedViewCodes.has(tag.slice(1).toUpperCase())&&!['#BIST','#BIST30','#BIST100','#PBLK'].includes(tag.toUpperCase())?'#'+tag.slice(1).toLowerCase():tag);
 }

@@ -37,6 +37,6 @@ test('photo caption keeps one canonical hashtag line without a text-copy button'
 });
 test('artwork contains no demo stamp, date, source list, handle, or extra category captions',()=>{
  const svg=cardSvg({headline:'Örnek Holding yeni tesis planlıyor',body:'İzin süreci devam ediyor.',template:'company'},['Gizli kaynak listesi'],'21.10.2026',true);
- assert(!/DENEME|KAYNAK|Gizli kaynak|21.10.2026|@endeks_haber|ŞİRKET HABERLERİ/.test(svg));assert(svg.includes('ENDEKS HABER'));
+ assert(!/DENEME|KAYNAK|Gizli kaynak|21.10.2026|@borsacakali|ŞİRKET HABERLERİ/.test(svg));assert(svg.includes('borsacakali'));
  assert.equal(sourceKeyboard([...docs,{...docs[0],url:'https://example.com/secondary'}]).length,1);
 });

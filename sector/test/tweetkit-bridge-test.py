@@ -5,10 +5,10 @@ spec=importlib.util.spec_from_file_location('bridge','scripts/tweetkit_bridge.py
 class Client:
  def __init__(self,*a,**kw): self.posts=0; self._session=self
  def whoami(self):return {'user_id':'335502216'}
- def user_profile(self,*a):return {'ok':True,'id':'335502216','username':'endeks_haber'}
+ def user_profile(self,*a):return {'ok':True,'id':'335502216','username':'borsacakali'}
  def post(self,*a,**kw):raise AssertionError('network forbidden in test')
  def create_tweet(self,*a,**kw):self.posts+=1;return {'ok':True,'id':'99'}
- def get_tweet(self,*a):return {'ok':True,'author_id':'335502216','author':'endeks_haber','text':'example'}
+ def get_tweet(self,*a):return {'ok':True,'author_id':'335502216','author':'borsacakali','text':'example'}
  def _headers(self,*a):return {}
  def get(self,*a,**kw):
   return types.SimpleNamespace(status_code=200,json=lambda:{'legacy':{'id_str':'99','full_text':'example','extended_entities':{'media':[{'type':'photo','id_str':'12'}]}}})
@@ -21,6 +21,12 @@ class BridgeTest(unittest.TestCase):
  def test_identity_success_and_missing_key(self):
   self.assertEqual(self.run_request({'op':'identity'})[0]['id'],'335502216')
   self.assertEqual(self.run_request({'op':'identity'},key=1)[0]['error'],'x_keychain_unavailable')
+ def test_renamed_handle_requires_same_account_and_rejects_old_handle(self):
+  self.assertEqual(self.run_request({'op':'identity'})[0]['username'],'borsacakali')
+  for profile in ({'ok':True,'id':'335502216','username':'endeks_haber'},{'ok':True,'id':'999','username':'borsacakali'}):
+   c=Client();c.user_profile=lambda *a,p=profile:p
+   result,c=self.run_request({'op':'post','text':'example','media':['12']},c)
+   self.assertEqual(result['error'],'x_identity_unverified');self.assertEqual(c.posts,0)
  def test_empty_main_key_does_not_use_ambient_or_file(self):
   output=io.StringIO()
   with mock.patch.object(bridge.sys,'stdin',io.StringIO('{"op":"identity"}')),mock.patch.dict('os.environ',{'TWEETKIT_COOKIE':'ambient-value'}),mock.patch.object(bridge.subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout='')),mock.patch.object(bridge,'TweetKit') as tk,contextlib.redirect_stdout(output): bridge.main()
@@ -84,13 +90,13 @@ class BridgeTest(unittest.TestCase):
  def test_long_note_reads_full_text_and_media_or_keeps_known_id_uncertain(self):
   text='a'*359
   for full in (text,'truncated'):
-   c=Client();c.get_tweet=lambda *a:{'ok':True,'author_id':'335502216','author':'endeks_haber','text':'legacy truncated'}
+   c=Client();c.get_tweet=lambda *a:{'ok':True,'author_id':'335502216','author':'borsacakali','text':'legacy truncated'}
    c.get=lambda *a,**kw:types.SimpleNamespace(status_code=200,json=lambda:{'legacy':{'id_str':'99','full_text':'legacy truncated','extended_entities':{'media':[{'type':'photo','id_str':'12'}]}},'note_tweet':{'note_tweet_results':{'result':{'text':full}}}})
    with mock.patch.object(bridge,'create_note',return_value={'ok':True,'id':'99'}) as note:
     result,_=self.run_request({'op':'post','text':text,'media':['12'],'long_note':True,'allow_long':True},c);note.assert_called_once();self.assertEqual(c.posts,0);self.assertEqual(result.get('id'),'99');self.assertEqual('error' not in result,full==text)
  def test_note_one_to_four_preserves_ids_and_rejects_invalid_before_create(self):
   for count in (1,2,3,4):
-   mids=[str(12+i) for i in range(count)];c=Client();c.get_tweet=lambda *a:{'ok':True,'author_id':'335502216','author':'endeks_haber','text':'truncated'}
+   mids=[str(12+i) for i in range(count)];c=Client();c.get_tweet=lambda *a:{'ok':True,'author_id':'335502216','author':'borsacakali','text':'truncated'}
    c.get=lambda *a,**kw:types.SimpleNamespace(status_code=200,json=lambda:{'legacy':{'id_str':'99','full_text':'truncated','extended_entities':{'media':[{'type':'photo','id_str':m} for m in mids]}},'note_tweet':{'note_tweet_results':{'result':{'text':'a'*359}}}})
    with mock.patch.object(bridge,'create_note',return_value={'ok':True,'id':'99'}) as note:
     result,_=self.run_request({'op':'post','text':'a'*359,'media':mids,'long_note':True,'allow_long':True},c);self.assertEqual(result.get('id'),'99');self.assertNotIn('error',result);self.assertEqual(note.call_args.args[2],mids);self.assertEqual(c.posts,0)

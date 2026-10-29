@@ -124,8 +124,8 @@ test('circuit tickers lead the caption once and source-backed artwork metadata s
  const docs=['TUPRS','THYAO','A1CAP'].map(code=>doc({source_id:'kap',official:true,title:'Pay Bazında Devre Kesici Bildirimi',equity_codes:[code]}));
  const d=repairDraftStyle({...groundedDraft,headline:'🚨 Devre kesici uygulandı',body:'Sürekli işleme ara verildi.',card_data:{tickers:['FAKE']}},docs);
  assert.deepEqual(d.card_data?.tickers,['TUPRS','THYAO','A1CAP']);
- const text=postText(d);assert.equal(text.split('\n')[0],'🚨 #TUPRS #THYAO #A1CAP');
- assert(text.startsWith('🚨 #TUPRS #THYAO #A1CAP\nDevre kesici uygulandı\n\n'));
- assert(text.endsWith('#Borsa #BIST'));for(const code of d.card_data!.tickers!)assert.equal(text.split('#'+code).length-1,1);
+ const text=postText(d);assert.equal(text.split('\n')[0],'🚨 #tuprs #thyao #a1cap');
+ assert(text.startsWith('🚨 #tuprs #thyao #a1cap\nDevre kesici uygulandı\n\n'));
+ assert(text.endsWith('#Borsa #BIST'));for(const code of d.card_data!.tickers!)assert.equal(text.split('#'+code.toLowerCase()).length-1,1);
  assert.deepEqual(repairDraftStyle(d,docs),d);
 });

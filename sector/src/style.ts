@@ -1,3 +1,4 @@
+import {proseIssues} from './editorial-prose';
 import {overviewPresentation} from './market-overview';
 import {marketTimeContext,marketTimeIssues,applyMarketEditorialHeader} from './market-time';
 import {outputView} from './output-preferences';
@@ -43,7 +44,7 @@ export function hasPublisherAttribution(text:string,names:string[]):boolean {
  });
 }
 export function styleIssues(draft:Draft,documents:Document[]):string[]{
- const p=editorialPolicy(documents),issues:string[]=marketTimeIssues(draft,documents);
+ const p=editorialPolicy(documents),issues:string[]=[...marketTimeIssues(draft,documents),...proseIssues(draft).filter(x=>x==='repeated_body_or_conclusion')];
  const display=normalizeEquityDisplay(draft,documents);
  if(['headline','body','card_headline','card_body'].some(k=>display[k as keyof Draft]!==draft[k as keyof Draft])||JSON.stringify(display.card_data)!==JSON.stringify(draft.card_data))issues.push('market_suffix_in_display');
  if(p.excluded_equity_codes.length&&new RegExp('(?<![\\p{L}\\p{N}_])('+p.excluded_equity_codes.join('|')+')(?![\\p{L}\\p{N}_])','u').test([draft.headline,draft.body,draft.card_headline,draft.card_body,JSON.stringify(draft.card_data??{}),draft.hashtags.join(' ')].join(' ')))issues.push('output_scope_mismatch');

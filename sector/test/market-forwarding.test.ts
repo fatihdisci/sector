@@ -1,3 +1,4 @@
+import {assertCardPng} from './assert-card-dimensions';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -53,7 +54,7 @@ test('market kinds select distinct templates and reject relative periods while k
 test('broker-flow and custody cards render in all saved layouts and palettes without turning holdings into buying',async()=>{
  for(const layout of CARD_LAYOUTS)for(const theme of ['navy','paper'] as const)for(const template of ['broker_flow','custody'] as const){
   const svg=cardSvg({template,headline:template==='custody'?'THYAO saklama dağılımı':'Kurumların net işlemleri',body:'Veri dönemi kaynakta belirtilen tarihtir.',card_data:{ticker:template==='custody'?'THYAO':undefined,as_of:'21 Ekim 2026',buy:[{label:'Ak',value:'+1,40 milyar TL'}],sell:[{label:'İş',value:'-1,53 milyar TL'}],holdings:[{label:'Citi',value:'108,10 milyon lot · %14,62'}],metrics:[{label:'Toplam takas lotu',value:'738,85 milyon lot'}]}},[],'',false,theme,layout);
-  if(template==='custody'){assert.match(svg,/SAKLAMA KURULUŞLARI/);assert(!svg.includes('ALICI KURUMLAR'));}else assert.match(svg,/NET ALICI KURUMLAR/);
-  const image=Buffer.from(await png(svg));assert.equal(image.readUInt32BE(16),1080);assert.equal(image.readUInt32BE(20),1350);
+  if(template==='custody'){assert.match(svg,/TAKASIN İLK BEŞİ/);assert(!svg.includes('ALICI KURUMLAR'));}else assert.match(svg,/NET ALICI KURUMLAR/);
+  const image=Buffer.from(await png(svg));assertCardPng(image,svg);
  }
 });

@@ -19,7 +19,7 @@ const mock=()=>{const old=globalThis.fetch,sent:string[]=[];globalThis.fetch=asy
 test('explicit all and side selection preserve the same rows in tweet, SVG and actual PNG',async()=>{
  const preference=outputPreferences('Tümünü yaz, sadece alınanlar; saat yazma, alt not olmasın')!;assert.equal(preference.list,'all');assert.equal(preference.side,'buy');
  const d=outputView({...draft,output_preferences:preference});assertSelectedRows(draft.card_data!.buy!,selectedRows(d));const text=postText(d),svg=draftCard(d);
- for(const r of draft.card_data!.buy!){assert(text.includes('#'+r.label));assert(svg.includes(r.label));assert(svg.includes(r.value));}assert(!svg.includes('SELL'));assert(!text.includes('#SELL'));
+ for(const r of draft.card_data!.buy!){assert(text.includes('#'+r.label.toLowerCase()));assert(svg.includes(r.label));assert(svg.includes(r.value));}assert(!svg.includes('SELL'));assert(!text.includes('#sell'));
  const bytes=await png(svg);assert.deepEqual([...bytes.slice(0,4)],[137,80,78,71]);
  const first=outputView({...draft,output_preferences:outputPreferences('ilk 3 alınanı göster')});assert.equal(first.card_data!.buy!.length,3);
  assert.throws(()=>draftCard({...d,card_data:{...d.card_data,buy:[...d.card_data!.buy!,{label:'OVER',value:'1 milyon TL'}]}}),/capacity/);
@@ -70,10 +70,10 @@ test('shadow evaluation excludes rejected candidates before SQL LIMIT and never 
  }finally{m.restore();}
 });
 test('Nitter even-sized gap median and the 23:00 cutoff are correctly labelled',()=>{
- const at=Date.parse('2026-10-23T10:00:00Z'),posts=[0,10,40].map((m,i)=>({id:String(i),at:new Date(at+m*60000).toISOString(),url:'https://x.com/endeks_haber/status/'+i,retweet:false}));const text=buildAccountReport('2026-10-23',posts,{ok:true});assert(text.includes('medyan 20 dk'));assert(text.includes('23.00 itibarıyla'));
+ const at=Date.parse('2026-10-23T10:00:00Z'),posts=[0,10,40].map((m,i)=>({id:String(i),at:new Date(at+m*60000).toISOString(),url:'https://x.com/borsacakali/status/'+i,retweet:false}));const text=buildAccountReport('2026-10-23',posts,{ok:true});assert(text.includes('medyan 20 dk'));assert(text.includes('23.00 itibarıyla'));
 });
 test('explicit all removes the generic tweet ticker cap as well as the institutional cap',()=>{
- const d={...draft,template:'company' as const,card_data:undefined,hashtags:Array.from({length:12},(_,i)=>'#A'+String(i).padStart(4,'0')),output_preferences:outputPreferences('Tüm hisseleri yaz')};const text=postText(d);for(const tag of d.hashtags)assert(text.includes(tag));
+ const d={...draft,template:'company' as const,card_data:undefined,hashtags:Array.from({length:12},(_,i)=>'#A'+String(i).padStart(4,'0')),output_preferences:outputPreferences('Tüm hisseleri yaz')};const text=postText(d);for(const tag of d.hashtags)assert(text.includes(tag.toLowerCase()));
 });
 test('copy/mark intent is owner-only and a correction never bypasses the existing revision or source guards',async()=>{
  const worker=(await import('../src/worker')).default,env=await setup();env.TELEGRAM_WEBHOOK_SECRET='fixture';await seed(env);const m=mock();try{
@@ -84,7 +84,7 @@ test('copy/mark intent is owner-only and a correction never bypasses the existin
 test('source-backed hashtags do not leak unselected sell tickers into a buy-only tweet',async()=>{
  const {repairDraftStyle}=await import('../src/style');const prefs=outputPreferences('Tümünü yaz sadece alınanlar')!,data=draft.card_data!;
  const source:Document={...doc,equity_codes:[...data.buy!,...data.sell!].map(r=>r.label),output_preferences:prefs,market_data:{kind:'institutional',broker:'Örnek Kurum',rows:(['buy','sell'] as const).flatMap(side=>data[side]!.map(r=>({side,symbol:r.label,volume:r.value})))}};
- const fixed=repairDraftStyle({...draft,hashtags:['#SELL','#Borsa','#BIST']},[source]);assert.equal(fixed.card_data!.sell!.length,0);assert(!postText(fixed).includes('#SELL'));for(const r of data.buy!)assert(postText(fixed).includes('#'+r.label));
+ const fixed=repairDraftStyle({...draft,hashtags:['#SELL','#Borsa','#BIST']},[source]);assert.equal(fixed.card_data!.sell!.length,0);assert(!postText(fixed).includes('#sell'));for(const r of data.buy!)assert(postText(fixed).includes('#'+r.label.toLowerCase()));
 });
 test('an explicit request for undated archive metadata uses the manual URL reader without inventing a date',async()=>{
  const {newsroomCallback}=await import('../src/newsroom'),env=await setup(),m=mock(),source={id:'rss',name:'Kaynak',family:'publisher',official:false} as Source;

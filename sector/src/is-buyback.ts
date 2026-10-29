@@ -57,7 +57,7 @@ export function buybackTweet(table:BuybackTable,indices:Indices|null,now:number,
  const [,month,day]=table.day.split('-').map(Number),date=`${day} ${months[month-1]}`;
  const one=table.rows.length===1,intro=one?`${date} paylarını geri alan şirket hangisi?`:`${date} hangi şirketler kendi paylarını geri aldı?`;
  const closing=one?'Şirketin geri alım işlemlerinin detayları görselde.':'Geri alım yapan şirketlerin tamamı ve işlem detayları görsellerde.';
- const text=`${correction?'Düzeltme: ':''}${intro}\n\n${selection.rows.map(r=>'#'+r.ticker).join(' ')}\n\n${closing}`;
+ const text=`${correction?'Düzeltme: ':''}${intro}\n\n${selection.rows.map(r=>'#'+r.ticker.toLowerCase()).join(' ')}\n\n${closing}`;
  const parsed=twitter.parseTweet(text);if(!parsed.valid||parsed.weightedLength>280)throw Error('buyback_tweet_capacity');return {text,...selection,weightedLength:parsed.weightedLength};
 }
 export function buybackDraft(table:BuybackTable,evidence:BuybackEvidence,indices:Indices|null,now:number,correction=false):{draft:Draft;documents:Document[]}{

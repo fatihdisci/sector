@@ -33,7 +33,7 @@ test('index tier then exact nominal magnitude selects 10; absent/stale membershi
  const equal={...table,rows:[{...table.rows[0],ticker:'ZZZZ',nominal:'10'},{...table.rows[0],ticker:'AAAA',nominal:'10'}]};assert.equal(selectBuyback(equal,null,at).rows[0].ticker,'AAAA');
 });
 test('tweet is X-weighted, exactly 10 hashtag codes; image has all 54, evidence stays editor-only',()=>{
- const {draft,documents}=buybackDraft(table,evidence,indices,at),tweet=buybackTweet(table,indices,at);assert.equal(postText(draft),tweet.text);assert(tweet.weightedLength<=280);assert.equal((tweet.text.match(/#[A-Z0-9]+/g)??[]).length,10);
+ const {draft,documents}=buybackDraft(table,evidence,indices,at),tweet=buybackTweet(table,indices,at);assert.equal(postText(draft),tweet.text);assert(tweet.weightedLength<=280);assert.equal((tweet.text.match(/#[a-z0-9]+/g)??[]).length,10);
  assert(!/İş Yatırım|https|09:00|lot|adet/.test(postText(draft)));const svg=draftCard(draft);assert.equal((svg.match(/data-row=/g)??[]).length,54);assert(!/İş Yatırım|Kaynak|09:00|dipnot|TOPLAM LOT/.test(svg));
  assert.equal(tableView(draft,documents).length,54);assert.equal(evidenceView(draft,documents,'single_source_attributed').sources[0].report_evidence?.raw_rows.length,54);
  assert.match(buybackCsv(table),/"MASFN";"70.000";"";""/);
@@ -121,7 +121,7 @@ test('natural buyback copy uses transaction day, Turkish month suffixes, singula
  const expected=['1 Ocak’ta','1 Şubat’ta','1 Mart’ta','1 Nisan’da','1 Mayıs’ta','1 Haziran’da','1 Temmuz’da','1 Ağustos’ta','1 Eylül’de','1 Ekim’de','1 Kasım’da','1 Aralık’ta'];
  for(let m=1;m<=12;m++){const t={...table,day:`2026-${String(m).padStart(2,'0')}-01`},a=buybackTweet(t,indices,at);assert(a.text.startsWith(expected[m-1]));assert(a.text.includes('hangi şirketler kendi paylarını geri aldı?'));assert(a.text.endsWith('Geri alım yapan şirketlerin tamamı ve işlem detayları görsellerde.'));assert(a.weightedLength<=280);}
  for(const n of [1,3,10,54,200]){const rows=Array.from({length:n},(_,i)=>({...table.rows[i%table.rows.length],ticker:'A'+String(i).padStart(4,'0')})),t={...table,rows,row_count:n};
- for(const correction of[false,true]){const actual=buybackTweet(t,null,at,correction),selected=selectBuyback(t,null,at);assert.deepEqual(actual.rows,selected.rows);assert.equal((actual.text.match(/#[A-Z0-9]+/g)??[]).length,Math.min(n,10));assert(actual.weightedLength<=280);assert.equal(actual.text.includes('Düzeltme:'),correction);assert(actual.text.includes(n===1?'şirket hangisi?':'hangi şirketler'));}}
+ for(const correction of[false,true]){const actual=buybackTweet(t,null,at,correction),selected=selectBuyback(t,null,at);assert.deepEqual(actual.rows,selected.rows);assert.equal((actual.text.match(/#[a-z0-9]+/g)??[]).length,Math.min(n,10));assert(actual.weightedLength<=280);assert.equal(actual.text.includes('Düzeltme:'),correction);assert(actual.text.includes(n===1?'şirket hangisi?':'hangi şirketler'));}}
  const t=buybackTweet(table,indices,at);assert(t.text.startsWith('22 Ekim’de'));assert(!t.text.includes('23 Ekim'));assert(!/📢|en çok|fiyat etkisi|lot|adet/.test(t.text));
  assert.throws(()=>buybackTweet({...table,day:'2026-02-30'},indices,at),/invalid_date/);assert.throws(()=>buybackTweet({...table,rows:[]},indices,at),/row_coverage/);
  const created=buybackDraft(table,evidence,indices,at);assert.equal(postText(created.draft),t.text,'closing paragraph must survive draft assembly');assert.deepEqual(created.draft.card_data?.report?.buyback,table);assert.equal(created.documents[0].buyback_evidence,evidence);

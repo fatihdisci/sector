@@ -3,7 +3,7 @@ import {localDatabase} from '../src/local-adapters';import {requestX,publishX,xC
 const id=(i:number)=>'aaaaaaaa-aaaa-4aaa-aaaa-'+String(i).padStart(12,'0');
 async function setup(){const DB=await localDatabase(':memory:',await readFile('migrations/0001_sector.sql','utf8'));const env={DB,MODE:'telegram_review',X_PUBLISH_ENABLED:'true',MEDIA:{get:async()=>({arrayBuffer:async()=>new Uint8Array([137,80,78,71,13,10,26,10]).buffer})}} as unknown as Env;
  for(let i=0;i<25;i++)await DB.prepare('INSERT INTO drafts(id,event_key,fingerprint,content,documents,verification,created_at,expires_at,message_id,media_key,delivery_state) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(id(i),'e'+i,'f',JSON.stringify({headline:'Başlık',body:'Metin',hashtags:['#BIST']}),'[]','verified',1,9999999999,100+i,'drafts/'+id(i)+'/1.png','sent').run();
- const api:XTransport={identity:async()=>({id:'335502216',username:'endeks_haber'}),upload:async()=>'123',post:async()=>'456'};return {env,api};}
+ const api:XTransport={identity:async()=>({id:'335502216',username:'borsacakali'}),upload:async()=>'123',post:async()=>'456'};return {env,api};}
 const click=(env:Env,i=0)=>requestX(env,`xchoose:0:${id(i)}:1`,100+i,'cb');
 test('Istanbul daily rollover is midnight UTC+3',()=>{assert.equal(xDay(Date.parse('2026-10-22T20:59:59Z')),'2026-10-22');assert.equal(xDay(Date.parse('2026-10-22T21:00:00Z')),'2026-10-23');});
 test('25 explicit clicks are accepted without a daily cap and repeated clicks remain deduplicated',async()=>{const {env}=await setup();await Promise.all(Array.from({length:25},(_,i)=>click(env,i)));assert.equal(await xCount(env),25);await click(env);assert.equal(await xCount(env),25);});
@@ -19,7 +19,7 @@ test('a redesign during media upload invalidates the pending publication',async(
 test('expiry during upload is rechecked immediately before POST',async()=>{const {env,api}=await setup();let posts=0;api.upload=async()=>{await env.DB.prepare('UPDATE drafts SET expires_at=0 WHERE id=?').bind(id(0)).run();return '123';};api.post=async()=>{posts++;return '456';};await click(env);await publishX(env,api);assert.equal(posts,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'failed');});
 test('media removed during upload cannot pass the final pre-POST gate',async()=>{const {env,api}=await setup();let available=true,posts=0;env.MEDIA.get=async()=>available?({arrayBuffer:async()=>new Uint8Array([137,80,78,71,13,10,26,10]).buffer} as any):null;api.upload=async()=>{available=false;return '123';};api.post=async()=>{posts++;return '456';};await click(env);await publishX(env,api);assert.equal(posts,0);assert.equal((await env.DB.prepare('SELECT state FROM x_posts').first<any>()).state,'failed');});
 
-test('long owner-approved text is posted whole with image once and reserves one of twenty slots',async()=>{
+test('long owner-approved text is posted whole with image once and records one publication operation',async()=>{
  const {env,api}=await setup();const {postText}=await import('../src/editorial');
  const content={headline:'📊 Gün sonu',body:'Şirketler ve piyasa gelişmeleri. '.repeat(80),hashtags:['#BIST']},expected=postText(content as any);let sends=0;
  await env.DB.prepare('UPDATE drafts SET content=? WHERE id=?').bind(JSON.stringify(content),id(0)).run();
@@ -46,7 +46,7 @@ test('X client uses same text/media endpoint and exposes only explicit sanitized
 });
 
 
-test('main handle with side account ID cannot upload',async()=>{const {env,api}=await setup();let uploads=0;api.identity=async()=>({id:'1855628451237281792',username:'endeks_haber'});api.upload=async()=>{uploads++;return '1'};await click(env);await publishX(env,api);assert.equal(uploads,0);});
+test('main handle with side account ID cannot upload',async()=>{const {env,api}=await setup();let uploads=0;api.identity=async()=>({id:'1855628451237281792',username:'borsacakali'});api.upload=async()=>{uploads++;return '1'};await click(env);await publishX(env,api);assert.equal(uploads,0);});
 test('known post ID is retained when verification is uncertain and no replay occurs',async()=>{const {env,api}=await setup();let sends=0;api.post=async()=>{sends++;throw new XPostUncertain('12345')};await click(env);await publishX(env,api);await click(env);await publishX(env,api);const row=await env.DB.prepare('SELECT state,remote_id FROM x_posts').first<any>();assert.equal(row.state,'uncertain');assert.equal(row.remote_id,'12345');assert.equal(sends,1);});
 test('service publishing path cannot fall back to official API',async()=>{const service=await readFile('scripts/local_service.ts','utf8');const menus=await readFile('scripts/refresh_telegram_menus.ts','utf8');assert(!service.includes("from './x_client'"));assert(!service.includes('x-credentials.json'));assert(!menus.includes('x-credentials.json'));assert(service.includes('tweetkitClient({longNotesEnabled:'));});
 
