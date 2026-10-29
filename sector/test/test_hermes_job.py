@@ -40,14 +40,16 @@ class HermesJobContract(unittest.TestCase):
             with patch.object(job_module,'call') as call:
                 with self.assertRaises(RuntimeError):job_module.main(self.job()|change)
                 call.assert_not_called()
-    def test_terra_low_uses_existing_subscription_route(self):
-        job=self.job()|{'model':'gpt-6.1-terra','effort':'low'}
-        with patch.object(job_module,'call',side_effect=[{'headline':'source'}, {'supported':True,'issues':[]}]) as call:
-            result=job_module.main(job)
-        self.assertEqual(call.call_count,2)
-        self.assertEqual(result['runtime']['model'],'gpt-6.1-terra')
-        self.assertEqual(result['runtime']['effort'],'low')
-        self.assertEqual(call.call_args_list[0].args[0]['provider'],'openai-codex')
+    def test_terra_low_and_medium_use_existing_subscription_route(self):
+        for effort in ['low','medium']:
+            with self.subTest(effort=effort):
+                job=self.job()|{'model':'gpt-6.1-terra','effort':effort}
+                with patch.object(job_module,'call',side_effect=[{'headline':'source'}, {'supported':True,'issues':[]}]) as call:
+                    result=job_module.main(job)
+                self.assertEqual(call.call_count,2)
+                self.assertEqual(result['runtime']['model'],'gpt-6.1-terra')
+                self.assertEqual(result['runtime']['effort'],effort)
+                self.assertEqual(call.call_args_list[0].args[0]['provider'],'openai-codex')
     def test_verified_draft_uses_two_subscription_turns(self):
         with patch.object(job_module,'call',side_effect=[{'headline':'source'}, {'supported':True,'issues':[]}]) as call:
             result=job_module.main(self.job());self.assertEqual(call.call_count,2);self.assertEqual(result['runtime']['calls'],2)
@@ -60,7 +62,7 @@ class HermesJobContract(unittest.TestCase):
             def run_conversation(self,**kwargs):return {'completed':True,'api_calls':1,'final_response':'{"ok":true}'}
         credentials={'api_key':'test-only','base_url':'https://chatgpt.com/backend-api/codex'}
         with patch.object(job_module,'runtime',return_value=(Agent,credentials)):
-            for model,effort in [('gpt-6-luna','high'),('gpt-6.1-terra','low')]:
+            for model,effort in [('gpt-6-luna','high'),('gpt-6.1-terra','low'),('gpt-6.1-terra','medium')]:
                 self.assertEqual(job_module.call(self.job()|{'profile':'test','model':model,'effort':effort},'Return JSON',{}),{'ok':True})
                 self.assertEqual(captured['model'],model);self.assertEqual(captured['reasoning_config'],{'effort':effort})
         self.assertEqual(captured['provider'],'openai-codex');self.assertEqual(captured['fallback_model'],[])

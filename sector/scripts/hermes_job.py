@@ -149,7 +149,7 @@ def run_checked_job(job, invoke):
 
 def main(job):
     route=(job.get('model'),job.get('effort'))
-    if job.get('provider')!='openai-codex' or route not in {('gpt-6-luna','high'),('gpt-6.1-terra','low')} or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
+    if job.get('provider')!='openai-codex' or route not in {('gpt-6-luna','high'),('gpt-6.1-terra','low'),('gpt-6.1-terra','medium')} or job.get('allowed_tools')!=[] or job.get('deadline',0)<time.time():raise RuntimeError('job_route_invalid')
     return run_checked_job(job, call)
 
 if __name__=='__main__':

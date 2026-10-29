@@ -1,6 +1,6 @@
 # Borsa Çakalı haber botu ve hazır yayın paketi
 
-Bu değişiklik canlı kurulum değildir. `@habernewssbot` kullanıcı adı korunur; profil adı/resmi ayrı yönetilir. API hazırlık kodu saklanır, etkinleştirilmez. Haber üretimi için mevcut Hermes `gpt-6.1-terra / low` varsayılanı korunur.
+Bu değişiklik canlı kurulum değildir. `@habernewssbot` kullanıcı adı korunur; profil adı/resmi ayrı yönetilir. API hazırlık kodu saklanır, etkinleştirilmez. Haber üretimi için Hermes `gpt-6.1-terra / medium` kullanır (29 Ekim 2026 sahip tercihi). API kapalıdır; API çabasının ayrı açık yapılandırması bu tercihle etkinleşmez.
 
 ## Geri alınabilir iş akışı
 
