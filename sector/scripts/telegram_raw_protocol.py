@@ -5,7 +5,7 @@ def folded(text):
     return ''.join(c for c in unicodedata.normalize('NFKD',text.casefold().replace('ı','i'))if not unicodedata.combining(c))
 
 def is_placeholder(text):
-    return bool(re.search(r'hazirlaniyor|yukleniyor|isleniyor|veri(?:ler)?\s+aliniyor',folded(text or '')))
+    return bool(re.search(r'hazirlaniyor|yukleniyor|isleniyor|veri(?:si|leri|ler)?\s+aliniyor',folded(text or '')))
 
 def payload_matches(bot,command,text,media):
     s=folded(text or '');parts=command.split();verb=parts[0]

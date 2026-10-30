@@ -39,6 +39,10 @@ class RawQueries(unittest.IsolatedAsyncioTestCase):
             for kind,message in self.steps.pop(0):await self.emit(kind,message)
     async def run_query(self,client,value=None):
         return await query_raw(client,self.db,self.root,value or self.value,validate=account.validate_raw_query,resume=account.resume_state,error=account.QueryError,clock=lambda:self.clock,types=EventTypes,wait_event=self.wait)
+    def test_kurum_loading_status_is_not_final_content(self):
+        from telegram_raw_protocol import is_placeholder
+        self.assertTrue(is_placeholder('🔄 YAPI KREDI kurum verisi alınıyor...'))
+
     def test_bopt_institutional_profile_folds_turkish_and_rejects_wrong_or_incomplete_answers(self):
         from telegram_raw_protocol import payload_matches
         good='🏦 YAPI KREDI KURUM ANALİZİ\n🟢 EN ÇOK ALINAN HİSSELER:\n'+'\n'.join(f'{i}. A{i:04}: {i}.2Mn TL' for i in range(1,11))+'\n🔴 EN ÇOK SATILAN HİSSELER:\n'+'\n'.join(f'{i}. B{i:04}: {i}.2Mn TL' for i in range(1,11))
