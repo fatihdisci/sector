@@ -24,6 +24,7 @@ class ResponsesHTTP:
         self.deadline = deadline
         self.timeout = timeout_seconds
         self.factory = connection_factory or http.client.HTTPSConnection
+        self.safe_receipt = {}
 
     def __call__(self, request):
         # Fixed official origin, system TLS verification, no proxy, redirects or retry.
@@ -48,6 +49,7 @@ class ResponsesHTTP:
             if getattr(connection, 'sock', None):
                 connection.sock.settimeout(remaining())
             response = connection.getresponse()
+            self.safe_receipt = {"http_status": int(response.status_code) if hasattr(response,"status_code") else int(response.status)}
             content = bytearray()
             while True:
                 if getattr(connection, 'sock', None):
@@ -66,6 +68,23 @@ class ResponsesHTTP:
             except (ValueError, UnicodeError):
                 raise ApiTransportError('api_http_invalid_json_no_retry') from None
             parsed = parsed if isinstance(parsed, dict) else None
+            self.safe_receipt['response_json_received'] = parsed is not None
+            error = parsed.get('error') if parsed else None
+            if isinstance(error,dict):
+                allowed = {'invalid_api_key','insufficient_quota','model_not_found','model_not_available','unsupported_parameter','invalid_request_error','rate_limit_exceeded','permission_denied','invalid_project','project_not_found','billing_hard_limit_reached','unsupported_value','organization_restricted'}
+                value = error.get('code') or error.get('type')
+                self.safe_receipt['provider_error_class'] = value if isinstance(value,str) and value in allowed else 'other'
+                params={'model','input','instructions','max_output_tokens','reasoning','reasoning.effort','text','text.format','text.format.type','service_tier','tool_choice','tools','store','background','truncation','stream'}
+                param=error.get('param')
+                self.safe_receipt['provider_error_param']=param if isinstance(param,str) and param in params else 'other'
+                # Read the message only in memory; persist an enum, never message text.
+                message=error.get('message','');message=message.lower() if isinstance(message,str) else ''
+                reason='unclassified'
+                if 'json' in message and ('input' in message or 'messages' in message) and ('contain' in message or 'include' in message):reason='json_input_instruction_required'
+                elif 'service_tier' in message and ('not allowed' in message or 'invalid' in message):reason='service_tier_not_allowed'
+                elif 'not supported' in message or 'unsupported' in message:reason='unsupported_parameter_or_value'
+                elif 'model' in message and ('access' in message or 'permission' in message):reason='model_access_not_allowed'
+                self.safe_receipt['provider_error_reason']=reason
             if not 200 <= response.status < 300:
                 # No provider body, error text or response headers in the exception.
                 code = {401:'api_http_auth_no_retry',403:'api_http_auth_no_retry',429:'api_http_rate_limited_no_retry'}.get(response.status, 'api_http_error_no_retry')

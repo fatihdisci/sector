@@ -25,7 +25,11 @@ def invoke(value):
  if op=='text':
   j=value['job'];c=ApiConfig(**value['config'])
   d=dict(headline='📊 ASELS için pay miktarı açıklandı',body='ASELS pay miktarı 100 lot olarak açıklandı.',card_headline='ASELS pay miktarı',card_body='Açıklanan miktar 100 lot oldu.',hashtags=['#Borsa','#ASELS'],entities=['ASELS'],event_key='isolated-api-test',category='bist',importance=80,template='info',claims=[dict(text='ASELS: 100 lot',evidence=[dict(document=0,passage='visual_source',quote='Kaynakta okunan değerler: ASELS: 100 lot')])],uncertainties=[])
-  def http(r):return response(dict(supported=True,issues=[])if'draft'in json.loads(r['input'])else d,c.model)
+  def http(r):
+   text=r['input'][0]['content'][0]['text']
+   assert text.startswith('Return JSON.\n')
+   payload=json.loads(text.removeprefix('Return JSON.\n'))
+   return response(dict(supported=True,issues=[])if'draft'in payload else d,c.model)
   return OfflineApiCandidate(c,value['budget_path'],http).run_job(j)
  r=value['request'];bind=r['binding'];audit=dict(supported=True,issues=[],all_instructions_covered=True,binding=bind)
  def vision(request):

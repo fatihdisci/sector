@@ -132,7 +132,7 @@ class OfflineApiCandidate:
   # requires a verified model context ceiling; no image/file/path is read here.
   if len((instructions+text).encode())+1024>c.input_token_ceiling:raise RuntimeError('api_input_bound_exceeded')
   if any(d.get('images')for d in job.get('documents',[])):raise RuntimeError('api_image_context_budget_not_configured')
-  request={'model':c.model,'instructions':instructions,'input':text,'reasoning':{'effort':c.reasoning_effort},'max_output_tokens':c.max_output_tokens,'tools':[],'tool_choice':'none','store':False,'background':False,'stream':False,'service_tier':'default','truncation':'disabled','text':{'format':{'type':'json_object'}}}
+  request={'model':c.model,'instructions':instructions,'input':[{'role':'user','content':[{'type':'input_text','text':'Return JSON.\n'+text}]}],'reasoning':{'effort':c.reasoning_effort},'max_output_tokens':c.max_output_tokens,'tools':[],'tool_choice':'none','store':False,'background':False,'stream':False,'service_tier':'default','truncation':'disabled','text':{'format':{'type':'json_object'}}}
   key=(jid,stage);attempt=self.calls.get(key,0);call_id=f'{jid}:{stage}:{attempt}';self.calls[key]=attempt+1
   digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest();budget=Budget(self.path,c)
   try:budget.reserve(c,call_id,jid,stage,digest)

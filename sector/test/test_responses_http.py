@@ -82,6 +82,18 @@ class ResponsesHTTPTests(unittest.TestCase):
         response=reply();response['error']={'message':'PRIVATE provider body'};fake=FakeHTTP([(500,response)])
         with self.assertRaises(ApiTransportError):self.adapter(fake).call(self.j,'private',{})
         self.assertEqual(self.reserved()[0][2],120);self.assertNotIn('PRIVATE',self.metrics.read_text());self.assertEqual(json.loads(self.metrics.read_text())['input_tokens'],100);self.assertEqual(fake.connections,1)
+    def test_safe_http_receipt_has_param_class_and_enum_without_raw_message_or_key(self):
+        private='OFFLINE-PRIVATE-KEY-AND-PROMPT'
+        fake=FakeHTTP([(400,{'error':{'type':'invalid_request_error','param':'input','message':private+' input messages must contain JSON'}})])
+        http=ResponsesHTTP('FAKE-SECRET',deadline=self.j['deadline'],connection_factory=fake.factory)
+        with self.assertRaises(ApiTransportError):http({'tools':[],'tool_choice':'none','store':False})
+        self.assertEqual(http.safe_receipt,{'http_status':400,'response_json_received':True,'provider_error_class':'invalid_request_error','provider_error_param':'input','provider_error_reason':'json_input_instruction_required'})
+        self.assertNotIn(private,json.dumps(http.safe_receipt));self.assertNotIn('FAKE-SECRET',json.dumps(http.safe_receipt));self.assertEqual(fake.connections,1)
+    def test_json_mode_explicit_input_message_and_source_payload_are_preserved(self):
+        fake=FakeHTTP([(200,reply())]);self.adapter(fake).call(self.j,'Grounded JSON editor',{'documents':[{'body':'Source fact'}]})
+        request=fake.requests[0][4];message=request['input'][0]
+        self.assertEqual(message['role'],'user');self.assertEqual(message['content'][0]['type'],'input_text');text=message['content'][0]['text'];self.assertTrue(text.startswith('Return JSON.\n'));self.assertEqual(json.loads(text.split('\n',1)[1]),{'documents':[{'body':'Source fact'}]})
+        self.assertEqual(request['instructions'],'Grounded JSON editor');self.assertEqual(request['text']['format']['type'],'json_object')
     def test_expired_deadline_makes_no_connection(self):
         fake=FakeHTTP([]);self.j['deadline']=time.time()-1
         with self.assertRaises(RuntimeError):self.adapter(fake).call(self.j,'x',{})
