@@ -11,6 +11,8 @@ def private_file(path):
 def preflight(root):
  root=pathlib.Path(root)
  if not root.is_absolute()or root.is_symlink()or root.resolve()!=root:raise RuntimeError('news_api_root_invalid')
+ from daily_limit_transition import recover
+ recover(root)
  control=json.loads(private_file(root/'news-api-provider.json').read_text())
  if control!={'version':1,'provider':'openai-api','enabled':True,'purpose':'news_text_only'}:raise RuntimeError('news_api_provider_not_approved')
  c=ApiConfig(**json.loads(private_file(root/'news-api-config.json').read_text()));validate_config(c,time.time())
