@@ -56,3 +56,41 @@ test('imported card uses the real webhook owner/message gate for immediate and 1
   const q=await e.DB.prepare('SELECT x.content,x.state,s.due_at,s.media_hashes FROM x_posts x JOIN x_schedules s ON s.post_id=x.id').first<any>();assert.equal(q.content,p.text);assert.equal(q.state,'queued');assert(q.due_at>=start+delay*60000&&q.due_at<Date.now()+delay*60000+1000);assert.deepEqual(JSON.parse(q.media_hashes),p.media.map(m=>m.sha256));assert.equal((await e.DB.prepare('SELECT COUNT(*) n FROM x_posts').first<any>()).n,1);
  }}finally{globalThis.fetch=original;}
 });
+
+import {buildReadyPackage}from'../scripts/package_ready_post';import {capturePublication}from'../src/publication-snapshot';import {publishX,requestX,type XTransport}from'../src/x-publish';import {formatReadyUpdate,type ReadyContentType}from'../src/ready-quote';
+async function typedPacket(type:ReadyContentType,quote?:string){return buildReadyPackage(crypto.randomUUID(),'Teorik eşleşme\n\n#ASTOR 100 TL\n\nKaynak: örnek\nSaat: 09:45\nVeriler anlıktır, değişebilir.',['https://example.org/verified'],[image],{content_type:type,...(quote?{quote_tweet_id:quote}:{})});}
+async function priorPost(e:Env,type:ReadyContentType,remote='2115806252123279581',state='sent'){
+ const p=await typedPacket(type);await importReadyPost(e,p);const row=await e.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(p.id).first<any>();
+ await e.DB.prepare("INSERT INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,finished_at,remote_id) VALUES(?,?,1,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),p.id,new Date().toISOString().slice(0,10),state,p.text,row.media_key,Date.now(),Date.now(),remote).run();await capturePublication(e,p.id,'api',Date.now(),'https://x.com/borsacakali/status/'+remote,1);return p;
+}
+test('theoretical update format is scoped; lowercase tags, no source/time, exact closing and separated headings',async()=>{
+ const ipo=await typedPacket('theoretical_ipo'),movers=await typedPacket('theoretical_movers','2115806252123279581');
+ assert(ipo.text.startsWith('Son halka arzlarda teorik eşleşme verileri\n'));assert(movers.text.startsWith('Güncelleme: Teorik eşleşmede en çok yükselenler düşenler\n'));for(const p of[ipo,movers]){assert(p.text.includes('#astor'));assert(!p.text.includes('Kaynak'));assert(!p.text.includes('09:45'));assert(p.text.endsWith('Veriler anlıktır değişebilir.'));await validateReadyPackage(p);}
+ assert.equal(formatReadyUpdate('Normal haber #ABC\nSaat: 09:45'), 'Normal haber #ABC\nSaat: 09:45');
+ const bad={...ipo,text:ipo.text.replace('#astor','#ASTOR')};bad.text_sha256=await sha256(bad.text);bad.sha256=await readyPackageHash(bad);await assert.rejects(validateReadyPackage(bad),/theoretical_text_invalid/);
+ await assert.rejects(validateReadyPackage({...movers,quote_tweet_id:'2115806252123279582'}),/ready_package_hash/);
+});
+test('quote imports only a verified same-type published receipt; fake, wrong-chain and uncertain parents fail closed',async()=>{
+ for(const state of['pending','failed','uncertain']){const e=await env();await priorPost(e,'theoretical_ipo','2115806252123279581',state);await assert.rejects(importReadyPost(e,await typedPacket('theoretical_ipo','2115806252123279581')),/parent_unverified/);}
+ const e=await env();await priorPost(e,'theoretical_ipo');await assert.rejects(importReadyPost(e,await typedPacket('theoretical_movers','2115806252123279581')),/parent_unverified/);await assert.rejects(importReadyPost(e,await typedPacket('theoretical_ipo','9999999999999999999')),/parent_unverified/);
+ const p=await typedPacket('theoretical_ipo','2115806252123279581');assert(!(await importReadyPost(e,p)).duplicate);assert((await importReadyPost(e,p)).duplicate);assert.equal((await e.DB.prepare("SELECT COUNT(*) n FROM x_posts WHERE state='queued'").first<any>()).n,0);
+});
+test('owner immediate and scheduled quote keeps exact media/target through queue, publishes once, retains immutable receipt',async()=>{
+ const original=fetch;globalThis.fetch=async()=>Response.json({ok:true,result:{message_id:90}});
+ try{for(const delay of[0,15]){
+  const e=await env();await priorPost(e,'theoretical_ipo');const p=await typedPacket('theoretical_ipo','2115806252123279581');await importReadyPost(e,p);await e.DB.prepare("UPDATE drafts SET delivery_state='sent',message_id=444 WHERE id=?").bind(p.id).run();
+  await requestX(e,`xchoose:${delay}:${p.id}:1`,444,'cb');await requestX(e,`xchoose:${delay}:${p.id}:1`,444,'cb');const q=await e.DB.prepare('SELECT p.id,p.state,s.due_at,s.media_hashes FROM x_posts p JOIN x_schedules s ON s.post_id=p.id WHERE p.draft_id=?').bind(p.id).first<any>();assert(q);assert.deepEqual(JSON.parse(q.media_hashes),p.media.map(m=>m.sha256));
+  const binding=JSON.parse((await e.DB.prepare('SELECT value FROM system_state WHERE key=?').bind('x_quote:'+q.id).first<any>()).value);assert.equal(binding.quote_tweet_id,p.quote_tweet_id);let posts=0,uploads=0;const api:XTransport={identity:async()=>({id:'335502216',username:'borsacakali'}),upload:async bytes=>{assert.equal(await bytesHash(bytes),p.media[0].sha256);uploads++;return'123'},post:async(text,mids,quote)=>{assert.equal(text,p.text);assert.equal(quote,p.quote_tweet_id);assert.equal(mids,'123');posts++;return'2115806252123279582'}};
+  if(delay){await publishX(e,api,()=>q.due_at-100);assert.equal(posts,0);assert.equal(uploads,0);}
+  await publishX(e,api,()=>q.due_at+100);await publishX(e,api,()=>q.due_at+200);assert.equal(posts,1);assert.equal(uploads,1);assert.equal((await e.DB.prepare('SELECT state FROM x_posts WHERE id=?').bind(q.id).first<any>()).state,'sent');assert((await importReadyPost(e,p)).duplicate);
+  const snap=await e.DB.prepare("SELECT content FROM publication_snapshots WHERE draft_id=? AND method='api'").bind(p.id).first<any>();assert.equal(JSON.parse(snap.content).owner_ready_publication.quote_tweet_id,p.quote_tweet_id);
+ }}finally{globalThis.fetch=original;}
+});
+test('changed queue quote binding cannot upload or post',async()=>{
+ const original=fetch;globalThis.fetch=async()=>Response.json({ok:true,result:{message_id:90}});
+ try{const e=await env();await priorPost(e,'theoretical_ipo');const p=await typedPacket('theoretical_ipo','2115806252123279581');await importReadyPost(e,p);await e.DB.prepare("UPDATE drafts SET delivery_state='sent',message_id=444 WHERE id=?").bind(p.id).run();await requestX(e,`xchoose:0:${p.id}:1`,444,'cb');await e.DB.prepare("DELETE FROM system_state WHERE key LIKE 'x_quote:%'").run();let calls=0;await publishX(e,{identity:async()=>{calls++;return{id:'335502216',username:'borsacakali'}},upload:async()=>{calls++;return'123'},post:async()=>{calls++;return'456'}});assert.equal(calls,0);assert.equal((await e.DB.prepare('SELECT state FROM x_posts WHERE draft_id=?').bind(p.id).first<any>()).state,'failed');}finally{globalThis.fetch=original;}
+});
+test('quoted parent page/media receipt cannot change after package import',async()=>{
+ const e=await env(),parent=await priorPost(e,'theoretical_ipo'),p=await typedPacket('theoretical_ipo','2115806252123279581');await importReadyPost(e,p);const row=await e.DB.prepare('SELECT * FROM drafts WHERE id=?').bind(p.id).first<any>(),media=await readMedia(e,row.media_key,row.content);assert(JSON.parse(row.content).owner_ready_publication.parent_receipt_hash);await assertReadyPost(e,p.id,1,row.content,media.images);
+ await e.DB.prepare("UPDATE publication_snapshots SET media_hash=? WHERE draft_id=?").bind('0'.repeat(64),parent.id).run();await assert.rejects(assertReadyPost(e,p.id,1,row.content,media.images),/parent_binding/);
+});

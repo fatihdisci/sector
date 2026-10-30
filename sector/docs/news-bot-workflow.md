@@ -55,3 +55,14 @@ Yeni genel görselli DKB kartındaki owner **X'te paylaş** callback'i doğrudan
 ## Haber görselleri
 
 Normal haber tweet metniyle birlikte dört yerel onaylı SON DAKİKA PNG’sinden birini kullanır. Rastgele seçim bir kez kaydedilir; tekrar teslimat, metin düzenleme ve X planlaması görseli değiştirmez. Habere özel kart/AI görseli ve görsel seçim menüsü yoktur. DKB ve /hazir paketleri ayrıdır. Manifest ve PNG hash’leri bakım inceleme artifact’ine dahildir.
+
+
+## Sahip onaylı alıntı güncellemeleri
+
+`/hazir` paketinin isteğe bağlı `content_type` ve `quote_tweet_id` alanları hash kapsamındadır. Eski, bu alanları taşımayan sürüm-1 paketlerinin hash ve normal paylaşım davranışı değişmez. `scripts/package_ready_post.ts` aynı alanları yerel manifestten alır. Paket yalnız önceki tweet ID'sini taşır; hedef hiçbir zaman URL ekleme veya yanıt tweetiyle taklit edilmez.
+
+Alıntı hedefi bu botun `sent` X kaydı, aynı revizyon/metin ve `https://x.com/borsacakali/status/ID` adresli API yayın makbuzuyla doğrulanır. Makbuzun metni, içerik JSON'u ve seçilmiş medya hash'i de yeni taslağa bağlanır. Aynı türde en son doğrulanmış makbuz gerekir; halka arz teorik eşleşmesi (`theoretical_ipo`) ile yükselen/düşen teorik eşleşmesi (`theoretical_movers`) ayrı zincirlerdir. Bilinmeyen, başarısız, belirsiz, elle işaretlenmiş veya başka türde hedefler reddedilir. Eski etiketsiz paketlerde yalnız iki kesin teorik başlık tür kanıtı sayılır; diğer eski metinlerde tür tahmin edilmez.
+
+Yeni tipli paketler `news`, `market_overview`, `circuit`, `buyback`, `general_buyback`, `broker_flow`, `akd`, `custody`, `institutional`, `volume`, `midas`, `ipo`, `theoretical_ipo`, `theoretical_movers` türlerinden birini açıkça belirtir. Alıntılı metin Güncelleme ile başlar. İki teorik türün yerel paketleyicisi başlığı sırasıyla “Son halka arzlarda teorik eşleşme verileri” ve “Teorik eşleşmede en çok yükselenler düşenler” yapar; açık Kaynak/Saat satırlarını kaldırır, etiketleri küçük harfe dönüştürür, tam “Veriler anlıktır değişebilir.” kapanışını kullanır. Kalan URL veya saat bilgisi kabul edilmez. Ham veri satırı başlık yerine yanlışlıkla düşürülmez; girişin ilk satırı teorik eşleşme başlığı olmalıdır. Diğer içerik türleri yeniden biçimlendirilmez; alıntıda yalnız Güncelleme öneki eklenir.
+
+Sahibin Paylaş/zamanlama eylemi kuyruk kaydı ve hedef hash bağını atomik oluşturur. Yayıncı medya yüklemeden ve POST'tan önce hedefi yeniden doğrular; normal/zamanlanmış medya, kullanıcı ve hesap kontrolleri korunur. TweetKit standardında `quote_tweet_id`, uzun not isteğinde `attachment_url` kullanılır; geri okumada aynı alıntı ID'si doğrulanmazsa sonuç `uncertain` kalır ve tekrar edilmez. Uzun alıntının platformda gerçek kabulü bu değişiklikte sınanmadı. Otomatik yayın veya canlı X testi yoktur. Bu kaynak değişikliği henüz canlı servise kurulmadı; kurulum için mevcut bakım/onay akışı gerekir.

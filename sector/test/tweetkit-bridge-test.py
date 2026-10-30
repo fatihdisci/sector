@@ -114,4 +114,22 @@ class BridgeTest(unittest.TestCase):
  def test_post_ambiguous_does_not_retry(self):
   c=Client();c.get_tweet=lambda *a:{'ok':False}
   r,c=self.run_request({'op':'post','text':'example','media':['12']},c);self.assertEqual(r['error'],'x_post_uncertain');self.assertEqual(c.posts,1)
+ def test_quote_passes_exact_target_and_readback_must_confirm_it(self):
+  target='2115806252123279581'
+  for actual in [target,'9999999999999999999',None]:
+   c=Client();seen=[]
+   def create(*a,**kw):seen.append(kw);c.posts+=1;return {'ok':True,'id':'99'}
+   c.create_tweet=create
+   c.get=lambda *a,**kw:types.SimpleNamespace(status_code=200,json=lambda:{'legacy':{'id_str':'99','full_text':'example','quoted_status_id_str':actual,'extended_entities':{'media':[{'type':'photo','id_str':'12'}]}}})
+   r,c=self.run_request({'op':'post','text':'example','media':['12'],'quote_tweet_id':target},c)
+   self.assertEqual(seen,[{'media_ids':['12'],'quote_tweet_id':target}]);self.assertEqual(c.posts,1);self.assertEqual(r.get('id'),'99');self.assertEqual('error'not in r,actual==target)
+ def test_invalid_quote_fails_before_credential_lookup(self):
+  for quote in ['https://x.com/a/status/1','0','123','1;bad',99]:
+   output=io.StringIO()
+   with mock.patch.object(bridge.sys,'stdin',io.StringIO(json.dumps({'op':'post','quote_tweet_id':quote}))),mock.patch.object(bridge.subprocess,'run')as key,contextlib.redirect_stdout(output):bridge.main()
+   key.assert_not_called();self.assertEqual(json.loads(output.getvalue())['error'],'x_pre_submit_rejected')
+ def test_long_quote_request_binds_attachment_and_excludes_parent_id_from_created_id(self):
+  c=Client();seen=[];target='2115806252123279581'
+  def post(*a,**kw):seen.append(json.loads(kw['data']));return types.SimpleNamespace(status_code=200,json=lambda:{'data':{'operation':{'tweet_results':{'result':{'rest_id':'99','quoted_status_result':{'result':{'rest_id':target}}}}}}})
+  c.post=post;r=bridge.create_note(c,'a'*359,['12'],target);self.assertEqual(r['id'],'99');self.assertEqual(seen[0]['variables']['attachment_url'],'https://x.com/i/status/'+target);self.assertEqual(len(seen),1)
 if __name__=='__main__':unittest.main()

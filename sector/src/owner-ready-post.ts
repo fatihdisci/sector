@@ -1,12 +1,13 @@
+import {readyPublication,validateReadyPublicationText,assertQuoteParent,type ReadyContentType} from './ready-quote';
 import {isOwner,telegram} from './telegram';
 import {boundedBytes} from './pdf-transport';
 import {sha256} from './utils/text';
 import {bytesHash,storeMedia} from './media-set';
 import type {Env,Draft,Document} from './types';
 import type {InputMessage} from './manual';
-export type ReadyPackage={version:1;kind:'owner_ready_post';id:string;text:string;text_sha256:string;sources:string[];media:{png_base64:string;sha256:string}[];sha256:string};
+export type ReadyPackage={content_type?:ReadyContentType;quote_tweet_id?:string;version:1;kind:'owner_ready_post';id:string;text:string;text_sha256:string;sources:string[];media:{png_base64:string;sha256:string}[];sha256:string};
 export const READY_HELP='Hazır tweeti ve 1–4 PNG görselini borsa-cakali-post.json paketinde, açıklaması /hazir olacak şekilde dosya olarak gönder. Metin ve görseller değiştirilmeden onay kartına alınır. X paylaşımı veya zamanlama ayrıca karttan seçilir. Paket en fazla 18 MB, metin en fazla 4096 karakterdir. Değişiklik için yeni paket oluştur.';
-export async function readyPackageHash(p:Omit<ReadyPackage,'sha256'>){return sha256(JSON.stringify({version:p.version,kind:p.kind,id:p.id,text:p.text,text_sha256:p.text_sha256,sources:p.sources,media:p.media.map(m=>({sha256:m.sha256}))}));}
+export async function readyPackageHash(p:Omit<ReadyPackage,'sha256'>){return sha256(JSON.stringify({version:p.version,kind:p.kind,id:p.id,text:p.text,text_sha256:p.text_sha256,sources:p.sources,media:p.media.map(m=>({sha256:m.sha256})),...(p.content_type!==undefined?{content_type:p.content_type}:{}),...(p.quote_tweet_id!==undefined?{quote_tweet_id:p.quote_tweet_id}:{})}));}
 function png(base64:string){
  if(typeof base64!=='string'||base64.length>6_700_000||base64.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(base64))throw Error('ready_png_invalid');
  const b=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));if(b.length<50||b.length>5_000_000||![137,80,78,71,13,10,26,10].every((n,i)=>b[i]===n))throw Error('ready_png_invalid');
@@ -17,6 +18,7 @@ function png(base64:string){
 }
 export async function validateReadyPackage(value:unknown){
  const p=value as ReadyPackage;if(!p||p.version!==1||p.kind!=='owner_ready_post'||!/^([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.test(p.id)||typeof p.text!=='string'||!p.text.trim()||p.text.length>4096||p.text.includes('\0')||!Array.isArray(p.sources)||p.sources.length<1||p.sources.length>10||new Set(p.sources).size!==p.sources.length||!Array.isArray(p.media)||p.media.length<1||p.media.length>4)throw Error('ready_package_invalid');
+ const publication=readyPublication(p);validateReadyPublicationText(p.text,publication);
  for(const url of p.sources){const u=new URL(url);if(u.protocol!=='https:'||u.username||u.password||url.length>2000)throw Error('ready_source_invalid');}
  if(p.text_sha256!==await sha256(p.text)||p.sha256!==await readyPackageHash(p))throw Error('ready_package_hash');
  const images=[];for(const m of p.media){if(!m||!/^[a-f0-9]{64}$/.test(m.sha256))throw Error('ready_image_hash');const b=png(m.png_base64);if(await bytesHash(b)!==m.sha256)throw Error('ready_image_hash');images.push(b);}
@@ -25,11 +27,13 @@ export async function validateReadyPackage(value:unknown){
 export async function importReadyPost(env:Env,value:unknown){
  const {package:p,images}=await validateReadyPackage(value),key='owner_ready_package:'+p.id;
  if(!env.TELEGRAM_USER_ID||!env.TELEGRAM_CHAT_ID)throw Error('ready_owner_missing');
+ const publication=readyPublication(p);
  const reservation=JSON.stringify({hash:p.sha256,owner:env.TELEGRAM_USER_ID,chat:env.TELEGRAM_CHAT_ID});
  await env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind(key,reservation).run();
  const prior=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(key).first<{value:string}>();if(prior?.value!==reservation)throw Error('ready_package_immutable');
  const existing=await env.DB.prepare('SELECT event_key FROM drafts WHERE id=?').bind(p.id).first<{event_key:string}>();if(existing){if(existing.event_key!=='owner-ready:'+p.id)throw Error('ready_id_conflict');return {id:p.id,duplicate:true};}
- const draft:Draft={tweet_style:'owner_ready',headline:'Hazır yayın paketi',body:p.text,hashtags:[],category:'bist',importance:100,template:'news',claims:[],entities:[],event_key:'owner-ready:'+p.id,uncertainties:[],source_notes:['Sahibin hazır metin ve görsel paketi; AI doğrulaması yapılmadı.'],card_headline:'Hazır yayın paketi',card_body:''};
+ const parentReceiptHash=await assertQuoteParent(env,publication);
+ const draft:Draft={...(publication?{owner_ready_publication:{...publication,...(parentReceiptHash?{parent_receipt_hash:parentReceiptHash}:{})}}:{}),tweet_style:'owner_ready',headline:'Hazır yayın paketi',body:p.text,hashtags:[],category:'bist',importance:100,template:'news',claims:[],entities:[],event_key:'owner-ready:'+p.id,uncertainties:[],source_notes:['Sahibin hazır metin ve görsel paketi; AI doğrulaması yapılmadı.'],card_headline:'Hazır yayın paketi',card_body:''};
  const content=JSON.stringify(draft),media='drafts/'+p.id+'/1-ready.png',time=Math.floor(Date.now()/1000),docs:Document[]=p.sources.map((url,i)=>({source_id:'owner-ready',source_name:'Sahibin hazır paketi',family:'owner-ready',official:false,url,title:'Hazır yayın kaynağı '+(i+1),body:p.text,published_at:null,passages:[]}));
  await storeMedia(env,media,draft,images);
  const binding=JSON.stringify({package_hash:p.sha256,text_sha256:p.text_sha256,content_sha256:await sha256(content),images:p.media.map(m=>m.sha256),revision:1});
@@ -38,6 +42,7 @@ export async function importReadyPost(env:Env,value:unknown){
 }
 export async function assertReadyPost(env:Env,id:string,revision:number,content:string,images:Uint8Array[]){
  const d=JSON.parse(content)as Draft;if(d.tweet_style!=='owner_ready')return;
+ const publication=readyPublication(d.owner_ready_publication??{});validateReadyPublicationText(d.body,publication);const parent=await assertQuoteParent(env,publication);if(publication?.quote_tweet_id&&d.owner_ready_publication?.parent_receipt_hash!==parent)throw Error('ready_quote_parent_binding');
  const row=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind('owner_ready_binding:'+id).first<{value:string}>();const b=JSON.parse(row?.value??'null');
  if(!b||revision!==b.revision||b.content_sha256!==await sha256(content)||b.text_sha256!==await sha256(d.body)||JSON.stringify(b.images)!==JSON.stringify(await Promise.all(images.map(bytesHash))))throw Error('ready_binding_mismatch');
 }

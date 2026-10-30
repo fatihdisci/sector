@@ -1,3 +1,5 @@
+import {readyPublication,queuedReadyQuote} from './ready-quote';
+import {sha256} from './utils/text';
 import {assertNewsArtwork} from './news-artwork';
 import {assertCircuitArtwork} from './circuit-artwork';
 import {assertReadyPost} from './owner-ready-post';
@@ -44,13 +46,15 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
    try{
     const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);await assertCircuitArtwork(env,row.media_key!,row.content,images);await assertNewsArtwork(row.content,images);
     if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
-    const hashes=JSON.stringify(await Promise.all(images.map(bytesHash)));
+    const hashes=JSON.stringify(await Promise.all(images.map(bytesHash))),publication=readyPublication(JSON.parse(row.content).owner_ready_publication??{});
+    const quoteBinding=publication?.quote_tweet_id?JSON.stringify({content_hash:await sha256(row.content),...publication}):null;
     const results=await env.DB.batch([
      env.DB.prepare(`INSERT OR IGNORE INTO x_posts(id,draft_id,revision,day,state,content,media_key,created_at,update_id)
       SELECT ?,?,?,?,'queued',?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')) AND NOT EXISTS(SELECT 1 FROM publication_marks WHERE draft_id=? AND state='published')
       AND EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND content=? AND media_key=? AND message_id=? AND state='pending' AND delivery_state='sent' AND verification!='needs_review' AND expires_at>?)`)
       .bind(postId,row.id,revision,day,postText(JSON.parse(row.content)),row.media_key,now,env.TELEGRAM_UPDATE_ID??null,row.id,row.id,row.id,revision,row.content,row.media_key,messageId,Math.floor(now/1000)),
-     env.DB.prepare('INSERT INTO x_schedules(post_id,due_at,media_hashes) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM x_posts WHERE id=?)').bind(postId,due,hashes,postId)
+     env.DB.prepare('INSERT INTO x_schedules(post_id,due_at,media_hashes) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM x_posts WHERE id=?)').bind(postId,due,hashes,postId),
+     ...(quoteBinding?[env.DB.prepare('INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM x_posts WHERE id=?)').bind('x_quote:'+postId,quoteBinding,postId)]:[])
     ]);
     if(results[0].meta.changes){text=`Planlandı: ${new Date(due).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',dateStyle:'short',timeStyle:'short'})} (Türkiye saati).`;await refreshPublicationCard(env,row.id).catch(()=>{});}
     else {const old=await env.DB.prepare("SELECT state FROM x_posts WHERE draft_id=? AND state IN ('queued','uploading','posting','sent','uncertain')").bind(row.id).first<{state:string}>();text=old?.state==='uncertain'?'Önceki gönderim belirsiz; otomatik tekrar yapılmaz.':old?'Bu içerik zaten planlı veya paylaşılmış.':'Plan oluşturulamadı; kartı ve yayın durumunu kontrol et.';}
@@ -59,7 +63,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
  }
  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:callbackId,text,show_alert:'true'})).catch(()=>{});
 }
-export interface XTransport {preflight?(text:string,imageCount:number):void;identity():Promise<{id:string;username:string}>;upload(png:Uint8Array):Promise<string>;post(text:string,mediaId:string|string[]):Promise<string>;}
+export interface XTransport {preflight?(text:string,imageCount:number):void;identity():Promise<{id:string;username:string}>;upload(png:Uint8Array):Promise<string>;post(text:string,mediaId:string|string[],quoteTweetId?:string):Promise<string>;}
 export interface XDiagnostic {stage:'create'|'readback'|'pre_submit';http_status?:number;codes?:number[];categories?:string[];shape?:Record<string,boolean>;media_ids?:string[];weighted_length?:number;}
 export class XPostUncertain extends Error {constructor(public remoteId:string,public diagnostic?:XDiagnostic){super('x_post_uncertain');}}
 export class XHttpError extends Error {constructor(public status:number,public reason?:'long_text_rejected',public diagnostic?:XDiagnostic){super(reason?'x_'+reason:'x_http_'+status);}}
@@ -80,6 +84,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
   const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);await assertCircuitArtwork(env,row.media_key,draft.content,images);await assertNewsArtwork(draft.content,images);
   if(row.media_hashes&&JSON.stringify(await Promise.all(images.map(bytesHash)))!==row.media_hashes)throw Error('x_image_changed');
+  const quoteTweetId=await queuedReadyQuote(env,row.id,draft.content);
   api.preflight?.(row.content,images.length);
   const identity=await api.identity();if(identity.username.toLowerCase()!=='borsacakali'||identity.id!=='335502216')throw Error('x_wrong_account');
   if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
@@ -88,11 +93,12 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const latest=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!latest||!xDraftEligible(latest,row.revision,row.media_key,clock())||xDay(clock())!==row.day)throw Error('x_stale_draft');
   if(latest.content!==draft.content)throw Error('x_stale_draft');const finalMedia=await readMedia(env,latest.media_key!,latest.content);if(JSON.stringify(await Promise.all(finalMedia.images.map(bytesHash)))!==JSON.stringify(hashes))throw Error('x_image_changed');
+  if(await queuedReadyQuote(env,row.id,draft.content)!==quoteTweetId)throw Error('ready_quote_queue_binding');
   const final=await env.DB.prepare(`UPDATE x_posts SET state='posting',started_at=? WHERE id=? AND state='uploading' AND day=? AND EXISTS(
    SELECT 1 FROM drafts d WHERE d.id=x_posts.draft_id AND d.revision=x_posts.revision AND d.state='pending' AND d.expires_at>? AND d.media_key=x_posts.media_key AND d.delivery_state='sent' AND d.verification!='needs_review')`)
    .bind(clock(),row.id,xDay(clock()),Math.floor(clock()/1000)).run();
   if(!final.meta.changes)throw Error('x_stale_draft');posting=true;
-  remote=await api.post(row.content,mediaIds.length===1?mediaIds[0]:mediaIds);
+  remote=await api.post(row.content,mediaIds.length===1?mediaIds[0]:mediaIds,quoteTweetId);
   const finished=clock();
   await env.DB.batch([env.DB.prepare("UPDATE x_posts SET state='sent',remote_id=?,finished_at=? WHERE id=?").bind(remote,finished,row.id),snapshotStatement(env,row.draft_id,'api',finished,snapshot,'https://x.com/borsacakali/status/'+remote)]);
  }catch(e){

@@ -88,3 +88,8 @@ test('opening the time picker does not enqueue a publication',async()=>{
  env.TELEGRAM_BOT_TOKEN='123:test';env.TELEGRAM_VERIFIED_BOT_ID='123';env.TELEGRAM_CHAT_ID='7';
  try{await requestX(env,`xpost:${id(0)}:1`,100,'cb');assert.equal(await xCount(env),0);const markup=JSON.parse(String(calls.find(c=>c.method==='editMessageReplyMarkup')?.body.get('reply_markup')));assert.deepEqual(markup.inline_keyboard[0].map((b:any)=>b.text),['Hemen','15 dakika sonra','30 dakika sonra','60 dakika sonra']);}finally{globalThis.fetch=original;}
 });
+test('API transport preserves optional quote target without changing normal media contract (mock only)',async()=>{
+ const keys={consumer_key:'a'.repeat(16),consumer_secret:'b'.repeat(16),access_token:'c'.repeat(16),access_secret:'d'.repeat(16)};let body:any;
+ const client=xClient(keys,async(_url,init)=>{body=JSON.parse(String(init?.body));return Response.json({data:{id:'123'}});});
+ await client.post('Güncelleme',['11','12'],'2115806252123279581');assert.equal(body.quote_tweet_id,'2115806252123279581');assert.deepEqual(body.media.media_ids,['11','12']);await client.post('Normal','11');assert(!('quote_tweet_id'in body));
+});

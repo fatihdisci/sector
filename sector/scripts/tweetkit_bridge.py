@@ -5,10 +5,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vendor" / "twee
 from tweetkit_x import TweetKit, constants as C
 EXPECTED='335502216'
 def send(**x): print(json.dumps(x),flush=True)
-def create_note(tk,text,mids):
+def create_note(tk,text,mids,quote_tweet_id=None):
  # Exact request fields used by pinned upstream TweetKit.post_note; reuse prior upload.
  qid=C.QUERY_IDS['CreateNoteTweet'];path=f'/i/api/graphql/{qid}/CreateNoteTweet'
  variables={'tweet_text':text,'media':{'media_entities':[{'media_id':m,'tagged_users':[]} for m in mids],'possibly_sensitive':False},'semantic_annotation_ids':[],'disallowed_reply_options':None}
+ if quote_tweet_id:variables['attachment_url']='https://x.com/i/status/'+quote_tweet_id
  response=tk._session.post(f'{C.GQL_BASE}/{qid}/CreateNoteTweet',data=json.dumps({'variables':variables,'features':C.CREATE_TWEET_FEATURES,'queryId':qid}),headers=tk._headers('POST',path,{'content-type':'application/json'}),timeout=20)
  try:body=response.json()
  except Exception:return {'ok':False,'status':response.status_code}
@@ -57,6 +58,8 @@ def main():
  try:
   req=json.load(sys.stdin); op=req.get('op')
   if op not in ('identity','upload','post'): raise ValueError()
+  quote=req.get('quote_tweet_id')
+  if quote is not None and(not isinstance(quote,str)or not re.fullmatch(r'[1-9]\d{4,24}',quote)):send(error='x_pre_submit_rejected',status=422,diagnostic={'stage':'pre_submit'});return
   p=subprocess.run(['/usr/bin/security','find-generic-password','-s','tweetkit-endeks-haber','-a','endeks_haber','-w'],capture_output=True,text=True,timeout=20)
   if p.returncode: send(error='x_keychain_unavailable'); return
   cookie=p.stdout.strip()
@@ -91,7 +94,7 @@ def main():
    return response
   tk._session.post=capture_post
   diag={'stage':'create','media_ids':mids,'categories':['response_unavailable']}
-  result=create_note(tk,text,mids) if note else tk.create_tweet(text,media_ids=mids)
+  result=create_note(tk,text,mids,quote) if note else tk.create_tweet(text,media_ids=mids,**({'quote_tweet_id':quote}if quote else{}))
   diag=captured.get('diag',{'stage':'create','media_ids':mids,'categories':['response_unavailable']})
   if not result.get('ok'):
    status=result.get('status')
@@ -99,7 +102,7 @@ def main():
    send(error='x_post_uncertain',diagnostic=diag);return
   if not re.fullmatch(r'\d+',str(result.get('id',''))):send(error='x_post_uncertain',diagnostic=diag);return
   rid=str(result['id']); receipt=tk.get_tweet(rid)
-  if not receipt.get('ok') or str(receipt.get('author_id'))!=EXPECTED or str(receipt.get('author','')).lower()!='borsacakali' or (not note and not (receipt.get('text')==text or bool(re.fullmatch(re.escape(text)+r' https://t\.co/[A-Za-z0-9]+',str(receipt.get('text','')))))):
+  if not receipt.get('ok') or str(receipt.get('author_id'))!=EXPECTED or str(receipt.get('author','')).lower()!='borsacakali' or (not note and not (receipt.get('text')==text or bool(re.fullmatch(re.escape(text)+(r'(?: https://t\.co/[A-Za-z0-9]+){1,2}'if quote else r' https://t\.co/[A-Za-z0-9]+'),str(receipt.get('text','')))))):
    send(error='x_post_uncertain',id=rid,diagnostic={**diag,'stage':'readback'});return
   q=C.QUERY_IDS['TweetResultByRestId']; path=f'/i/api/graphql/{q}/TweetResultByRestId'
   params={'variables':json.dumps({'tweetId':rid,'withCommunity':False,'includePromotedContent':False,'withVoice':False}), 'features':json.dumps(C.USER_TWEETS_FEATURES), 'fieldToggles':json.dumps({'withArticleRichContentState':False})}
@@ -115,6 +118,7 @@ def main():
     for v in node:walk(v)
   walk(response.json())
   if not found:send(error='x_post_uncertain',id=rid,diagnostic={**diag,'stage':'readback'});return
+  if quote is not None and found[0]['legacy'].get('quoted_status_id_str')!=quote:send(error='x_post_uncertain',id=rid,diagnostic={**diag,'stage':'readback'});return
   if note:
    note_data=((found[0].get('note_tweet') or {}).get('note_tweet_results') or {}).get('result') or {}
    if note_data.get('text')!=text:send(error='x_post_uncertain',id=rid,diagnostic={**diag,'stage':'readback'});return
