@@ -57,7 +57,7 @@ export function keyboard(id:string,revision:number,docs:Document[],_caption:stri
 }
 export async function sendDraft(env:Env,id:string,revision:number,draft:Draft,docs:Document[],png:Uint8Array|Uint8Array[],_verification:string,existingMessageId?:number,fetcher:typeof fetch=fetch):Promise<number> {
  if(env.MODE!=='telegram_review')throw new Error('telegram_dry_run');
- if(draft.tweet_style==='owner_ready')return sendAlbum(env,id,revision,draft,docs,Array.isArray(png)?png:[png],existingMessageId,fetcher);
+ if(draft.tweet_style==='owner_ready'||draft.tweet_style==='circuit_batch'&&postText(draft).length>1024)return sendAlbum(env,id,revision,draft,docs,Array.isArray(png)?png:[png],existingMessageId,fetcher);
  if(Array.isArray(png))return sendAlbum(env,id,revision,draft,docs,png,existingMessageId,fetcher);
  if(existingMessageId&&env.DB){const control=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind('telegram_control:'+id).first<{value:string}>();if(Number(control?.value)===existingMessageId){try{await telegram(env,'editMessageReplyMarkup',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,message_id:String(existingMessageId),reply_markup:JSON.stringify({inline_keyboard:[]})}),fetcher);}catch(e){if(!(e instanceof TelegramError&&e.code===400))throw e;}existingMessageId=undefined;}}
  const caption=postText(draft);

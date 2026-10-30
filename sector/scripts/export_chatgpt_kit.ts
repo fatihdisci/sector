@@ -26,6 +26,7 @@ try{
  await source('channel-programme.ts');
  await source('brand-kit-registry.ts');await source('brand-kit-imagegen.ts');await source('editorial.ts');await source('news-visual-plan.ts');
  await cp(join(root,'assets/news-visuals'),join(stage,'assets/news-visuals'),{recursive:true});
+ await cp(join(root,'assets/circuit-general'),join(stage,'assets/circuit-general'),{recursive:true});
  await cp(join(root,'assets/kap-general'),join(stage,'assets/kap-general'),{recursive:true});
  await cp(join(root,'assets/kap-business'),join(stage,'assets/kap-business'),{recursive:true});
  await cp(join(root,'assets/approved-typography'),join(stage,'assets/approved-typography'),{recursive:true});

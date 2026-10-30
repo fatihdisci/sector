@@ -413,5 +413,111 @@
     "rights_note": "Kanal metni ve görsellerinden olgular; özgün ENDEKS HABER içeriği, resmî kaynak değildir.",
     "review_mode": "telegram",
     "method": "reference"
+  },
+  {
+    "id": "dunya",
+    "name": "Dünya",
+    "url": "https://www.dunya.com/rss",
+    "family": "dunya",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T07:57:03.499570+00:00",
+    "terms_url": "https://www.dunya.com/rss",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "www.dunya.com"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 84,
+    "minimum_score": 60
+  },
+  {
+    "id": "aa-ekonomi",
+    "name": "Anadolu Ajansı Ekonomi",
+    "url": "https://www.aa.com.tr/tr/rss/default?cat=ekonomi",
+    "family": "wire-aa",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T07:57:03.499570+00:00",
+    "terms_url": "https://www.aa.com.tr/tr/rss/default?cat=ekonomi",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "www.aa.com.tr"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 92,
+    "minimum_score": 60
+  },
+  {
+    "id": "ntvpara",
+    "name": "NTV Para",
+    "url": "https://www.ntv.com.tr/ntvpara.rss",
+    "family": "ntv",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T07:57:03.499570+00:00",
+    "terms_url": "https://www.ntv.com.tr/ntvpara.rss",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "www.ntv.com.tr"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 86,
+    "minimum_score": 60
+  },
+  {
+    "id": "birgun-ekonomi",
+    "name": "BirGün Ekonomi",
+    "url": "https://www.birgun.net/rss/kategori/ekonomi-9",
+    "family": "birgun",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T07:57:03.499570+00:00",
+    "terms_url": "https://www.birgun.net/rss/kategori/ekonomi-9",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "www.birgun.net"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 60,
+    "minimum_score": 60
+  },
+  {
+    "id": "haberler-finans",
+    "name": "Haberler Finans",
+    "url": "https://rss.haberler.com/RssNew.aspx?kategori=finans",
+    "family": "haberler",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T07:57:03.499570+00:00",
+    "terms_url": "https://rss.haberler.com/RssNew.aspx?kategori=finans",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "rss.haberler.com",
+      "www.haberler.com"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 55,
+    "minimum_score": 60
   }
 ]

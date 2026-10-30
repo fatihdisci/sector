@@ -1,16 +1,7 @@
-import {strict as assert} from 'node:assert';
-import {test} from 'node:test';
-import {registerTelegramCommands,TELEGRAM_COMMANDS} from '../src/telegram-commands';
-import type {Env} from '../src/types';
-
-test('owner bot registers the active Turkish slash menu for private chats',async()=>{
- let request:RequestInit|undefined;
- const env={TELEGRAM_BOT_TOKEN:'123:fixture',TELEGRAM_VERIFIED_BOT_ID:'123'} as Env;
- await registerTelegramCommands(env,async(_url,init)=>{request=init;return new Response(JSON.stringify({ok:true,result:true}),{status:200});});
- const body=request!.body as URLSearchParams;
- assert.equal(body.get('language_code'),'tr');
- assert.deepEqual(JSON.parse(body.get('scope')!),{type:'all_private_chats'});
- assert.deepEqual(JSON.parse(body.get('commands')!),TELEGRAM_COMMANDS);
- assert(TELEGRAM_COMMANDS.every(c=>c.command.length<=32&&c.description.length<=256));
- assert.deepEqual(TELEGRAM_COMMANDS.map(c=>c.command),['start','help','devrekesici','gerialim','genelgerialim','kurum','akd','takas','piyasayd','sorgular','yayinlar','durum','secki','arsiv','haberfiltre','golgerapor']);
+import{strict as assert}from'node:assert';import{test}from'node:test';import{registerTelegramCommands,telegramCommands,TELEGRAM_COMMANDS}from'../src/telegram-commands';import type{Env}from'../src/types';
+test('slash commands register default-language fallback and Turkish, with exact readback and news-only handlers',async()=>{
+ const env={TELEGRAM_BOT_TOKEN:'123:fixture',TELEGRAM_VERIFIED_BOT_ID:'123',BOT_WORKFLOW_MODE:'news_only'}as Env,expected=telegramCommands(env),requests:{method:string;body:URLSearchParams}[]=[];
+ const result=await registerTelegramCommands(env,async(url,init)=>{const method=String(url).split('/').pop()!,body=init!.body as URLSearchParams;requests.push({method,body});return Response.json({ok:true,result:method==='getMyCommands'?expected:true});});
+ assert.equal(result.count,12);assert.deepEqual(requests.map(r=>r.method),['setMyCommands','getMyCommands','setMyCommands','getMyCommands']);assert.deepEqual(requests.map(r=>r.body.get('language_code')),['','','tr','tr']);assert(requests.every(r=>r.body.get('scope')===JSON.stringify({type:'all_private_chats'})));assert.deepEqual(expected.map(c=>c.command),['start','help','devrekesici','gerialim','genelgerialim','yayinlar','durum','secki','arsiv','haberfiltre','golgerapor','hazir']);assert(TELEGRAM_COMMANDS.some(c=>c.command==='akd'));
 });
+test('command registration never reports healthy after mismatched Telegram readback',async()=>{const env={TELEGRAM_BOT_TOKEN:'123:fixture',TELEGRAM_VERIFIED_BOT_ID:'123'}as Env;await assert.rejects(registerTelegramCommands(env,async(url)=>Response.json({ok:true,result:String(url).endsWith('getMyCommands')?[]:true})),/readback_mismatch/);});

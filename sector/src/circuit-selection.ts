@@ -2,10 +2,10 @@ import {OutputCapacityError} from './output-capacity';
 export interface CircuitEvent {id:number;tickers:string[];published_at:string;}
 export interface CircuitIndices {bist30:string[];bist100:string[];checkedAt:string;source:string;}
 export interface CircuitSelection {
- version:1;rule:'bist30-bist100-repeats-code-v1';limit:number;
+ version:1;rule:'bist30-bist100-repeats-code-v1'|'all-market-new-events-v1';limit:number;
  total_events:number;total_tickers:number;selected_tickers:string[];omitted:number;
  all_rows:{label:string;value:string}[];
- indices:{status:'verified'|'missing';snapshot:CircuitIndices|null};
+ indices:{status:'verified'|'missing'|'not_required';snapshot:CircuitIndices|null};
  tweet_style?:'hashtags'|'plain';
 }
 export const CIRCUIT_REPORT_LIMIT=120;
@@ -26,4 +26,12 @@ export function selectCircuitReport(events:readonly CircuitEvent[],indices:Circu
  const rows=all_rows.slice(0,limit);
  const selection:CircuitSelection={version:1,rule:'bist30-bist100-repeats-code-v1',limit,total_events:events.length,total_tickers:counts.size,selected_tickers:rows.map(r=>r.label.slice(1)),omitted:counts.size-rows.length,all_rows,indices:{status:verified?'verified':'missing',snapshot:verified?{bist30:[...indices!.bist30],bist100:[...indices!.bist100],checkedAt:indices!.checkedAt,source:indices!.source}:null}};
  return {rows,selection};
+}
+
+/** No index dependency for owner-requested all-market automatic batches. */
+export function selectCircuitBatch(events:readonly CircuitEvent[]){
+ const counts=new Map<string,number>();for(const e of events)for(const ticker of new Set(e.tickers)){if(!code.test(ticker))throw Error('circuit_report_ticker_invalid');counts.set(ticker,(counts.get(ticker)??0)+1);}
+ const rows=[...counts].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([ticker,n])=>({label:'#'+ticker,value:`${n} bildirim`}));
+ const selection:CircuitSelection={version:1,rule:'all-market-new-events-v1',limit:10000,total_events:events.length,total_tickers:counts.size,selected_tickers:rows.map(r=>r.label.slice(1)),omitted:0,all_rows:rows,indices:{status:'not_required',snapshot:null}};
+ return{rows,selection};
 }

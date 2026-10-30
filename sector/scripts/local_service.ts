@@ -37,7 +37,7 @@ import {announceNews,refreshNewsRequests} from '../src/news-inbox';
 import {tick,seed,deliver,errorCode} from '../src/pipeline';
 import {leaseJob,submitJob,ingestOfficial} from '../src/bridge';
 import {telegram} from '../src/telegram';
-import {registerTelegramCommands,TELEGRAM_COMMANDS} from '../src/telegram-commands';
+import {registerTelegramCommands} from '../src/telegram-commands';
 import {KapStore} from '../src/kap/store';
 import {KapDelivery} from '../src/kap-delivery';
 import {kapDocuments} from '../src/kap-evidence';
@@ -119,7 +119,7 @@ async function kapLoop(){
  // Absence of the separate KAP database must not create/bootstrap one here.
  const path=directory+'/kap/kap.sqlite';let store:KapStore|undefined,consumer:KapDelivery|undefined;
  while(!stopping()){try{
-  if(!store){await access(path);store=new KapStore(path);consumer=new KapDelivery(store,env,id=>kapDocuments(id,readPdf));const reports=new KapReports(store);env.KAP_REPORT=(kind,at,prefs)=>reports.build(kind,at,Date.now(),prefs);env.KAP_DELIVERY_CHECK=documents=>consumer!.deliveryDecision(documents);}
+  if(!store){await access(path);store=new KapStore(path);consumer=new KapDelivery(store,env,id=>kapDocuments(id,readPdf));const reports=new KapReports(store);env.KAP_REPORT=(kind,at,prefs,purpose)=>reports.build(kind,at,Date.now(),prefs,purpose);env.KAP_DELIVERY_CHECK=documents=>consumer!.deliveryDecision(documents);}
   const result=await consumer!.run();await status('kap_delivery_health',{...kapDeliveryHealth(result.state),review_pending:consumer?consumer.reviewSummary():[],at:new Date().toISOString(),...result});
  }catch(e){await status('kap_delivery_health',{ok:false,at:new Date().toISOString(),code:errorCode(e)});}
  await pause(5_000);}
@@ -144,7 +144,7 @@ async function telegramLoop(maintenance?:{owner:string;chat:string;deadline:numb
 async function telegramCommandsLoop(){
  let retry=0;
  while(!stopping()){
-  try{await registerTelegramCommands(env);retry=0;await status('telegram_commands_health',{ok:true,at:new Date().toISOString(),count:TELEGRAM_COMMANDS.length});await pause(24*3600_000);}
+  try{const registered=await registerTelegramCommands(env);retry=0;await status('telegram_commands_health',{ok:true,at:new Date().toISOString(),count:registered.count});await pause(24*3600_000);}
   catch(e){retry++;await status('telegram_commands_health',{ok:false,at:new Date().toISOString(),code:errorCode(e),retry});await pause(Math.min(15*60_000,30_000*retry));}
  }
 }

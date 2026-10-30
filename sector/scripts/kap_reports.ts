@@ -17,7 +17,7 @@ export class KapReports {
   try{rows=purchases(await this.client.fullText(r.id));}catch(e){error=e instanceof Error&&/^[a-z_]+$/.test(e.message)?e.message:'kap_report_read_failed';}
   this.store.run(`INSERT INTO report_buybacks(id,rows_json,error,attempts,next_try,version) VALUES(?,?,?,1,?,2) ON CONFLICT(id) DO UPDATE SET rows_json=excluded.rows_json,error=excluded.error,attempts=report_buybacks.attempts+1,next_try=excluded.next_try,version=2`,r.id,rows?JSON.stringify(rows):null,error,at+60000);
  }
- async build(kind:'circuit'|'buyback'|'general_buyback',at:number,now=Date.now(),preferences?:OutputPreferences){
+ async build(kind:'circuit'|'buyback'|'general_buyback',at:number,now=Date.now(),preferences?:OutputPreferences,purpose?:'automatic_batch'){
   if(!['circuit','buyback','general_buyback'].includes(kind)||!Number.isSafeInteger(at)||at>now+60000)throw Error('kap_report_invalid');
   if(kind==='general_buyback'&&preferences?.list==='first')throw Error('general_report_subset_requires_recalculation');
   const start=istanbulDay(at)+'T00:00:00+03:00',end=new Date(at).toISOString();
@@ -44,6 +44,6 @@ export class KapReports {
    const official=(d:Disclosure)=>normalize(d.title+' '+(d.summary??'')).includes('DEVRE KESICI')&&['BORSA ISTANBUL BISTECH DEVRE KESICI UYGULAMASI','BORSA ISTANBUL AS'].includes(normalize(d.company??''));
    for(const d of fetched){if(Date.parse(d.publishedAt)<dayStart||Date.parse(d.publishedAt)>at||!official(d))throw Error('circuit_report_source_incomplete');entries.push({disclosure:d,purchases:undefined,error:undefined});}
   }
-  const indices=this.store.get<Indices>('indices');if(kind==='general_buyback'){const result=generalBuyback(kind,entries,indices,at,coverage);if(preferences)result.draft.output_preferences=preferences;return result;}return report(kind,entries,indices,at,coverage,preferences,kind==='circuit');
+  const indices=this.store.get<Indices>('indices');if(kind==='general_buyback'){const result=generalBuyback(kind,entries,indices,at,coverage);if(preferences)result.draft.output_preferences=preferences;return result;}return report(kind,entries,indices,at,coverage,preferences,kind==='circuit',purpose==='automatic_batch');
  }
 }

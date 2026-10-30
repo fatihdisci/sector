@@ -24,7 +24,12 @@ export const TELEGRAM_COMMANDS = [
 
 export function telegramCommands(env:Env){return botWorkflow(env)==='news_only'?[...TELEGRAM_COMMANDS.filter(c=>!['kurum','akd','takas','piyasayd','sorgular'].includes(c.command)),{command:'hazir',description:'Hazır tweet ve PNG paketini onay kartına al'}]:TELEGRAM_COMMANDS;}
 
-export async function registerTelegramCommands(env:Env,fetcher:typeof fetch=fetch):Promise<void>{
- const body=new URLSearchParams({commands:JSON.stringify(telegramCommands(env)),scope:JSON.stringify({type:'all_private_chats'}),language_code:'tr'});
- await telegram(env,'setMyCommands',body,fetcher);
+export async function registerTelegramCommands(env:Env,fetcher:typeof fetch=fetch):Promise<{count:number}>{
+ const commands=telegramCommands(env),scope=JSON.stringify({type:'all_private_chats'});
+ for(const language_code of ['', 'tr']){
+  await telegram(env,'setMyCommands',new URLSearchParams({commands:JSON.stringify(commands),scope,language_code}),fetcher);
+  const saved=await telegram(env,'getMyCommands',new URLSearchParams({scope,language_code}),fetcher);
+  if(JSON.stringify(saved)!==JSON.stringify(commands))throw Error('telegram_commands_readback_mismatch');
+ }
+ return{count:commands.length};
 }

@@ -14,8 +14,8 @@ async function effect<T>(env:Env,key:string,send:()=>Promise<T>):Promise<T>{
  catch(e){const state=e instanceof TelegramError?e.failure==='permanent'?'failed':e.failure:'uncertain';await env.DB.prepare('UPDATE system_state SET value=? WHERE key=?').bind(JSON.stringify({state}),key).run();throw e;}
 }
 export async function sendAlbum(env:Env,id:string,revision:number,draft:Draft,docs:Document[],images:Uint8Array[],oldMessage:number|undefined,fetcher:typeof fetch){
- if(images.length<(draft.tweet_style==='owner_ready'?1:2)||images.length>4)throw Error('multi_card_capacity_exceeded');
- const caption=postText(draft);if(caption.length>4096)throw Error('telegram_caption_too_long');
+ if(images.length<(['owner_ready','circuit_batch'].includes(draft.tweet_style??'')?1:2)||images.length>4)throw Error('multi_card_capacity_exceeded');
+ const caption=postText(draft);if(caption.length>(draft.tweet_style==='circuit_batch'?25000:4096))throw Error('telegram_caption_too_long');
  const prefix=`telegram_bundle:${id}:${revision}`,hash=await sha256(JSON.stringify([draft,await Promise.all(images.map(bytesHash))]));
  const source=await env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind(prefix).first<{value:string}>();
  if(source&&source.value!==hash)throw Error('telegram_bundle_revision_mismatch');
@@ -32,9 +32,11 @@ export async function sendAlbum(env:Env,id:string,revision:number,draft:Draft,do
   if(!Array.isArray(result)||result.length!==images.length||result.some(m=>!Number.isSafeInteger(m.message_id)))throw new TelegramError(0,60,'uncertain');return result.map(m=>m.message_id);
  });
  await eligible();
+ const chunks=draft.tweet_style==='circuit_batch'?Array.from({length:Math.ceil(caption.length/4000)},(_,i)=>caption.slice(i*4000,(i+1)*4000)):[caption];
+ for(let i=0;i<chunks.length-1;i++)await effect(env,prefix+':text:'+i,async()=>{await eligible();const sent=await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:chunks[i],reply_parameters:JSON.stringify({message_id:ids[0]}),link_preview_options:JSON.stringify({is_disabled:true})}),fetcher);if(!Number.isSafeInteger(sent.message_id))throw new TelegramError(0,60,'uncertain');return Number(sent.message_id);});
  return effect<number>(env,prefix+':control',async()=>{
   await eligible();const markup=keyboard(id,revision,docs,caption,env.X_PUBLISH_ENABLED==='true',draft,await publicationState(env,id));
-  const result=await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:caption,reply_parameters:JSON.stringify({message_id:ids[0]}),reply_markup:JSON.stringify(markup),link_preview_options:JSON.stringify({is_disabled:true})}),fetcher);
+  const result=await telegram(env,'sendMessage',new URLSearchParams({chat_id:env.TELEGRAM_CHAT_ID!,text:chunks[chunks.length-1],reply_parameters:JSON.stringify({message_id:ids[0]}),reply_markup:JSON.stringify(markup),link_preview_options:JSON.stringify({is_disabled:true})}),fetcher);
   if(!Number.isSafeInteger(result.message_id))throw new TelegramError(0,60,'uncertain');return Number(result.message_id);
  });
 }

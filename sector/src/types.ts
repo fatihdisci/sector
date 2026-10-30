@@ -40,7 +40,7 @@ export interface Env {
   OWNER_VISUAL?:import('./owner-visual').OwnerVisualRuntime;
   READ_TELEGRAM_CHANNEL?:(manifest:string)=>Promise<Document[]>;
   READ_SPK_X?:(manifest:string)=>Promise<Document[]>;
-  KAP_REPORT?:(kind:'circuit'|'buyback'|'general_buyback',at:number,preferences?:OutputPreferences)=>Promise<{draft:Draft;documents:Document[]}>;
+  KAP_REPORT?:(kind:'circuit'|'buyback'|'general_buyback',at:number,preferences?:OutputPreferences,purpose?:'automatic_batch')=>Promise<{draft:Draft;documents:Document[]}>;
   RENDER_REPORT?:(svg:string)=>Promise<Uint8Array>;
   X_PUBLISH_ENABLED?:string;
   X_LONG_NOTE_ENABLED?:string;

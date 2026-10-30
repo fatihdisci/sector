@@ -153,7 +153,7 @@ export async function deliver(env:Env):Promise<void> {
   await env.DB.batch([
    env.DB.prepare("UPDATE drafts SET lease_until=0,delivery_state='sent',delivered_at=?,message_id=? WHERE id=? AND revision=? AND delivery_state='sending'").bind(time,message,row.id,row.revision),
    env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_photo:'+row.id,String(message),row.id,row.revision,message),
-   ...(textControl||images.length>1||JSON.parse(row.content).tweet_style==='owner_ready'?[env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_control:'+row.id,String(message),row.id,row.revision,message)]:[])]);
+   ...(textControl||images.length>1||['owner_ready','circuit_batch'].includes(JSON.parse(row.content).tweet_style)?[env.DB.prepare("INSERT INTO system_state(key,value) SELECT ?,? WHERE EXISTS(SELECT 1 FROM drafts WHERE id=? AND revision=? AND message_id=?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind('telegram_control:'+row.id,String(message),row.id,row.revision,message)]:[])]);
  } catch(e) {
   // Retrying an ambiguous timeout can duplicate a card already accepted by
   // Telegram. Only an explicit API rejection is eligible for an automatic retry.
