@@ -79,7 +79,7 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
 
 function circuitDailyReport(current:Pick<Disclosure,'id'|'subjectCodes'|'publishedAt'|'url'>[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences,generalArtwork=false,allMarketBatch=false):{draft:Draft;documents:Document[]}{
  const events=current.map(d=>({id:d.id,tickers:[...d.subjectCodes],published_at:d.publishedAt}));
- const {rows,selection}=allMarketBatch?selectCircuitBatch(events):selectCircuitReport(events,indices,at,generalArtwork?10000:CIRCUIT_REPORT_LIMIT,generalArtwork);
+ const {rows,selection}=allMarketBatch?selectCircuitBatch(events,indices,at):selectCircuitReport(events,indices,at,generalArtwork?10000:CIRCUIT_REPORT_LIMIT,generalArtwork);
  const reportDate=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long'}).format(new Date(at));
  const headline=`${reportDate} günü kaç hissede devre kesici çalıştı?`,note='';
  const codes=selection.selected_tickers.slice(0,20);

@@ -1,4 +1,4 @@
-import {selectCircuitBatch} from './circuit-selection';
+import {selectCircuitBatch,circuitIndexTags} from './circuit-selection';
 import {withCircuitArtwork,storeCircuitArtwork} from './circuit-artwork';
 import {equitySessionLabel}from'./market-session';import {istanbulDay}from'./kap/reports';import {sha256}from'./utils/text';import {renderMedia,revisionMediaKey}from'./media-set';import type{Env,Draft}from'./types';
 export const CIRCUIT_POLL_MS=120_000;
@@ -19,9 +19,10 @@ export async function pollCircuitAuto(env:Env,at=Date.now()){
  const fresh=eligible.filter(e=>e.tickers.length>0&&!saved.ids.includes(e.id)&&Date.parse(e.published_at)>=saved.at);
  if(!fresh.length){await env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=?').bind(record,key,previous!.value).run();return{state:ids.length?'unchanged':'empty',day,events:0};}
  const codes=[...new Set(fresh.flatMap(e=>e.tickers))].sort();
- const title=codes.map(c=>'#'+c).join(' '),body='Devre kesici uygulandı. '+(codes.length===1?'Sürekli işlemlere ara verildi.':codes.length===2?'İki hissede de sürekli işlemlere ara verildi.':`Bu ${codes.length} hissede de sürekli işlemlere ara verildi.`),text=title+'\n\n'+body+'\n\n#Borsa #BIST';
+ const membership=summary.draft.card_data?.report?.circuit?.indices.snapshot??null,extraTags=circuitIndexTags(codes,membership,at)??[];
+ const title=codes.map(c=>'#'+c).join(' '),body='Devre kesici uygulandı. '+(codes.length===1?'Sürekli işlemlere ara verildi.':codes.length===2?'İki hissede de sürekli işlemlere ara verildi.':`Bu ${codes.length} hissede de sürekli işlemlere ara verildi.`),text=title+'\n\n'+body+'\n\n'+['#Borsa','#BIST',...extraTags].join(' ');
  if(text.length>25000)throw Error('circuit_batch_text_capacity');
- const selection=selectCircuitBatch(fresh);
+ const selection=selectCircuitBatch(fresh,membership,at);
  const eventKey='circuit-batch:'+day+':'+fresh.map(e=>e.id).sort((a,b)=>a-b).join(','),hash=await sha256(eventKey),id=hash.slice(0,8)+'-'+hash.slice(8,12)+'-'+hash.slice(12,16)+'-'+hash.slice(16,20)+'-'+hash.slice(20,32);
  const sourceUrls=fresh.map(e=>'https://www.kap.org.tr/tr/Bildirim/'+e.id),evidence=fresh.map(e=>`${e.id}: ${e.tickers.join(', ')}; ${e.published_at}`).join('\n');
  const documents=[{...summary.documents[0],title:'Yeni devre kesici bildirimleri',body:evidence,primary_urls:sourceUrls,passages:[{id:'circuit_batch',text:evidence}]}];

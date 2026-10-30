@@ -29,9 +29,19 @@ export function selectCircuitReport(events:readonly CircuitEvent[],indices:Circu
 }
 
 /** No index dependency for owner-requested all-market automatic batches. */
-export function selectCircuitBatch(events:readonly CircuitEvent[]){
+export function selectCircuitBatch(events:readonly CircuitEvent[],indices:CircuitIndices|null=null,at=Date.now()){
  const counts=new Map<string,number>();for(const e of events)for(const ticker of new Set(e.tickers)){if(!code.test(ticker))throw Error('circuit_report_ticker_invalid');counts.set(ticker,(counts.get(ticker)??0)+1);}
  const rows=[...counts].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([ticker,n])=>({label:'#'+ticker,value:`${n} bildirim`}));
  const selection:CircuitSelection={version:1,rule:'all-market-new-events-v1',limit:10000,total_events:events.length,total_tickers:counts.size,selected_tickers:rows.map(r=>r.label.slice(1)),omitted:0,all_rows:rows,indices:{status:'not_required',snapshot:null}};
+ const tags=circuitIndexTags(selection.selected_tickers,indices,at);
+ if(tags!==null)selection.indices={status:'verified',snapshot:indices};
  return{rows,selection};
+}
+
+/** Missing/stale membership omits optional tags, never excludes market events. */
+export function circuitIndexTags(codes:readonly string[],indices:CircuitIndices|null,at:number):string[]|null {
+ const members=(a:unknown,n:number):a is string[]=>Array.isArray(a)&&a.length===n&&new Set(a).size===n&&a.every(c=>typeof c==='string'&&code.test(c));
+ const checked=indices?Date.parse(indices.checkedAt):NaN;
+ if(!indices||indices.source!=='https://www.kap.org.tr/tr/Endeksler'||!members(indices.bist30,30)||!members(indices.bist100,100)||!indices.bist30.every(c=>indices.bist100.includes(c))||!Number.isFinite(checked)||checked>at+300000||at-checked>36*3600000)return null;
+ return codes.some(c=>indices.bist30.includes(c))?['#bist30','#bist100']:codes.some(c=>indices.bist100.includes(c))?['#bist100']:[];
 }
