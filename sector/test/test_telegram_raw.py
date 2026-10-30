@@ -39,6 +39,14 @@ class RawQueries(unittest.IsolatedAsyncioTestCase):
             for kind,message in self.steps.pop(0):await self.emit(kind,message)
     async def run_query(self,client,value=None):
         return await query_raw(client,self.db,self.root,value or self.value,validate=account.validate_raw_query,resume=account.resume_state,error=account.QueryError,clock=lambda:self.clock,types=EventTypes,wait_event=self.wait)
+    def test_bopt_institutional_profile_folds_turkish_and_rejects_wrong_or_incomplete_answers(self):
+        from telegram_raw_protocol import payload_matches
+        good='🏦 YAPI KREDI KURUM ANALİZİ\n🟢 EN ÇOK ALINAN HİSSELER:\n'+'\n'.join(f'{i}. A{i:04}: {i}.2Mn TL' for i in range(1,11))+'\n🔴 EN ÇOK SATILAN HİSSELER:\n'+'\n'.join(f'{i}. B{i:04}: {i}.2Mn TL' for i in range(1,11))
+        self.assertTrue(payload_matches('b0pt_bot','/kurum yapı kredi',good,True))
+        self.assertFalse(payload_matches('b0pt_bot','/kurum yapı kredi',good.replace('YAPI KREDI','AK YATIRIM'),True))
+        self.assertFalse(payload_matches('b0pt_bot','/kurum yapı kredi',good,False))
+        self.assertFalse(payload_matches('b0pt_bot','/kurum yapı kredi',good.replace('SATILAN','SATILMIŞ'),True))
+        self.assertFalse(payload_matches('b0pt_bot','/kurum yapı',good,True))
     def test_eight_explicit_routes_without_expanding_production(self):
         routes=[('b0pt_bot','/detay asels','/detay ASELS'),('b0pt_bot','/piyasayd','/piyasayd'),('b0pt_bot','/doviz','/doviz'),('ucretsizderinlikbot','/takas ASTOR','/takas ASTOR'),('ucretsizderinlikbot','/teorik asels','/teorik ASELS'),('ucretsizderinlikbot','/derinlik asels','/derinlik ASELS'),('ucretsizderinlikbot','/akd ASTOR','/akd ASTOR'),('ucretsizderinlikbot','/kurum','/kurum')]
         for bot,command,normalized in routes:

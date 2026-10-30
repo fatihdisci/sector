@@ -10,8 +10,16 @@ def is_placeholder(text):
 def payload_matches(bot,command,text,media):
     s=folded(text or '');parts=command.split();verb=parts[0]
     if is_placeholder(text):return False
-    ticker=parts[1]if len(parts)==2 else None
+    ticker=parts[1]if len(parts)==2 and verb!='/kurum' else None
     if ticker and not re.search(r'(?<![a-z0-9])'+re.escape(ticker.lower())+r'(?![a-z0-9])',s):return False
+    if bot=='b0pt_bot' and verb=='/kurum':
+        broker=folded(command[len('/kurum '):]).strip()
+        title=re.search(r'(?m)^[^\w\n]*([^\n]+?)\s+kurum analizi\s*$',s)
+        sections=re.search(r'en cok alinan hisseler\s*:(.*?)en cok satilan hisseler\s*:(.*)',s,re.S)
+        if not (media and broker and title and title.group(1).strip()==broker and sections):return False
+        def rows(section):return re.findall(r'(?m)^\s*(\d{1,2})\.\s*([a-z][a-z0-9]{3,4})\s*:\s*\d+(?:[.,]\d+)?\s*(?:mn|mr|bin)\s*tl\b',section)
+        buy,sell=rows(sections.group(1)),rows(sections.group(2))
+        return all([len(side)==10 and [int(n) for n,_ in side]==list(range(1,11)) and len({code for _,code in side})==10 for side in (buy,sell)])
     if bot=='b0pt_bot'and verb=='/piyasayd':
         rows=re.findall(r'(?m)^\s*\d+\.\s+([A-Z][A-Z0-9]{3,4})\s+\d',text or '')
         return 'en cok yukselen hisseler'in s and 'en cok dusen hisseler'in s and len(rows)==20 and len(set(rows))==20
