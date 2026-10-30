@@ -33,6 +33,6 @@ export function draftKeyboard(id:string,revision:number,docs:Document[],publish:
 }
 export function newsKeyboard(id:string,url:string,choice:string|null=null,view:'main'|'more'='main',retryRevision?:number,detailed=true):Markup{
  const button=(text:string,callback_data:string):Button=>({text,callback_data});
- if(view==='main')return {inline_keyboard:[[button('İçerik oluştur','news:'+id)],[button('❤️'+(choice==='like'?' ✓':''),'ni:l:'+id),button('👎'+(choice==='dislike'?' ✓':''),'ni:d:'+id),button('Diğer','nm:more:'+id)]]};
+ if(view==='main')return {inline_keyboard:[[button('İçerik oluştur','news:'+id),button('GPT’ye aktar','ngpt:'+id)],[sourceButton([{url}] as Document[])],[button('❤️'+(choice==='like'?' ✓':''),'ni:l:'+id),button('👎'+(choice==='dislike'?' ✓':''),'ni:d:'+id),button('Diğer','nm:more:'+id)]]};
  return {inline_keyboard:[[sourceButton([{url}] as Document[])],...(detailed?[[button('Tekrar haber','nf:repeat:'+id),button('Acil değil','nf:digest:'+id)]]:[]),...(retryRevision?[ [button('Yeniden gönder (çift olabilir)',`newsretry:${id}:${retryRevision}`)] ]:[]),[button('Geri','nm:main:'+id)]]};
 }

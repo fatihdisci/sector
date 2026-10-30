@@ -1,3 +1,4 @@
+import {exportNewsText} from './news-text-export';
 import{channelMarketPreviewSQL}from'./channel-market-preview';
 import {COMPANY_CATALOG_VERSION} from './news-company-catalog';
 import {sha256} from './utils/text';
@@ -45,10 +46,12 @@ export async function selectionRows(env:Env,since=0,ids?:string[],now=Date.now()
 export async function sendSelection(env:Env,since=0,ids?:string[],pageInfo?:{page:number;total:number;silent?:boolean}){
  const rows=await selectionRows(env,since,ids);
  if(ids&&!rows.length)return [];
- const sent=await send(env,rows.length?`Toplu seçki${pageInfo?' · '+pageInfo.page+'/'+pageInfo.total:''} · Hazırlanmasını istediğin habere dokun.`:'Seçkide güncel aday yok.',{...(pageInfo?.silent?{disable_notification:'true'}:{}),reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:Array.from(r.title).slice(0,85).join(''),callback_data:'pick:'+r.id}])})});
+ const sent=await send(env,rows.length?`Toplu seçki${pageInfo?' · '+pageInfo.page+'/'+pageInfo.total:''} · Ayrıntısını görmek istediğin habere dokun.`:'Seçkide güncel aday yok.',{...(pageInfo?.silent?{disable_notification:'true'}:{}),reply_markup:JSON.stringify({inline_keyboard:rows.map(r=>[{text:Array.from(r.title).slice(0,85).join(''),callback_data:'pick:'+r.id}])})});
+ await env.DB.prepare('INSERT OR REPLACE INTO system_state(key,value) VALUES(?,?)').bind('selection_message:'+sent.message_id,JSON.stringify(rows.map(r=>r.id))).run();
  return {ids:rows.map(r=>r.id),message_id:Number(sent.message_id)};
 }
 export async function newsroomCallback(env:Env,data:string,messageId:number,update:number):Promise<string|null>{
+ const exp=/^ngpt:([a-f0-9-]{36})$/.exec(data);if(exp)return exportNewsText(env,exp[1],messageId);
  const menu=await newsMenuCallback(env,data,messageId,update);if(menu!==null)return menu;
  const feedback=/^nf:(reason|irrelevant|repeat|digest):([a-f0-9-]{36})$/.exec(data);
  if(feedback){const row=await env.DB.prepare('SELECT n.* FROM news_cards c JOIN news_candidates n ON n.article_id=c.article_id WHERE c.id=? AND c.message_id=?').bind(feedback[2],messageId).first<any>();if(!row)return 'Bu kartta yeni filtre kararı bulunmuyor.';
@@ -58,16 +61,16 @@ export async function newsroomCallback(env:Env,data:string,messageId:number,upda
  const pick=/^pick:([a-f0-9]{32})$/.exec(data);if(!pick)return null;
  const row=await env.DB.prepare('SELECT n.*,s.enabled FROM news_candidates n JOIN sources s ON s.id=n.source_id WHERE n.id=? AND n.expires_at>?').bind(pick[1],Date.now()).first<any>();
  if(!row)return 'Kayıt süresi dolmuş.';
- const existing=await env.DB.prepare('SELECT state FROM news_cards WHERE article_id=?').bind(row.article_id).first();if(existing)return 'Bu aday için bir kart veya içerik isteği zaten var.';
- if(!row.published_at&&await env.DB.prepare("SELECT 1 FROM manual_requests WHERE kind='url' AND json_extract(input,'$.url')=? AND (state IN ('queued','reading','model_queued','complete') OR error='delivery_uncertain') LIMIT 1").bind(row.url).first())return 'Bu kaynak için mevcut bir istek var; aynı iş yeniden oluşturulmadı.';
- const status=await send(env,'İsteğin alındı: '+row.title+'\nTam metin okunup denetlenecek.');
+ const binding=await env.DB.prepare("SELECT 1 FROM system_state WHERE key=? AND EXISTS(SELECT 1 FROM json_each(system_state.value) j WHERE j.value=?) UNION SELECT 1 FROM news_digest_pages WHERE message_id=? AND state='sent' AND EXISTS(SELECT 1 FROM json_each(actual_items) WHERE value=?)").bind('selection_message:'+messageId,row.id,messageId,row.id).first();
+ if(!binding)return 'Güncel seçki mesajını kullan.';
+ const existing=await env.DB.prepare('SELECT state FROM news_cards WHERE article_id=?').bind(row.article_id).first();if(existing)return 'Bu haberin detay kartı zaten mevcut; karttaki ayrı işlemleri kullan.';
+ const claim=await env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind('selection_detail:'+row.id,'claimed').run();if(!claim.meta.changes)return 'Detay kartı daha önce açıldı veya teslim sonucu belirsiz; otomatik tekrar yapılmadı.';
  const time=Math.floor(Date.now()/1000),id=crypto.randomUUID();
- if(!row.published_at){await env.DB.batch([env.DB.prepare("INSERT OR IGNORE INTO manual_requests(update_id,message_id,kind,input,created_at) VALUES(?,?,'url',?,?)").bind(update,Number(status.message_id),JSON.stringify({url:row.url,text:'',editor_request:''}),time),env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind('manual_status:'+update,String(status.message_id))]);return 'Tarih doğrulanmadan güncelmiş gibi sunulmayacak; tam kaynak mevcut manuel denetimle okunacak.';}
-
- await env.DB.batch([
- env.DB.prepare('INSERT OR IGNORE INTO articles(id,source_id,url,title,summary,published_at,first_seen) VALUES(?,?,?,?,?,?,?)').bind(row.article_id,row.source_id,row.url,row.title,row.summary,row.published_at,time),
- env.DB.prepare("INSERT OR IGNORE INTO news_cards(id,article_id,state,message_id,created_at,requested_at) VALUES(?,?,'requested',?,?,?)").bind(id,row.article_id,Number(status.message_id),time,time)
- ]);return 'Açık isteğin alındı; mevcut tam metin ve denetim akışıyla hazırlanacak.';
+ await env.DB.prepare('INSERT OR IGNORE INTO articles(id,source_id,url,title,summary,published_at,first_seen) VALUES(?,?,?,?,?,?,?)').bind(row.article_id,row.source_id,row.url,row.title,row.summary,row.published_at??'',time).run();
+ const {newsKeyboard}=await import('./telegram-ui');
+ const source=await env.DB.prepare('SELECT config FROM sources WHERE id=?').bind(row.source_id).first<{config:string}>();
+ const status=await send(env,[JSON.parse(source!.config).name,row.title,row.summary].filter(Boolean).join('\n\n').slice(0,3500),{link_preview_options:JSON.stringify({is_disabled:true}),reply_markup:JSON.stringify(newsKeyboard(id,row.url))});
+ await env.DB.prepare("INSERT OR IGNORE INTO news_cards(id,article_id,state,message_id,created_at) VALUES(?,?,'sent',?,?)").bind(id,row.article_id,Number(status.message_id),time).run();return 'Haber ayrıntısı açıldı; içerik üretimi başlatılmadı.';
 }
 export async function scheduledSelection(env:Env,now=Date.now(),sender:(env:Env,since:number,ids?:string[],pageInfo?:{page:number;total:number;silent?:boolean})=>Promise<void|string[]|{ids:string[];message_id:number}>=sendSelection){
  const prefs=await newsPreferences(env);if(!digestDeliveryStatus(prefs))return;

@@ -22,7 +22,7 @@ test('previews spend no quota, disable link previews, and require one explicit g
   await prepare(env);assert.equal(await leaseJob(env),null);
   await announceNews(env);await announceNews(env);assert.equal(calls.length,1);
   assert.match(calls[0].url,/sendMessage$/);assert.equal(JSON.parse(calls[0].body.get('link_preview_options')!).is_disabled,true);
-  const markup=JSON.parse(calls[0].body.get('reply_markup')!);const callback=markup.inline_keyboard[1][0].callback_data;
+  const markup=JSON.parse(calls[0].body.get('reply_markup')!);const callback=markup.inline_keyboard.flat().find((b:any)=>b.callback_data?.startsWith('news:')).callback_data;
   assert(Buffer.byteLength(callback)<=64);const id=callback.slice(5);
   assert.equal((await env.DB.prepare('SELECT count(*) AS n FROM model_jobs').first<{n:number}>())!.n,0);
   assert.equal((await env.DB.prepare("SELECT count(*) AS n FROM system_state WHERE key LIKE '%budget%'").first<{n:number}>())!.n,0);

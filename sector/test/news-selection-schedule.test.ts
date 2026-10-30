@@ -23,7 +23,7 @@ test('scheduled selection sends Telegram silent flag only for quiet-hour pages',
  const original=globalThis.fetch;let body:URLSearchParams|undefined;
  globalThis.fetch=(async(_input:any,init?:RequestInit)=>{body=init?.body as URLSearchParams;return Response.json({ok:true,result:{message_id:77}});}) as typeof fetch;
  try{
-  const env:any={TELEGRAM_BOT_TOKEN:'123:fake',TELEGRAM_VERIFIED_BOT_ID:'123',TELEGRAM_CHAT_ID:'chat',DB:{prepare:()=>({bind(){return this;},async all(){return{results:[{id:'a'.repeat(32),title:'Önemli şirket haberi'}]};}})}};
+  const env:any={TELEGRAM_BOT_TOKEN:'123:fake',TELEGRAM_VERIFIED_BOT_ID:'123',TELEGRAM_CHAT_ID:'chat',DB:{prepare:()=>({bind(){return this;},async run(){return{meta:{changes:1}};},async all(){return{results:[{id:'a'.repeat(32),title:'Önemli şirket haberi'}]};}})}};
   await sendSelection(env,0,undefined,{page:1,total:1,silent:true});assert.equal(body?.get('disable_notification'),'true');
   await sendSelection(env,0,undefined,{page:1,total:1,silent:false});assert.equal(body?.has('disable_notification'),false);
  }finally{globalThis.fetch=original;}

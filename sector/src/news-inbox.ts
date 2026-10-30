@@ -45,6 +45,9 @@ export async function requestNews(env:Env,id:string,messageId:number,confirmedRe
  const row=await env.DB.prepare('SELECT * FROM news_cards WHERE id=? AND message_id=?').bind(id,messageId).first<{article_id:string;state:string}>();
  if(row&&botWorkflow(env)==='news_only'&&await env.DB.prepare(`SELECT 1 FROM articles a WHERE a.id=? AND ${channelMarketDataSQL('a')}`).bind(row.article_id).first())return BOT_DATA_MESSAGE;
  if(!row)return 'Bu haber kartı artık kullanılamıyor.';
+ const undated=await env.DB.prepare("SELECT url FROM articles WHERE id=? AND published_at=''").bind(row.article_id).first<{url:string}>();
+ if(undated){if(!env.TELEGRAM_UPDATE_ID)return 'Açık içerik isteği doğrulanamadı.';const claim=await env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind('undated_news_request:'+row.article_id,String(env.TELEGRAM_UPDATE_ID)).run();if(!claim.meta.changes)return 'Bu kaynak için içerik isteği zaten alındı.';await env.DB.prepare("INSERT OR IGNORE INTO manual_requests(update_id,message_id,kind,input,created_at) VALUES(?,?,'url',?,?)").bind(env.TELEGRAM_UPDATE_ID,messageId,JSON.stringify({url:undated.url,text:'',editor_request:''}),Math.floor(Date.now()/1000)).run();return 'Tam kaynak mevcut manuel denetimle okunacak; yayın tarihi uydurulmayacak.';}
+
  const existing=await env.DB.prepare('SELECT d.id,d.delivery_state,d.revision,a.url FROM articles a LEFT JOIN model_jobs j ON j.article_id=a.id AND j.expected_revision=0 JOIN drafts d ON d.id=COALESCE(a.draft_id,j.result_draft) WHERE a.id=?').bind(row.article_id).first<{id:string;delivery_state:string;revision:number;url:string}>();
  if(existing){
   const result=await retryDraftDelivery(env,existing.id,confirmedRevision);

@@ -86,10 +86,10 @@ test('source-backed hashtags do not leak unselected sell tickers into a buy-only
  const source:Document={...doc,equity_codes:[...data.buy!,...data.sell!].map(r=>r.label),output_preferences:prefs,market_data:{kind:'institutional',broker:'Örnek Kurum',rows:(['buy','sell'] as const).flatMap(side=>data[side]!.map(r=>({side,symbol:r.label,volume:r.value})))}};
  const fixed=repairDraftStyle({...draft,hashtags:['#SELL','#Borsa','#BIST']},[source]);assert.equal(fixed.card_data!.sell!.length,0);assert(!postText(fixed).includes('#sell'));for(const r of data.buy!)assert(postText(fixed).includes('#'+r.label.toLowerCase()));
 });
-test('an explicit request for undated archive metadata uses the manual URL reader without inventing a date',async()=>{
+test('selection opens undated details once without starting generation or inventing a date',async()=>{
  const {newsroomCallback}=await import('../src/newsroom'),env=await setup(),m=mock(),source={id:'rss',name:'Kaynak',family:'publisher',official:false} as Source;
  try{await env.DB.prepare('INSERT INTO sources(id,config,enabled) VALUES(?,?,1)').bind(source.id,JSON.stringify(source)).run();const c=await recordNewsCandidate(env,{title:'TCMB karar açıklaması',summary:'Karar hakkında doğrulanması gereken kaynak ayrıntıları.',url:'https://example.org/undated',published_at:null},source,false);
-  await newsroomCallback(env,'pick:'+c.id,88,999);await newsroomCallback(env,'pick:'+c.id,88,1000);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM manual_requests').first<any>()).n,1);const request=await env.DB.prepare('SELECT kind,input FROM manual_requests WHERE update_id=999').first<any>();assert.equal(request.kind,'url');assert.equal(JSON.parse(request.input).url,'https://example.org/undated');assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM articles').first<any>()).n,0);
+  await env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?)').bind('selection_message:88',JSON.stringify([c.id])).run();assert.match((await newsroomCallback(env,'pick:'+c.id,88,999))??'',/ayrıntısı/);await newsroomCallback(env,'pick:'+c.id,88,1000);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM manual_requests').first<any>()).n,0);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM model_jobs').first<any>()).n,0);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM news_cards').first<any>()).n,1);
  }finally{m.restore();}
 });
 test('general buyback subset is rejected before calculation instead of ignoring the requested scope',async()=>{
