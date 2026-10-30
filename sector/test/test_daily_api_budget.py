@@ -70,6 +70,19 @@ class DailyBudgetTests(unittest.TestCase):
   with self.assertRaisesRegex(RuntimeError,'halted'):self.reserve(b,'after-halt')
   self.assertGreater(b.used(),0);b.db.close()
 
+ def test_owner_adjustment_retains_unknown_history_and_only_releases_identified_count(self):
+  from daily_api_budget import adjust_owner_count_reservation
+  self.s['limit_micro_usd']=3000000;self.c['hard_limit_micro_usd']=3000000
+  b=self.open();v='f07237b3-682b-4f1b-9b91-58285273e1d9';h='a'*64
+  b.db.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,?,?,NULL)",('count:'+v,self.s['window_id'],'vision_count',v,'count',h,2100000,None,'usage_missing'))
+  b.db.execute("INSERT INTO daily_calls VALUES(?,?,NULL)",('count:'+v,day_at()))
+  b.db.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,?,?,NULL)",(v,self.s['window_id'],'vision',v,'vision',h,20000,6717,'settled'))
+  b.db.execute('INSERT INTO daily_calls VALUES(?,?,?)',(v,day_at(),day_at()));b.db.commit();before=b.used();b.db.close()
+  with self.assertRaisesRegex(RuntimeError,'consent'):adjust_owner_count_reservation(self.s['ledger_path'],self.s,'wrong')
+  adjust_owner_count_reservation(self.s['ledger_path'],self.s,'owner-2026-10-30-count-reservation-adjustment')
+  b=self.open();self.assertEqual(b.used(),before-2100000);self.assertEqual(b.db.execute('SELECT state,charged,reserved FROM shared_calls WHERE id=?',('count:'+v,)).fetchone(),('usage_missing',None,2100000));self.assertEqual(b.db.execute('SELECT charged FROM shared_calls WHERE id=?',(v,)).fetchone(),(6717,));self.assertEqual(b.db.execute('SELECT count(*) FROM daily_reservation_adjustments').fetchone()[0],1);b.db.close()
+  with self.assertRaises(Exception):adjust_owner_count_reservation(self.s['ledger_path'],self.s,'owner-2026-10-30-count-reservation-adjustment')
+
  def test_explicit_policy_extension_keeps_daily_usage_and_rejects_cap_or_inflight_changes(self):
   from daily_api_budget import extend_policy_expiry
   b=self.open();self.reserve(b,'done');b.settle('done','text',self.response());b.db.close()

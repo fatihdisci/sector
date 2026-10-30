@@ -62,12 +62,29 @@ def rollback_daily_limit(path,old,new):
 def day_at(timestamp=None):
  return datetime.datetime.fromtimestamp(time.time()if timestamp is None else timestamp,ZoneInfo('Europe/Istanbul')).date().isoformat()
 
+def adjust_owner_count_reservation(path,s,consent_id):
+ """Release only the identified completed count hold, without inventing a charge."""
+ if consent_id!='owner-2026-10-30-count-reservation-adjustment':raise RuntimeError('count_adjustment_consent_required')
+ call='count:f07237b3-682b-4f1b-9b91-58285273e1d9';vision=call[6:]
+ b=DailyBudget(path,s);db=b.db
+ try:
+  db.execute('BEGIN IMMEDIATE');b.check()
+  if s['limit_micro_usd']!=3000000:raise RuntimeError('count_adjustment_limit_changed')
+  row=db.execute('SELECT family,job_id,stage,request_hash,reserved,charged,state FROM shared_calls WHERE id=?',(call,)).fetchone()
+  related=db.execute('SELECT family,request_hash,state FROM shared_calls WHERE id=?',(vision,)).fetchone()
+  if not row or row[:3]!=('vision_count',vision,'count') or row[4:]!=(2100000,None,'usage_missing') or related!=('vision',row[3],'settled'):raise RuntimeError('count_adjustment_evidence_mismatch')
+  if db.execute("SELECT 1 FROM shared_calls WHERE state='reserved' LIMIT 1").fetchone():raise RuntimeError('count_adjustment_in_flight')
+  db.execute('INSERT INTO daily_reservation_adjustments VALUES(?,?,?,?,?,?)',(call,2100000,consent_id,time.time(),'completed count; unknown charge accepted by owner',row[3]));db.commit()
+ except Exception:db.rollback();raise
+ finally:db.close()
+
 class DailyBudget(SharedBudget):
  def __init__(self,path,s):
   if s.get('mode')!='daily_bot':raise RuntimeError('daily_budget_mode_required')
   super().__init__(path,s)
   try:
    self.db.execute('CREATE TABLE IF NOT EXISTS daily_calls(id TEXT PRIMARY KEY,day TEXT NOT NULL,settled_day TEXT)')
+   self.db.execute('CREATE TABLE IF NOT EXISTS daily_reservation_adjustments(id TEXT PRIMARY KEY,amount INTEGER NOT NULL,consent_id TEXT NOT NULL,at REAL NOT NULL,reason TEXT NOT NULL,request_hash TEXT NOT NULL)')
    self.db.execute('BEGIN IMMEDIATE')
    for row in s.get('initial_exposure',[]):
     if set(row)!={'id','day','reserved','charged','state','evidence_sha256'}or not re.fullmatch(r'[a-f0-9]{64}',str(row['evidence_sha256']))or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',str(row['day']))or not integer(row['reserved'])or row['reserved']==0 or row['state']not in('settled','usage_missing')or (row['state']=='settled'and(not integer(row['charged'])or row['charged']>row['reserved']))or (row['state']=='usage_missing'and row['charged']is not None):raise RuntimeError('daily_initial_exposure_invalid')
@@ -83,7 +100,7 @@ class DailyBudget(SharedBudget):
 
  def used(self,day=None):
   day=day or day_at()
-  return self.db.execute("SELECT COALESCE(SUM(COALESCE(c.charged,c.reserved)),0) FROM shared_calls c JOIN daily_calls d ON d.id=c.id WHERE d.day=? OR d.settled_day=? OR c.charged IS NULL",(day,day)).fetchone()[0]
+  return self.db.execute("SELECT COALESCE(SUM(COALESCE(c.charged,c.reserved)-COALESCE(a.amount,0)),0) FROM shared_calls c JOIN daily_calls d ON d.id=c.id LEFT JOIN daily_reservation_adjustments a ON a.id=c.id AND c.family='vision_count' AND c.state='usage_missing' AND c.charged IS NULL AND a.amount=c.reserved AND a.request_hash=c.request_hash WHERE d.day=? OR d.settled_day=? OR c.charged IS NULL",(day,day)).fetchone()[0]
 
  def reserve_plan(self,*args):raise RuntimeError('daily_budget_plans_forbidden')
 
