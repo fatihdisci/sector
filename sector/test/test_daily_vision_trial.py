@@ -52,3 +52,15 @@ class VisionTests(unittest.TestCase):
   http=ResponsesVisionHTTP('test-only-key',deadline=time.time()+30,connection_factory=factory)
   result=vision_trial(self.s['ledger_path'],self.s,self.req,self.id,http.count,http.send,counter_free_verified=True)
   self.assertEqual([r[2] for r in calls],['/v1/responses/input_tokens','/v1/responses']);self.assertTrue(all(r[0]=='api.openai.com' for r in calls));self.assertEqual(calls[0][3]['input'],calls[1][3]['input']);self.assertEqual(result['response']['model'],'gpt-6.1-terra')
+
+ def test_count_unknown_cost_has_separate_conservative_hold(self):
+  from shared_api_budget import digest
+  self.s['limit_micro_usd']=3000000;self.s['profiles']['text']['input_text_rate']=1000000;self.s['profiles']['text']['input_image_rate']=1000000
+  result=self.call(counter_uncertain_approved=True);b=DailyBudget(self.s['ledger_path'],self.s)
+  self.assertEqual(b.used(),2100000+result['charged_micro_usd']);self.assertEqual(b.db.execute("SELECT state FROM shared_calls WHERE id=?",('count:'+self.id,)).fetchone()[0],'usage_missing');b.db.close()
+  with self.assertRaisesRegex(RuntimeError,'no_replay'):self.call(counter_uncertain_approved=True)
+ def test_counter_failure_holds_count_without_calling_vision(self):
+  self.s['limit_micro_usd']=3000000;self.s['profiles']['text']['input_text_rate']=1000000;self.s['profiles']['text']['input_image_rate']=1000000;calls=[]
+  def fail(r):raise TimeoutError()
+  with self.assertRaisesRegex(RuntimeError,'count_uncertain'):vision_trial(self.s['ledger_path'],self.s,self.req,self.id,fail,lambda r:calls.append(1),counter_uncertain_approved=True)
+  self.assertEqual(calls,[]);b=DailyBudget(self.s['ledger_path'],self.s);self.assertEqual(b.used(),2100000);b.db.close()

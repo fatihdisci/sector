@@ -3,8 +3,8 @@ import hashlib,json,re
 from daily_api_budget import DailyBudget,day_at
 from shared_api_budget import integer
 
-def vision_trial(ledger,terms,request,call_id,counter,send,*,counter_free_verified=False):
- if not counter_free_verified:raise RuntimeError('vision_count_pricing_unverified')
+def vision_trial(ledger,terms,request,call_id,counter,send,*,counter_free_verified=False,counter_uncertain_approved=False):
+ if not counter_free_verified and not counter_uncertain_approved:raise RuntimeError('vision_count_pricing_unverified')
  if not re.fullmatch(r'[a-f0-9-]{36}',call_id):raise RuntimeError('vision_call_id_invalid')
  if set(request)!={'model','reasoning','tools','tool_choice','store','max_output_tokens','input'}:raise RuntimeError('vision_request_invalid')
  if request.get('model')!='gpt-6.1-terra' or request.get('reasoning')!={'effort':'medium'} or request.get('tools')!=[] or request.get('tool_choice')!='none' or request.get('store') is not False:raise RuntimeError('vision_request_invalid')
@@ -15,7 +15,22 @@ def vision_trial(ledger,terms,request,call_id,counter,send,*,counter_free_verifi
  t,img=content
  if t.get('type')!='input_text' or not isinstance(t.get('text'),str) or len(t['text'])>8000 or img.get('type')!='input_image' or img.get('detail')!='high' or not re.fullmatch(r'data:image/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}',img.get('image_url','')) or len(img['image_url'])>8_000_000:raise RuntimeError('vision_request_invalid')
  digest=hashlib.sha256(json.dumps(request,sort_keys=True,separators=(',',':')).encode()).hexdigest()
- count=counter(request)
+ count_id='count:'+call_id
+ if not counter_free_verified:
+  cb=DailyBudget(ledger,terms);cp=terms['profiles']['text'];cdb=cb.db
+  if terms['limit_micro_usd']!=3000000 or cp['model']!='gpt-6.1-terra' or cp['input_text_rate']<1000000: cdb.close();raise RuntimeError('vision_count_bound_unapproved')
+  cdb.execute('BEGIN IMMEDIATE')
+  try:
+   cb.check();day=day_at();reserved=2100000
+   if cdb.execute('SELECT 1 FROM shared_calls WHERE id=?',(count_id,)).fetchone():raise RuntimeError('shared_call_no_replay')
+   if cb.used(day)+reserved>terms['limit_micro_usd']:raise RuntimeError('shared_budget_exhausted')
+   cdb.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,NULL,'reserved',NULL)",(count_id,terms['window_id'],'vision_count',call_id,'count',digest,reserved));cdb.execute('INSERT INTO daily_calls VALUES(?,?,NULL)',(count_id,day));cdb.commit()
+  except Exception:cdb.rollback();cdb.close();raise
+  try:count=counter(request)
+  except Exception:
+   cdb.execute("UPDATE shared_calls SET state='usage_missing' WHERE id=?",(count_id,));cdb.commit();cdb.close();raise RuntimeError('vision_count_uncertain_no_retry') from None
+  cdb.execute("UPDATE shared_calls SET state='usage_missing' WHERE id=?",(count_id,));cdb.commit();cdb.close()
+ else:count=counter(request)
  if hashlib.sha256(json.dumps(request,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=digest:raise RuntimeError('vision_request_changed')
  if not isinstance(count,dict) or not integer(count.get('input_tokens')) or not 1<=count['input_tokens']<=271000:raise RuntimeError('vision_input_count_invalid')
  max_input=count['input_tokens']+1000
