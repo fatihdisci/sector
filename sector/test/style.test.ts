@@ -136,3 +136,7 @@ test('fund and liquidation tags require both words in the relevant source; PBLK 
  const d=repairDraftStyle({...groundedDraft,hashtags:['#PBLK']},[doc({title:'Yatırım fonlarının tasfiyesi başladı'})]);assert.deepEqual(d.hashtags,['#Fon','#Tasfiye']);
  const optional=repairDraftStyle({...groundedDraft,hashtags:['#PBLK']},[doc({title:'PBLK fon tasfiyesi açıklandı'})]);assert(optional.hashtags.includes('#PBLK'));
 });
+
+test('trusted news source appears once as a final separate line; ready packages remain exact',async()=>{
+ const {postText}=await import('../src/editorial');const d={...groundedDraft,news_source_name:'Bloomberg HT'};assert(postText(d).endsWith('\n\n-Bloomberg HT'));assert.equal(postText({...d,tweet_style:'owner_ready',body:'Birebir metin'}),'Birebir metin');assert.throws(()=>postText({...d,news_source_name:'unsafe\nforged'}),/news_source_unverified/);
+});

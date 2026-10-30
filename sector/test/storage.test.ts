@@ -110,7 +110,7 @@ test('explicitly requested distinct channel posts each produce a deliverable and
   sql.prepare("INSERT INTO model_jobs(id,article_id,documents,input_hash,created_at,kind,state,lease_token,lease_until)VALUES(?,?,?,?,?,'news','leased','token',?)").run(id,id,input,hash,time,time+600);
   for(const [key,value]of [['card_theme:','paper'],['card_layout:','editorial']])sql.prepare('INSERT INTO system_state(key,value)VALUES(?,?)').run(key+id,value);
   const payload:Record<string,unknown>={id,lease_token:'token',input_hash:hash,draft:out,audit:{supported:true,issues:[]},runtime:{model:'gpt-6.1-terra',effort:'low',provider:'openai-codex',tool_count:0,fallback_count:0},cards};
-  const r=await submitJob(env,payload);assert(!r.duplicate);created.push(r.id);
+  const r=await submitJob(env,payload);assert(!r.duplicate);created.push(r.id);const saved=JSON.parse(String(sql.prepare('SELECT content FROM drafts WHERE id=?').get(r.id)!.content));assert.equal(saved.news_source_name,'Sermaye Borsası (@SermayeBorsasi)');assert((await import('../src/editorial')).postText(saved).endsWith('\n\n-Sermaye Borsası (@SermayeBorsasi)'));
   assert.equal((await submitJob(env,payload)).id,r.id);
  }
  assert.notEqual(created[0],created[1]);assert.equal(sql.prepare('SELECT COUNT(*) n FROM drafts').get()!.n,3);assert.equal(objects.size,2);assert.equal(sql.prepare('SELECT COUNT(*) n FROM x_posts').get()!.n,0);assert.equal(sql.prepare('SELECT COUNT(*) n FROM publication_log').get()!.n,0);

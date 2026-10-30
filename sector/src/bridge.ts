@@ -12,7 +12,7 @@ import {withKapUnitEvidence} from './kap-unit-evidence';
 import {chooseTheme,savedTheme,legacyTheme} from './card-theme';
 import {editorialPolicy} from './style';
 import {marketSelection,selectMarketDocument} from './market-input';
-import {DRAFT_SCHEMA,EDITOR_PROMPT,documentScore,MIN_DRAFT_IMPORTANCE} from './editorial';
+import {DRAFT_SCHEMA,EDITOR_PROMPT,documentScore,MIN_DRAFT_IMPORTANCE,postText} from './editorial';
 import {AUDIT_PROMPT,acceptHermes} from './ai';
 import {eventIdentity,sameEvent} from './dedupe';
 import {draftCards} from './card-pages';
@@ -118,6 +118,9 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
  const documents=JSON.parse(job.documents) as Document[];
  const checked=acceptHermes(input.draft,input.audit,documents,job.kind==='edit'?job.edit_request:null),draft=checked.draft;
  const existingCard=job.kind==='edit'?await env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(job.draft_id).first<{content:string}>():null;
+ if(job.kind==='news'){const a=await env.DB.prepare('SELECT source_id FROM articles WHERE id=?').bind(job.article_id).first<{source_id:string}>();const source=(registry as Source[]).find(s=>s.id===a?.source_id&&s.id===documents[0]?.source_id);if(!source||!/^[-\p{L}\p{N} .&()@'’·]{1,80}$/u.test(source.name))throw Error('news_source_unverified');draft.news_source_name=source.name;}
+ else if(existingCard){const name=(JSON.parse(existingCard.content) as Draft).news_source_name;if(name)draft.news_source_name=name;}
+ if(draft.news_source_name&&postText(draft).length>1024)throw Error('telegram_caption_too_long');
  const theme=existingCard?(await savedTheme(env,'draft:'+job.draft_id)??legacyTheme((JSON.parse(existingCard.content) as Draft).template)):(await savedTheme(env,job.article_id)??legacyTheme(draft.template));
  const layout=await savedLayout(env,job.kind==='edit'?'draft:'+job.draft_id:job.article_id)??'editorial';
  const cards=Array.isArray(input.cards)?input.cards as {svg_hash:string;png_base64:string}[]:[{svg_hash:input.svg_hash,png_base64:input.png_base64}]as {svg_hash:string;png_base64:string}[];const images:Uint8Array[]=[];

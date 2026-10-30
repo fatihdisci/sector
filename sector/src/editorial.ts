@@ -284,14 +284,15 @@ function formattedPostText(d:Draft):string {
  return [(leading?.[1]??'🚨')+' '+[...tags].join(' ')+'\n'+title,body,hashtagLine(clean.hashtags.filter(t=>!allCodes.some(c=>t.toUpperCase()==='#'+c)))].filter(Boolean).join('\n\n');
 }
 
+function sourceFooter(d:Draft,text:string){const name=d.news_source_name;if(!name)return text;if(!/^[-\p{L}\p{N} .&()@'’·]{1,80}$/u.test(name))throw Error('news_source_unverified');const suffix='-'+name;return text.endsWith('\n\n'+suffix)?text:text+'\n\n'+suffix;}
 export function postText(d:Draft,_sources:string[]=[]):string {
  if(d.tweet_style==='owner_ready'||d.tweet_style==='circuit_batch'&&d.automated_daily==='circuit'&&d.circuit_artwork&&d.card_data?.report?.circuit)return d.body;
  if(d.kap_artwork){
   const codes=d.kap_artwork.equity_codes,known=new Set(codes);
-  return hashtagTickers(formattedPostText(d),codes).split(/(https?:\/\/[^\s]+)/u).map(part=>/^https?:\/\//u.test(part)?part:part.replace(/#[\p{L}\p{N}_]+/gu,t=>known.has(t.slice(1).toUpperCase())?'#'+t.slice(1).toUpperCase():t.toLocaleUpperCase('tr-TR'))).join('');
+  return sourceFooter(d,hashtagTickers(formattedPostText(d),codes).split(/(https?:\/\/[^\s]+)/u).map(part=>/^https?:\/\//u.test(part)?part:part.replace(/#[\p{L}\p{N}_]+/gu,t=>known.has(t.slice(1).toUpperCase())?'#'+t.slice(1).toUpperCase():t.toLocaleUpperCase('tr-TR'))).join(''));
  }
  const data=d.card_data;
  const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(['institutional','theoretical'].includes(d.template)?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
  const verifiedViewCodes=new Set([...codes,...(data?.report?.circuit?.selected_tickers??[]),...(data?.movers?[...data.movers.up,...data.movers.down].map(r=>r.symbol):[]),...(data?.overview?.panels.flatMap(p=>p.rows.map(r=>r.label))??[])].map(c=>c.toUpperCase()));
- return hashtagTickers(formattedPostText(d),codes).replace(/#[\p{L}\p{N}_]+/gu,tag=>verifiedViewCodes.has(tag.slice(1).toUpperCase())&&!['#BIST','#BIST30','#BIST100','#PBLK'].includes(tag.toUpperCase())?'#'+tag.slice(1).toLowerCase():tag);
+ return sourceFooter(d,hashtagTickers(formattedPostText(d),codes).replace(/#[\p{L}\p{N}_]+/gu,tag=>verifiedViewCodes.has(tag.slice(1).toUpperCase())&&!['#BIST','#BIST30','#BIST100','#PBLK'].includes(tag.toUpperCase())?'#'+tag.slice(1).toLowerCase():tag));
 }

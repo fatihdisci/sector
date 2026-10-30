@@ -27,7 +27,7 @@ export async function tryHashtagOnlyEdit(env:Env,id:string,revision:number,reque
  if(postText(updated).length>1024)throw Error('telegram_caption_too_long');
  // The only exception to the automatic tag count is this exact authenticated edit.
  // All source/numeric/claim checks run on the unchanged factual draft.
- if(updated.hashtags.filter(t=>t===tag).length!==1||!postText(updated).endsWith(tag.toLowerCase())||postText(updated).split(tag.toLowerCase()).length!==2)throw Error('editor_hashtag_not_applied');
+ if(updated.hashtags.filter(t=>t===tag).length!==1||!postText(updated).replace(/\n\n-[^\n]+$/u,'').endsWith(tag.toLowerCase())||postText(updated).split(tag.toLowerCase()).length!==2)throw Error('editor_hashtag_not_applied');
  if(JSON.stringify(updated)===row.content)return true;
  const media=await readMedia(env,row.media_key,row.content),before=await Promise.all(media.images.map(bytesHash));
  const key=await revisionMediaKey(id,revision+1,'owner-tag:'+revision+':'+code);await storeMedia(env,key,updated,media.images);
