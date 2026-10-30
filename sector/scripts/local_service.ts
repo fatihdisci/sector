@@ -2,7 +2,8 @@ import {loadNewsArtwork} from './news_artwork';
 import {loadCircuitArtwork} from './circuit_artwork';
 import {pollCircuitAuto,circuitPollDelay} from '../src/circuit-auto';
 import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
-import {loadModelSelection,runModelJob} from './model_runner';
+import {loadNewsModelRuntime} from './news_api_runtime';
+import {runModelJob} from './model_runner';
 import {modelFailureCode,type ModelStage} from './model_failure';
 import {withModelHeartbeat} from './model_heartbeat';
 import{pollChannel,channelDocuments,CHANNEL_POLL_MS}from'../src/telegram-channel';
@@ -56,7 +57,8 @@ const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(a
 const workflowConfig=JSON.parse(await readFile('bot-workflow.json','utf8'));if(workflowConfig.version!==1)throw Error('invalid_bot_workflow');const workflow=process.env.SECTOR_BOT_WORKFLOW_MODE??workflowConfig.mode;if(!['full','news_only'].includes(workflow))throw Error('invalid_bot_workflow');env.BOT_WORKFLOW_MODE=workflow as 'full'|'news_only';if(workflowConfig.circuit_auto?.interval_seconds!==120)throw Error('invalid_circuit_interval');env.CIRCUIT_AUTO_ENABLED=workflowConfig.circuit_auto.enabled===true?'true':'false';
 if(env.CIRCUIT_AUTO_ENABLED==='true')env.CIRCUIT_GENERAL_IMAGE=await loadCircuitArtwork(process.cwd());
 env.NEWS_GENERAL_IMAGES=await loadNewsArtwork(process.cwd());
-const modelSelection=await loadModelSelection(process.env);
+const modelRuntime=await loadNewsModelRuntime(process.env,{runtime:directory,python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,app:process.cwd()});
+const modelSelection=modelRuntime.selection;
 env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;
 env.OWNER_VISUAL=await createOwnerVisualRuntime(env,{root:process.cwd()+'/',python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`});
 env.RENDER_REPORT=png;
@@ -84,7 +86,7 @@ async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof 
   const paused=await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>();
   if(Number(paused?.value??0)>Date.now()){await pause(30_000);continue;}
   job=await leaseJob(env);if(!job){await pause(2_000);continue;}
-  stage='generate';const output=await runModelJob(job,{python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,root:process.cwd()+'/',home:homedir(),profile:`${homedir()}/.hermes/profiles/sectorhaber`,hermesRoot:`${homedir()}/.hermes/hermes-agent`,selection:modelSelection});
+  stage='generate';const output=await runModelJob(job,{python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,root:process.cwd()+'/',home:homedir(),profile:`${homedir()}/.hermes/profiles/sectorhaber`,hermesRoot:`${homedir()}/.hermes/hermes-agent`,selection:modelSelection,vars:modelRuntime.vars});
   stage='decode';const result=JSON.parse(output) as {draft:Draft;audit:unknown;runtime:unknown};
   if(modelSelection.provider==='openai-codex')await writeFile(directory+'/last-model-result.json',JSON.stringify({job_id:job.id,result}),{mode:0o600});
   stage='review';await recordModelReview(env,job.id,result.audit);

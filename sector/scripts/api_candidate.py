@@ -141,7 +141,12 @@ class OfflineApiCandidate:
   try:
    try:response=self.transport(request)
    except Exception as error:
-    if isinstance(getattr(error,'response',None),dict):response=error.response;budget.settle(call_id,c,response)
+    if isinstance(getattr(error,'response',None),dict):
+     response=error.response
+     try:budget.settle(call_id,c,response)
+     except RuntimeError as settlement:
+      # Preserve the original safe transport category; the reservation stays held.
+      if str(settlement)!='shared_usage_missing_reserved':raise
     raise
    if budget.settle(call_id,c,response)!='settled':raise RuntimeError('api_usage_missing_reserved_no_retry')
    if time.time()>=job['deadline']:raise RuntimeError('api_job_expired_no_retry')

@@ -20,7 +20,9 @@ def validate_shared(s,path=None,now=None):
  if not all(integer(e.get(k))for k in ('remaining_micro_usd','other_consumption_bound_micro_usd','safety_margin_micro_usd')):raise RuntimeError('promo_balance_unknown')
  if not all(isinstance(e.get(k),(int,float))and math.isfinite(e[k])for k in('observed_at','valid_until','grant_expires_at'))or not e['observed_at']<=now<min(e['valid_until'],e['grant_expires_at'])or e['valid_until']-e['observed_at']>900 or s['expires_at']>min(e['valid_until'],e['grant_expires_at']):raise RuntimeError('promo_evidence_stale_or_expired')
  if s['limit_micro_usd']>e['remaining_micro_usd']-e['other_consumption_bound_micro_usd']-e['safety_margin_micro_usd']:raise RuntimeError('promo_remaining_insufficient')
- if set(s.get('profiles',{}))!={'text','vision','image'}:raise RuntimeError('shared_budget_profiles_missing')
+ families=s.get('families')
+ if families is not None and families!=['text']:raise RuntimeError('shared_budget_families_invalid')
+ if set(s.get('profiles',{}))!=({'text'}if families==['text']else{'text','vision','image'}):raise RuntimeError('shared_budget_profiles_missing')
  for family,p in s['profiles'].items():
   for k in ('max_input_tokens','max_output_tokens','input_text_rate','input_image_rate','cached_text_rate','cached_image_rate','output_rate'):
    if not integer(p.get(k))or k not in ('cached_text_rate','cached_image_rate')and p[k]==0:raise RuntimeError('shared_budget_profile_invalid')
