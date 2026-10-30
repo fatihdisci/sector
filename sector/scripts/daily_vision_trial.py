@@ -24,7 +24,9 @@ def vision_trial(ledger,terms,request,call_id,counter,send,*,counter_free_verifi
    cb.check();day=day_at();reserved=2100000
    if cdb.execute('SELECT 1 FROM shared_calls WHERE id=?',(count_id,)).fetchone():raise RuntimeError('shared_call_no_replay')
    if cb.used(day)+reserved>terms['limit_micro_usd']:raise RuntimeError('shared_budget_exhausted')
-   cdb.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,NULL,'reserved',NULL)",(count_id,terms['window_id'],'vision_count',call_id,'count',digest,reserved));cdb.execute('INSERT INTO daily_calls VALUES(?,?,NULL)',(count_id,day));cdb.commit()
+   cdb.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,NULL,'reserved',NULL)",(count_id,terms['window_id'],'vision_count',call_id,'count',digest,reserved));cdb.execute('INSERT INTO daily_calls VALUES(?,?,NULL)',(count_id,day));
+   if day_at()!=day:raise RuntimeError('daily_budget_day_changed')
+   cdb.commit()
   except Exception:cdb.rollback();cdb.close();raise
   try:count=counter(request)
   except Exception:
