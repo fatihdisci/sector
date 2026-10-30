@@ -38,3 +38,11 @@ test('manual report fails closed when any official filtered notice page cannot b
  const client={listing:async()=>[],disclosure:async()=>null};
  try{await assert.rejects(()=>new KapReports(store,client as any).build('circuit',at,at),/circuit_report_source_incomplete/);}finally{store.close();}
 });
+
+test('automatic batches use only a verified unambiguous official listing summary without detail requests',async()=>{
+ const store=new KapStore(':memory:'),notice=disclosure(40,'GIPTA',10);let requests=0;
+ const client={listing:async()=>[listing(notice)],disclosure:async()=>{requests++;throw Error('rate limited')}};
+ try{const result=await new KapReports(store,client as any).build('circuit',at,at,undefined,'automatic_batch');assert.deepEqual(result.draft.card_data!.report!.events!.map(e=>e.tickers),[['GIPTA']]);assert.equal(requests,0);
+ const malformed={...listing(notice),circuit:{...listing(notice).circuit!,summary:'GIPTA.E ve XYZ.E işlem sırasında devre kesici'}};client.listing=async()=>[malformed];await assert.rejects(()=>new KapReports(store,client as any).build('circuit',at,at,undefined,'automatic_batch'),/circuit_report_source_incomplete/);assert.equal(requests,1);
+ }finally{store.close();}
+});

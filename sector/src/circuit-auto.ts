@@ -16,7 +16,7 @@ export async function pollCircuitAuto(env:Env,at=Date.now()){
  const ids=all.map(e=>e.id).sort((a,b)=>a-b),record=JSON.stringify({ids,at});
  if(!saved){await env.DB.prepare('INSERT OR IGNORE INTO system_state(key,value) VALUES(?,?)').bind(key,record).run();return{state:'scope_baseline',day,events:ids.length};}
  if(!Array.isArray(saved.ids)||!Number.isSafeInteger(saved.at)||saved.at>at||saved.ids.some((id:number)=>!ids.includes(id)))throw Error('circuit_auto_source_regressed');
- const fresh=eligible.filter(e=>e.tickers.length>0&&!saved.ids.includes(e.id)&&Date.parse(e.published_at)>=Math.max(saved.at,at-CIRCUIT_POLL_MS-30000));
+ const fresh=eligible.filter(e=>e.tickers.length>0&&!saved.ids.includes(e.id)&&Date.parse(e.published_at)>=saved.at);
  if(!fresh.length){await env.DB.prepare('UPDATE system_state SET value=? WHERE key=? AND value=?').bind(record,key,previous!.value).run();return{state:ids.length?'unchanged':'empty',day,events:0};}
  const codes=[...new Set(fresh.flatMap(e=>e.tickers))].sort();
  const title=codes.map(c=>'#'+c).join(' '),body='Devre kesici uygulandı. '+(codes.length===1?'Sürekli işlemlere ara verildi.':codes.length===2?'İki hissede de sürekli işlemlere ara verildi.':`Bu ${codes.length} hissede de sürekli işlemlere ara verildi.`),text=title+'\n\n'+body+'\n\n#Borsa #BIST';

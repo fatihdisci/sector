@@ -77,3 +77,7 @@ test('all three owner-approved images are hash-bound once per draft and reused o
  for(let i=0;i<3;i++){const key='choice-'+i;await c.env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?)').bind('circuit_artwork_choice:'+key,pool[i].sha256).run();const first=await withCircuitArtwork(c.env,draft,key),again=await withCircuitArtwork(c.env,draft,key);assert.equal(first.circuit_artwork!.sha256,pool[i].sha256);assert.deepEqual(again.circuit_artwork,first.circuit_artwork);const media='drafts/00000000-0000-4000-8000-00000000000'+i+'/1.png';await storeCircuitArtwork(c.env,media,first);const saved=await readMedia(c.env,media,JSON.stringify(first));assert.equal(await bytesHash(saved.images[0]),pool[i].sha256);}
  const key='random-choice';const selected=await withCircuitArtwork(c.env,draft,key);assert(pool.some(a=>a.sha256===selected.circuit_artwork!.sha256));assert.deepEqual((await withCircuitArtwork(c.env,draft,key)).circuit_artwork,selected.circuit_artwork);
 });
+
+test('a temporarily failed source does not discard notices seen after the last successful scan',async()=>{
+ const c=await setup();await activate(c);c.set([disclosure(8,'GIPTA',at)]);const result=await pollCircuitAuto(c.env,at+600000);assert.equal(result.state,'updated');const d=JSON.parse((await c.env.DB.prepare('SELECT content FROM drafts WHERE id=?').bind(result.id!).first<any>()).content);assert.deepEqual(d.card_data.report.events.map((e:any)=>e.id),[8]);
+});

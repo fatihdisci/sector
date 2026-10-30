@@ -39,7 +39,14 @@ export class KapReports {
    const missing=[...sourceIds].filter(id=>!stored.has(id)).sort((a,b)=>a-b);
    if(missing.length>10_000)throw Error('circuit_report_source_limit');
    const fetched:Disclosure[]=[];let next=0;
-   const workers=Array.from({length:Math.min(2,missing.length)},async()=>{while(next<missing.length){const id=missing[next++];let d:Disclosure|null;try{d=await this.client.disclosure(id);}catch{throw Error('circuit_report_source_incomplete');}if(!d)throw Error('circuit_report_source_incomplete');fetched.push(d);}});
+   // The official light listing already contains the full standard notice text.
+   // Use only its strictly verified, unambiguous single-share form for automatic batches;
+   // other forms still require the official detail page.
+   const listingById=new Map(listing.map(item=>[item.id,item]));
+   const workers=Array.from({length:Math.min(2,missing.length)},async()=>{while(next<missing.length){const id=missing[next++],item=listingById.get(id),c=item?.circuit;
+    const match=purpose==='automatic_batch'&&c&&normalize(c.company)==='BORSA ISTANBUL BISTECH DEVRE KESICI UYGULAMASI'&&normalize(c.title)==='PAY BAZINDA DEVRE KESICI BILDIRIMI'?normalize(c.summary).match(/^([A-Z][A-Z0-9]{3,4})\.E ISLEM SIRASINDA PAY BAZINDA DEVRE KESICI UYGULAMASI DEVREYE GIRMISTIR\.?$/):null;
+    let d:Disclosure|null;if(match&&item){d={id,sourceRef:`kap:${id}`,url:`https://www.kap.org.tr/tr/Bildirim/${id}`,title:c!.title,summary:c!.summary,company:c!.company,issuerRaw:null,issuerCode:null,relatedCodes:[match[1]],subjectCodes:[match[1]],disclosureClass:'',disclosureType:'',category:'',fundType:null,isFund:false,oid:null,relatedOid:null,changeStatus:null,isCorrection:false,publishedAt:item.publishedAt,attachmentCount:0};}
+    else{try{d=await this.client.disclosure(id);}catch{throw Error('circuit_report_source_incomplete');}if(!d)throw Error('circuit_report_source_incomplete');}fetched.push(d);}});
    await Promise.all(workers);
    const official=(d:Disclosure)=>normalize(d.title+' '+(d.summary??'')).includes('DEVRE KESICI')&&['BORSA ISTANBUL BISTECH DEVRE KESICI UYGULAMASI','BORSA ISTANBUL AS'].includes(normalize(d.company??''));
    for(const d of fetched){if(Date.parse(d.publishedAt)<dayStart||Date.parse(d.publishedAt)>at||!official(d))throw Error('circuit_report_source_incomplete');entries.push({disclosure:d,purchases:undefined,error:undefined});}
