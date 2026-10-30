@@ -120,6 +120,17 @@ def response_object(response):
  if not parts:raise RuntimeError('api_empty_response')
  return decode(''.join(parts))
 
+def compact_kap_payload(payload):
+ """Retain every evidence passage; omit only its identical duplicate body."""
+ if not isinstance(payload,dict) or not isinstance(payload.get('documents'),list):return payload
+ docs=[]
+ for d in payload['documents']:
+  passages=d.get('passages') if isinstance(d,dict) else None
+  if isinstance(d,dict) and d.get('source_id')=='kap' and d.get('official') is True and re.fullmatch(r'https://www\.kap\.org\.tr/tr/Bildirim/\d+',d.get('url','')) and isinstance(passages,list) and passages and all(isinstance(p,dict) and isinstance(p.get('text'),str) for p in passages) and d.get('body')=='\n\n'.join(p['text'] for p in passages):
+   docs.append({**d,'body':passages[0]['text']})
+  else:docs.append(d)
+ return {**payload,'documents':docs}
+
 class OfflineApiCandidate:
  def __init__(self,config,budget_path,transport=None,telemetry=None):
   # No key/environment lookup and no default HTTP transport. Tests inject fakes.
@@ -132,15 +143,16 @@ class OfflineApiCandidate:
   jid=job.get('id');stage=job.get('metric_stage')
   if not isinstance(jid,str)or not re.fullmatch(r'[a-f0-9-]{36}|[a-f0-9]{64}',jid)or stage not in STAGES:raise RuntimeError('api_job_identity_or_stage_invalid')
   if not re.fullmatch(r'[a-f0-9]{64}',str(job.get('input_hash','')))or not job.get('lease_token'):raise RuntimeError('api_job_lease_missing')
-  text=json.dumps(payload,ensure_ascii=False);instructions=str(instructions)
+  text=json.dumps(compact_kap_payload(payload),ensure_ascii=False);instructions=str(instructions)
   # This conservative text bound is local-only. Real image activation additionally
   # requires a verified model context ceiling; no image/file/path is read here.
   if len((instructions+text).encode())+1024>c.input_token_ceiling:raise RuntimeError('api_input_bound_exceeded')
   if any(d.get('images')for d in job.get('documents',[])):raise RuntimeError('api_image_context_budget_not_configured')
   request={'model':c.model,'instructions':instructions,'input':[{'role':'user','content':[{'type':'input_text','text':'Return JSON.\n'+text}]}],'reasoning':{'effort':c.reasoning_effort},'max_output_tokens':c.max_output_tokens,'tools':[],'tool_choice':'none','store':False,'background':False,'stream':False,'service_tier':'default','truncation':'disabled','text':{'format':{'type':'json_object'}}}
   key=(jid,stage);attempt=self.calls.get(key,0);call_id=f'{jid}:{stage}:{attempt}';self.calls[key]=attempt+1
+  if attempt and not(stage=='audit' and attempt==1):raise RuntimeError('api_stage_call_limit')
   digest=hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest();budget=Budget(self.path,c)
-  try:budget.reserve(c,call_id,jid,stage,digest)
+  try:budget.reserve(c,call_id,jid,stage if not attempt else 'audit_after_repair',digest)
   except Exception:budget.db.close();raise
   started=time.monotonic();response=None;success=False
   try:

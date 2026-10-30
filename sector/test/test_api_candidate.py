@@ -15,6 +15,11 @@ class ApiCandidateTests(unittest.TestCase):
    calls=[]
    with self.assertRaises(RuntimeError):OfflineApiCandidate(c,self.path,lambda p:calls.append(p)).call(self.job,'secret prompt',{})
    self.assertEqual(calls,[])
+ def test_repaired_draft_gets_one_distinct_final_audit_reservation(self):
+  calls=[];a=OfflineApiCandidate(self.config,self.path,lambda p:(calls.append(p),self.response())[1]);job=self.job|{'metric_stage':'audit'}
+  a.call(job,'audit',{});a.call(job,'audit repaired draft',{})
+  with self.assertRaisesRegex(RuntimeError,'stage_call_limit'):a.call(job,'third audit',{})
+  self.assertEqual(len(calls),2);db=sqlite3.connect(self.path);self.assertEqual(db.execute('select stage from api_reservations order by rowid').fetchall(),[('audit',),('audit_after_repair',)]);db.close()
  def test_atomic_budget_reserves_before_call_and_no_fallback_on_missing_usage(self):
   calls=[];c=replace(self.config,hard_limit_micro_usd=22000)
   adapter=OfflineApiCandidate(c,self.path,lambda p:(calls.append(p),self.response(usage=False))[1])
