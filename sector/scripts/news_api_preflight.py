@@ -19,7 +19,10 @@ def preflight(root):
  if s.get('families')!=['text']:raise RuntimeError('news_api_text_only_required')
  for p in [ledger,root/'news-api-usage.jsonl']:
   if p.exists()or p.is_symlink():private_file(p)
- b=SharedBudget(str(ledger),s)
+ if s.get('mode')=='daily_bot':
+  from daily_api_budget import DailyBudget
+  b=DailyBudget(str(ledger),s)
+ else:b=SharedBudget(str(ledger),s)
  try:
   b.check()
   if b.used()+b.amount('text')>s['limit_micro_usd']:raise RuntimeError('shared_budget_exhausted')

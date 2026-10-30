@@ -93,7 +93,12 @@ class Budget(LegacyOfflineBudget):
   self.shared=None
   if c.shared_budget:
    from shared_api_budget import SharedBudget,require_shared
-   self.shared=SharedBudget(path,require_shared(c,path,'text'));self.db=self.shared.db
+   s=require_shared(c,path,'text')
+   if s.get('mode')=='daily_bot':
+    from daily_api_budget import DailyBudget
+    self.shared=DailyBudget(path,s)
+   else:self.shared=SharedBudget(path,s)
+   self.db=self.shared.db
   else:super().__init__(path,c)
  def begin_job(self,job):return self.shared.begin_job(job)if self.shared else super().begin_job(job)
  def finish_job(self,job):return self.shared.finish_job(job)if self.shared else super().finish_job(job)

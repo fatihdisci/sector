@@ -1,0 +1,76 @@
+"""Explicit paid-risk text-only allowance; calendar days in Europe/Istanbul.
+
+Unknown calls remain held on every following day until resolved. A request which
+finishes after midnight counts on both its starting and completion days. This
+deliberate overcount keeps concurrent work safe across the boundary.
+"""
+import datetime,re,time
+from zoneinfo import ZoneInfo
+from shared_api_budget import SharedBudget,integer
+
+def day_at(timestamp=None):
+ return datetime.datetime.fromtimestamp(time.time()if timestamp is None else timestamp,ZoneInfo('Europe/Istanbul')).date().isoformat()
+
+class DailyBudget(SharedBudget):
+ def __init__(self,path,s):
+  if s.get('mode')!='daily_bot':raise RuntimeError('daily_budget_mode_required')
+  super().__init__(path,s)
+  try:
+   self.db.execute('CREATE TABLE IF NOT EXISTS daily_calls(id TEXT PRIMARY KEY,day TEXT NOT NULL,settled_day TEXT)')
+   self.db.execute('BEGIN IMMEDIATE')
+   for row in s.get('initial_exposure',[]):
+    if set(row)!={'id','day','reserved','charged','state','evidence_sha256'}or not re.fullmatch(r'[a-f0-9]{64}',str(row['evidence_sha256']))or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',str(row['day']))or not integer(row['reserved'])or row['reserved']==0 or row['state']not in('settled','usage_missing')or (row['state']=='settled'and(not integer(row['charged'])or row['charged']>row['reserved']))or (row['state']=='usage_missing'and row['charged']is not None):raise RuntimeError('daily_initial_exposure_invalid')
+    datetime.date.fromisoformat(row['day'])
+    if not isinstance(row['id'],str)or not re.fullmatch(r'import:[a-f0-9-]{36}',row['id']):raise RuntimeError('daily_initial_exposure_invalid')
+    self.db.execute('INSERT OR IGNORE INTO shared_calls VALUES(?,?,?,?,?,?,?,?,?,NULL)',(row['id'],s['window_id'],'text',row['id'],'import',row['evidence_sha256'],row['reserved'],row['charged'],row['state']))
+    expected=(row['reserved'],row['charged'],row['state'],row['evidence_sha256'])
+    if self.db.execute('SELECT reserved,charged,state,request_hash FROM shared_calls WHERE id=?',(row['id'],)).fetchone()!=expected:raise RuntimeError('daily_initial_exposure_changed')
+    self.db.execute('INSERT OR IGNORE INTO daily_calls VALUES(?,?,?)',(row['id'],row['day'],row['day']if row['state']=='settled'else None))
+   self.db.commit()
+   if self.db.execute('SELECT 1 FROM shared_calls c LEFT JOIN daily_calls d ON d.id=c.id WHERE d.id IS NULL LIMIT 1').fetchone():raise RuntimeError('daily_call_day_missing')
+  except Exception:self.db.rollback();self.db.close();raise
+
+ def used(self,day=None):
+  day=day or day_at()
+  return self.db.execute("SELECT COALESCE(SUM(COALESCE(c.charged,c.reserved)),0) FROM shared_calls c JOIN daily_calls d ON d.id=c.id WHERE d.day=? OR d.settled_day=? OR c.charged IS NULL",(day,day)).fetchone()[0]
+
+ def reserve_plan(self,*args):raise RuntimeError('daily_budget_plans_forbidden')
+
+ def begin_job(self,job):
+  try:return super().begin_job(job)
+  except Exception:self.db.rollback();raise
+
+ def reserve(self,id,family,job_id='',stage='',request_hash=''):
+  if family!='text':raise RuntimeError('daily_budget_text_only')
+  self.db.execute('BEGIN IMMEDIATE')
+  try:
+   self.check()
+   if self.db.execute('SELECT 1 FROM shared_calls WHERE id=? OR (job_id=? AND stage=?)',(id,job_id,stage)).fetchone():raise RuntimeError('shared_call_no_replay')
+   amount=self.amount(family);day=day_at()
+   if self.used(day)+amount>self.s['limit_micro_usd']:raise RuntimeError('shared_budget_exhausted')
+   self.db.execute("INSERT INTO shared_calls VALUES(?,?,?,?,?,?,?,NULL,'reserved',NULL)",(id,self.s['window_id'],family,job_id,stage,request_hash,amount))
+   self.db.execute('INSERT INTO daily_calls VALUES(?,?,NULL)',(id,day))
+   if day_at()!=day:raise RuntimeError('daily_budget_day_changed')
+   self.db.commit();return amount
+  except Exception:self.db.rollback();raise
+
+ def settle(self,id,family,response):
+  self.db.execute('BEGIN IMMEDIATE')
+  try:
+   self.check()
+   row=self.db.execute('SELECT reserved,state FROM shared_calls WHERE id=? AND family=?',(id,family)).fetchone()
+   if family!='text'or not row or row[1]!='reserved':raise RuntimeError('shared_settlement_no_replay')
+   u=response.get('usage')if isinstance(response,dict)else None;p=self.s['profiles']['text']
+   if not isinstance(u,dict)or not all(integer(u.get(k))for k in('input_tokens','output_tokens')):
+    self.db.execute("UPDATE shared_calls SET state='usage_missing' WHERE id=?",(id,));self.db.commit();raise RuntimeError('shared_usage_missing_reserved')
+   i,o=u['input_tokens'],u['output_tokens'];d=u.get('input_tokens_details')or{};rd=u.get('output_tokens_details')or{}
+   if not isinstance(d,dict)or not isinstance(rd,dict):raise RuntimeError('shared_usage_missing_reserved')
+   cached=d.get('cached_tokens',0);reasoning=rd.get('reasoning_tokens',0)
+   if i>p['max_input_tokens']or o>p['max_output_tokens']or not integer(cached)or cached>i or not integer(reasoning)or reasoning>o:
+    self.db.execute('UPDATE shared_windows SET halted=1 WHERE id=?',(self.s['window_id'],));self.db.commit();raise RuntimeError('shared_usage_bound_exceeded_halted')
+   cost=((i-cached)*p['input_text_rate']+cached*p['cached_text_rate']+o*p['output_rate']+999999)//1000000
+   if cost>row[0]:raise RuntimeError('shared_usage_bound_exceeded_halted')
+   self.db.execute("UPDATE shared_calls SET charged=?,state='settled' WHERE id=?",(cost,id))
+   self.db.execute('UPDATE daily_calls SET settled_day=? WHERE id=?',(day_at(),id))
+   self.db.commit();return u
+  except Exception:self.db.rollback();raise

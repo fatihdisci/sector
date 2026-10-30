@@ -13,7 +13,7 @@ export async function loadNewsModelRuntime(vars:NodeJS.ProcessEnv,o:Options):Pro
  const c=JSON.parse(await readFile(control,'utf8'));
  if(c.version!==1||c.provider!=='openai-api'||c.enabled!==true||c.purpose!=='news_text_only'||Object.keys(c).length!==4)throw Error('news_api_provider_not_approved');
  if(vars.SECTOR_OWNER_VISUAL_ENABLED==='true')throw Error('news_api_visual_forbidden');
- // Python validates the shared atomic budget, fresh promo evidence and rates before lookup.
+ // Python validates the shared atomic budget, explicit budget policy and rates before lookup.
  try{await (o.gate??(async root=>{const r=await execute(o.python,[join(o.app,'scripts/news_api_preflight.py'),root],{timeout:15000,maxBuffer:4096});if(JSON.parse(r.stdout).ready!==true)throw Error();}))(o.runtime);}catch{throw Error('news_api_preflight_failed');}
  let key:string;
  try{key=await(o.credential??(async()=>{const r=await execute('/usr/bin/security',['find-generic-password','-s','sectorhaber-openai-api','-a','sectorhaber-news','-w'],{timeout:15000,maxBuffer:16384});return r.stdout.replace(/[\r\n]+$/,'');}))();}catch{throw Error('news_api_keychain_unavailable');}
