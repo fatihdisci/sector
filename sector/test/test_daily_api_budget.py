@@ -1,4 +1,4 @@
-import copy,datetime,pathlib,tempfile,time,unittest
+import copy,datetime,pathlib,tempfile,time,unittest,subprocess,sys
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 from shared_api_fixture import bundle
@@ -25,6 +25,22 @@ class DailyBudgetTests(unittest.TestCase):
   for name,value in [('news-api-config.json',self.c),('news-api-provider.json',{'version':1,'provider':'openai-api','enabled':True,'purpose':'news_text_only'})]:
    p=self.root/name;p.write_text(json.dumps(value));p.chmod(0o600)
   self.assertEqual(preflight(self.root).model,'gpt-6.1-terra')
+ def test_exhausted_budget_allows_startup_but_blocks_real_job_gate(self):
+  for name,value in [('news-api-config.json',self.c),('news-api-provider.json',{'version':1,'provider':'openai-api','enabled':True,'purpose':'news_text_only'})]:
+   p=self.root/name;p.write_text(json.dumps(value));p.chmod(0o600)
+  b=self.open();n=0
+  while True:
+   try:self.reserve(b,'exhaust-'+str(n));n+=1
+   except RuntimeError as e:self.assertEqual(str(e),'shared_budget_exhausted');break
+  before=b.used();b.db.close();self.assertEqual(preflight(self.root,require_available=False).model,'gpt-6.1-terra')
+  with self.assertRaisesRegex(RuntimeError,'shared_budget_exhausted'):preflight(self.root)
+  script=pathlib.Path(__file__).parents[1]/'scripts/news_api_preflight.py'
+  self.assertEqual(subprocess.run([sys.executable,str(script),str(self.root),'--startup'],capture_output=True).returncode,0)
+  self.assertNotEqual(subprocess.run([sys.executable,str(script),str(self.root)],capture_output=True).returncode,0)
+  app=pathlib.Path(__file__).parents[1].resolve();js="import {loadNewsModelRuntime,newsApiBudgetAvailable} from './scripts/news_api_runtime.ts'; const [runtime,python,app]=process.argv.slice(1);const o={runtime,python,app,credential:async()=> 'OFFLINE-FAKE'};const v=await loadNewsModelRuntime({},o);if(v.selection.provider!=='openai-api'||await newsApiBudgetAvailable(o))throw Error('unsafe_gate');"
+  smoke=subprocess.run(['node','--import','tsx','--input-type=module','--eval',js,str(self.root),sys.executable,str(app)],cwd=app,capture_output=True,text=True)
+  self.assertEqual(smoke.returncode,0,smoke.stderr)
+  b=self.open();self.assertEqual(b.used(),before);b.db.close()
  def test_atomic_concurrent_reservations_cannot_exceed_cap(self):
   b=self.open();amount=b.amount('text');b.db.close()
   def reserve(n):

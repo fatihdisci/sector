@@ -4,7 +4,7 @@ import {loadNewsArtwork} from './news_artwork';
 import {loadCircuitArtworkPool} from './circuit_artwork';
 import {pollCircuitAuto,circuitPollDelay} from '../src/circuit-auto';
 import {createOwnerVisualRuntime,renderModelJob} from './owner_visual_runtime';
-import {loadNewsModelRuntime} from './news_api_runtime';
+import {loadNewsModelRuntime,newsApiBudgetAvailable} from './news_api_runtime';
 import {runModelJob} from './model_runner';
 import {modelFailureCode,type ModelStage} from './model_failure';
 import {withModelHeartbeat} from './model_heartbeat';
@@ -86,6 +86,7 @@ let lastArtifactCleanup=0;
 async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof leaseJob>>=null;
  const started=Date.now();let stage:ModelStage='lease';
  try {
+  if(modelSelection.provider==='openai-api'&&!await newsApiBudgetAvailable({runtime:directory,app:process.cwd(),python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`})){await status('model_health',{ok:false,at:new Date().toISOString(),code:'api_budget_or_preflight_blocked',stage:'preflight'});await pause(30_000);continue;}
   if(modelSelection.provider==='openai-api'){try{const receipt=await newsApiCanary({runtime:directory,app:process.cwd(),python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,release:process.env.SECTOR_RELEASE_ID??'',vars:modelRuntime.vars});if(receipt)await status('model_canary_health',receipt);}catch{await status('model_canary_health',{state:'blocked',code:'api_canary_control_invalid'});}}
   const paused=await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>();
   if(Number(paused?.value??0)>Date.now()){await pause(30_000);continue;}
