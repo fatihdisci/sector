@@ -1,4 +1,4 @@
-import {kapNews,withKapArtwork} from './kap-artwork';
+import {kapNews,withKapArtwork,selectedKapArtwork} from './kap-artwork';
 import {newsArtworkEligible,selectNewsArtwork} from './news-artwork';
 import {visualDocument,assertVisualReceipt} from './owner-visual';
 import {bytesHash} from './media-set';
@@ -122,7 +122,7 @@ export async function submitJob(env:Env,input:Record<string,unknown>):Promise<{i
  const layout=await savedLayout(env,job.kind==='edit'?'draft:'+job.draft_id:job.article_id)??'editorial';
  const cards=Array.isArray(input.cards)?input.cards as {svg_hash:string;png_base64:string}[]:[{svg_hash:input.svg_hash,png_base64:input.png_base64}]as {svg_hash:string;png_base64:string}[];const images:Uint8Array[]=[];
  if(env.KAP_GENERAL_IMAGE&&kapNews(draft,documents)){
-  const bound=await withKapArtwork(env,draft,documents);draft.kap_artwork=bound.kap_artwork;images.push(env.KAP_GENERAL_IMAGE!.bytes);
+  const bound=await withKapArtwork(env,draft,documents);draft.kap_artwork=bound.kap_artwork;images.push(selectedKapArtwork(env,documents)!.bytes);
  }else if(env.NEWS_GENERAL_IMAGES&&newsArtworkEligible(draft,documents)){
   const a=await selectNewsArtwork(env,job.kind==='edit'?job.draft_id!:job.id,existingCard?JSON.parse(existingCard.content).news_artwork:undefined);draft.news_artwork={id:a.id,sha256:a.sha256};images.push(a.bytes);
  }else if(visualDocument(documents)){

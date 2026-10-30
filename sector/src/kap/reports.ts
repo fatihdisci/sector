@@ -77,7 +77,7 @@ export function report(kind:'circuit'|'buyback',records:ReportRecord[],indices:I
  return {draft,documents:[doc]};
 }
 
-function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences,generalArtwork=false):{draft:Draft;documents:Document[]}{
+function circuitDailyReport(current:Pick<Disclosure,'id'|'subjectCodes'|'publishedAt'|'url'>[],indices:Indices|null,at:number,coverage:string,preferences?:OutputPreferences,generalArtwork=false):{draft:Draft;documents:Document[]}{
  const events=current.map(d=>({id:d.id,tickers:[...d.subjectCodes],published_at:d.publishedAt}));
  const {rows,selection}=selectCircuitReport(events,indices,at,generalArtwork?10000:CIRCUIT_REPORT_LIMIT,generalArtwork);
  const reportDate=new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long'}).format(new Date(at));
@@ -92,4 +92,15 @@ function circuitDailyReport(current:Disclosure[],indices:Indices|null,at:number,
  const document:Document={source_id:'kap-daily-report',source_name:'KAP günlük kayıt raporu',family:'kap-report',official:true,url:source+'#circuit-'+at,title:'Devre kesici raporu',body:evidence,passages:[{id:'computed_report',text:evidence}],published_at:new Date(at).toISOString(),primary_urls:current.map(d=>d.url),language:'tr'};
  const draft:Draft={...(preferences?{output_preferences:preferences}:{}),headline,body,hashtags:[],category:'kap',importance:85,template:'info',card_headline:'Devre kesici raporu',card_body:`${events.length} bildirim · ${selection.total_tickers} farklı hisse`,card_data:{report:{rows,footer:note,events,circuit:selection}},claims:[{text:evidence,evidence:[{document:0,passage:'computed_report',quote:evidence}]}],entities:[],event_key:'circuit-'+at,uncertainties:[],source_notes:[]};
  return {draft,documents:[document]};
+}
+
+/** Automatic cards use only verified index members; manual reports retain all markets. */
+export function indexCircuitSummary(summary:ReturnType<typeof report>,at:number):ReturnType<typeof report>{
+ const events=summary.draft.card_data?.report?.events,indices=summary.draft.card_data?.report?.circuit?.indices.snapshot??null;
+ if(!Array.isArray(events))throw Error('circuit_auto_evidence_missing');
+ selectCircuitReport(events,indices,at,10000,true);
+ const members=new Set(indices?.bist100??[]),urls=new Set(summary.documents.flatMap(d=>d.primary_urls??[]));
+ const selected=events.map(e=>({...e,tickers:e.tickers.filter(t=>members.has(t))})).filter(e=>e.tickers.length);
+ const records=selected.map(e=>{const url='https://www.kap.org.tr/tr/Bildirim/'+e.id;if(!urls.has(url))throw Error('circuit_auto_source_url_missing');return{id:e.id,subjectCodes:e.tickers,publishedAt:e.published_at,url};});
+ return circuitDailyReport(records,indices,at,'Otomatik içerik yalnız doğrulanmış BIST 30 ve BIST 100 paylarını kapsar.',summary.draft.output_preferences,true);
 }

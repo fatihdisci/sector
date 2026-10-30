@@ -6,7 +6,28 @@ deliberate overcount keeps concurrent work safe across the boundary.
 """
 import datetime,re,time
 from zoneinfo import ZoneInfo
-from shared_api_budget import SharedBudget,integer
+from shared_api_budget import SharedBudget,integer,validate_shared,digest
+import sqlite3,json
+
+def extend_policy_expiry(path,old,new):
+ """Explicit maintenance migration, retaining every call and immutable daily cap.
+
+ Only the policy expiry may move, at most one year from the same owner consent.
+ Model/rates/profiles/initial exposure/ledger identity cannot change here.
+ """
+ validate_shared(old,path);validate_shared(new,path)
+ if old.get('mode')!='daily_bot'or {k:v for k,v in old.items()if k!='expires_at'}!={k:v for k,v in new.items()if k!='expires_at'}or not old['expires_at']<new['expires_at']<=old['consent']['approved_at']+366*86400:raise RuntimeError('daily_expiry_extension_invalid')
+ db=sqlite3.connect(path,timeout=10)
+ try:
+  db.execute('BEGIN IMMEDIATE')
+  if db.execute("SELECT 1 FROM shared_calls WHERE state='reserved' LIMIT 1").fetchone():raise RuntimeError('daily_expiry_extension_in_flight')
+  terms=digest({k:v for k,v in old.items()if k!='plan_id'});next_terms=digest({k:v for k,v in new.items()if k!='plan_id'})
+  if db.execute('SELECT terms FROM shared_windows WHERE id=?',(old['window_id'],)).fetchone()!=(terms,):raise RuntimeError('daily_expiry_extension_parent_mismatch')
+  db.execute('CREATE TABLE IF NOT EXISTS daily_expiry_audit(old_terms TEXT PRIMARY KEY,new_terms TEXT,at REAL,old_expiry REAL,new_expiry REAL)')
+  db.execute('INSERT INTO daily_expiry_audit VALUES(?,?,?,?,?)',(terms,next_terms,time.time(),old['expires_at'],new['expires_at']))
+  db.execute('UPDATE shared_windows SET terms=? WHERE id=?',(next_terms,old['window_id']));db.commit()
+ except Exception:db.rollback();raise
+ finally:db.close()
 
 def day_at(timestamp=None):
  return datetime.datetime.fromtimestamp(time.time()if timestamp is None else timestamp,ZoneInfo('Europe/Istanbul')).date().isoformat()

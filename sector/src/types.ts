@@ -23,7 +23,7 @@ export interface Draft {
   news_artwork?:{id:string;sha256:string};
   circuit_artwork?:{sha256:string};
   automated_daily?:'circuit';
-  tweet_style?:'akd_single_ticker'|'custody_query'|'owner_ready';
+  tweet_style?:'circuit_batch'|'akd_single_ticker'|'custody_query'|'owner_ready';
   output_preferences?:OutputPreferences;
   card_data?:CardData;
   headline:string;body:string;hashtags:string[];category:Category;importance:number;
@@ -31,6 +31,7 @@ export interface Draft {
   card_headline:string;card_body:string;
 }
 export interface Env {
+  KAP_BUSINESS_IMAGE?:import('./circuit-artwork').CircuitArtwork;
   KAP_GENERAL_IMAGE?:import('./circuit-artwork').CircuitArtwork;
   NEWS_GENERAL_IMAGES?:import('./news-artwork').NewsArtwork[];
   CIRCUIT_GENERAL_IMAGE?:import('./circuit-artwork').CircuitArtwork;

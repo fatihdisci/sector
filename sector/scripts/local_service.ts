@@ -1,3 +1,4 @@
+import {newsApiCanary} from './news_api_canary';
 import {loadKapArtwork} from './kap_artwork';
 import {loadNewsArtwork} from './news_artwork';
 import {loadCircuitArtwork} from './circuit_artwork';
@@ -58,7 +59,7 @@ const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(a
 const workflowConfig=JSON.parse(await readFile('bot-workflow.json','utf8'));if(workflowConfig.version!==1)throw Error('invalid_bot_workflow');const workflow=process.env.SECTOR_BOT_WORKFLOW_MODE??workflowConfig.mode;if(!['full','news_only'].includes(workflow))throw Error('invalid_bot_workflow');env.BOT_WORKFLOW_MODE=workflow as 'full'|'news_only';if(workflowConfig.circuit_auto?.interval_seconds!==120)throw Error('invalid_circuit_interval');env.CIRCUIT_AUTO_ENABLED=workflowConfig.circuit_auto.enabled===true?'true':'false';
 if(env.CIRCUIT_AUTO_ENABLED==='true')env.CIRCUIT_GENERAL_IMAGE=await loadCircuitArtwork(process.cwd());
 env.NEWS_GENERAL_IMAGES=await loadNewsArtwork(process.cwd());
-env.KAP_GENERAL_IMAGE=await loadKapArtwork(process.cwd());
+env.KAP_GENERAL_IMAGE=await loadKapArtwork(process.cwd());env.KAP_BUSINESS_IMAGE=await loadKapArtwork(process.cwd(),'business');
 const modelRuntime=await loadNewsModelRuntime(process.env,{runtime:directory,python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,app:process.cwd()});
 const modelSelection=modelRuntime.selection;
 env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;
@@ -85,6 +86,7 @@ let lastArtifactCleanup=0;
 async function modelLoop(){while(!stopping()){let job:Awaited<ReturnType<typeof leaseJob>>=null;
  const started=Date.now();let stage:ModelStage='lease';
  try {
+  if(modelSelection.provider==='openai-api'){try{const receipt=await newsApiCanary({runtime:directory,app:process.cwd(),python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,release:process.env.SECTOR_RELEASE_ID??'',vars:modelRuntime.vars});if(receipt)await status('model_canary_health',receipt);}catch{await status('model_canary_health',{state:'blocked',code:'api_canary_control_invalid'});}}
   const paused=await env.DB.prepare("SELECT value FROM system_state WHERE key='model_paused_until'").first<{value:string}>();
   if(Number(paused?.value??0)>Date.now()){await pause(30_000);continue;}
   job=await leaseJob(env);if(!job){await pause(2_000);continue;}

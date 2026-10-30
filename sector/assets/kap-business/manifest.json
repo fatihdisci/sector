@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "enabled": true,
+  "purpose": "kap_business_news",
+  "file": "general.png",
+  "sha256": "9a99447c71d988f5d02b204b03a216725dbc88607954eb1708ee3a390c575581",
+  "width": 1672,
+  "height": 941,
+  "library_id": "libfile_ba455e63dba881918d51dd27f41046c9",
+  "verified": true,
+  "watermark": false
+}

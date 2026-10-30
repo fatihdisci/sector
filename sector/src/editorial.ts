@@ -285,7 +285,7 @@ function formattedPostText(d:Draft):string {
 }
 
 export function postText(d:Draft,_sources:string[]=[]):string {
- if(d.tweet_style==='owner_ready')return d.body;
+ if(d.tweet_style==='owner_ready'||d.tweet_style==='circuit_batch'&&d.automated_daily==='circuit'&&d.circuit_artwork&&d.card_data?.report?.circuit)return d.body;
  if(d.kap_artwork){
   const codes=d.kap_artwork.equity_codes,known=new Set(codes);
   return hashtagTickers(formattedPostText(d),codes).split(/(https?:\/\/[^\s]+)/u).map(part=>/^https?:\/\//u.test(part)?part:part.replace(/#[\p{L}\p{N}_]+/gu,t=>known.has(t.slice(1).toUpperCase())?'#'+t.slice(1).toUpperCase():t.toLocaleUpperCase('tr-TR'))).join('');

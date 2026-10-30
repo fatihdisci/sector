@@ -69,3 +69,14 @@ class DailyBudgetTests(unittest.TestCase):
   with self.assertRaisesRegex(RuntimeError,'halted'):b.settle('same','text',self.response(i=999999))
   with self.assertRaisesRegex(RuntimeError,'halted'):self.reserve(b,'after-halt')
   self.assertGreater(b.used(),0);b.db.close()
+
+ def test_explicit_policy_extension_keeps_daily_usage_and_rejects_cap_or_inflight_changes(self):
+  from daily_api_budget import extend_policy_expiry
+  b=self.open();self.reserve(b,'done');b.settle('done','text',self.response());b.db.close()
+  new=copy.deepcopy(self.s);new['expires_at']+=86400
+  bad=copy.deepcopy(new);bad['limit_micro_usd']=3000000
+  with self.assertRaises(RuntimeError):extend_policy_expiry(self.s['ledger_path'],self.s,bad)
+  extend_policy_expiry(self.s['ledger_path'],self.s,new);b=DailyBudget(new['ledger_path'],new);self.assertEqual(b.used(),150);self.reserve(b,'pending');b.db.close()
+  again=copy.deepcopy(new);again['expires_at']+=86400
+  with self.assertRaisesRegex(RuntimeError,'in_flight'):extend_policy_expiry(new['ledger_path'],new,again)
+  with self.assertRaisesRegex(RuntimeError,'terms_changed'):DailyBudget(self.s['ledger_path'],self.s)

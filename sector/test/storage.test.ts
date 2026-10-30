@@ -170,3 +170,13 @@ test('official KAP news selects its fixed reviewed image ahead of general news a
  const normal=postText({...draft,hashtags:['#ASELS']});assert(normal.includes('#asels'));assert(!normal.includes('#ASELS'));const ready={...display,tweet_style:'owner_ready' as const,body:'Birebir #asels'};assert.equal(postText(ready),'Birebir #asels');
  const changed=fixture.slice();changed[100]^=1;await assert.rejects(assertKapArtwork(String(row.content),[changed]),/kap_artwork_binding/);await assert.rejects(withKapArtwork({...env,KAP_GENERAL_IMAGE:undefined},draft,[doc]),/unavailable/);
 });
+
+test('new business uses its own approved watermark-free asset; ordinary KAP retains general asset',async()=>{
+ const general=await loadKapArtwork('.'),business=await loadKapArtwork('.','business');assert.equal(business.sha256,'9a99447c71d988f5d02b204b03a216725dbc88607954eb1708ee3a390c575581');
+ const {env}=await environment();env.KAP_GENERAL_IMAGE=general;env.KAP_BUSINESS_IMAGE=business;
+ const doc={...document,source_id:'kap',official:true,url:'https://www.kap.org.tr/tr/Bildirim/12345',title:'Yeni İş İlişkisi',equity_codes:['ASELS']};
+ assert.equal((await withKapArtwork(env,draft,[doc])).kap_artwork!.sha256,business.sha256);
+ assert.equal((await withKapArtwork(env,draft,[{...doc,title:'Finansal Rapor'}])).kap_artwork!.sha256,general.sha256);
+ assert.equal((await withKapArtwork(env,draft,[{...doc,source_id:'rss'}])).kap_artwork!.sha256,general.sha256);
+ await assert.rejects(withKapArtwork({...env,KAP_BUSINESS_IMAGE:undefined},draft,[doc]),/unavailable/);
+});

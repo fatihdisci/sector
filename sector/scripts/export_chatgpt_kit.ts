@@ -27,6 +27,7 @@ try{
  await source('brand-kit-registry.ts');await source('brand-kit-imagegen.ts');await source('editorial.ts');await source('news-visual-plan.ts');
  await cp(join(root,'assets/news-visuals'),join(stage,'assets/news-visuals'),{recursive:true});
  await cp(join(root,'assets/kap-general'),join(stage,'assets/kap-general'),{recursive:true});
+ await cp(join(root,'assets/kap-business'),join(stage,'assets/kap-business'),{recursive:true});
  await cp(join(root,'assets/approved-typography'),join(stage,'assets/approved-typography'),{recursive:true});
  await cp(join(root,'assets/visual-templates'),join(stage,'assets/visual-templates'),{recursive:true});
  await writeFile(join(stage,'BRAND-KIT.md'),'Borsa Çakalı bc-typographic-v1: onaylı yatay/yoğun liste, siyah #080908, kırık beyaz #F4F1E9; Anton/Zilla Slab başlık ve Inter veri fontu; seyrek veri yatay, yoğun veri dikey, yalnız silik çapraz filigran. 12 tür ve mevcut girişler src/brand-kit-registry.ts içindedir. src/brand-kit-imagegen.ts aynı production tokenlarını kullanır. Veri satırları ve mevcut kapasite kapıları korunur. Normal haberler dört onaylı SON DAKİKA PNG’sinden birini bir kez rastgele seçer; assets/news-visuals manifesti ve kaynak PNG’ler pakettedir. Habere özel kart üretimi kullanılmaz.\n');
