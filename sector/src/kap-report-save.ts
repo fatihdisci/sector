@@ -10,7 +10,7 @@ import type {Env,Document,Draft} from './types';
 export async function saveReport(env:Env,row:{update_id:number;message_id:number},result:{draft:Draft;documents:Document[]}){
  const buyback=/^(?:buyback|general_buyback)-(\d+)$/.exec(result.draft.event_key),day=result.draft.card_data?.report?.general?.day??(buyback?new Date(Number(buyback[1])+10800000).toISOString().slice(0,10):null);
  if(day&&await env.DB.prepare('SELECT 1 FROM buyback_days WHERE day=?').bind(day).first()){await env.DB.prepare("UPDATE manual_requests SET state='needs_review',error='daily_buyback_exists',lease_until=0 WHERE update_id=?").bind(row.update_id).run();return;}
- const circuit=circuitDraft(result.draft);if(circuit)result={...result,draft:await withCircuitArtwork(env,result.draft)};
+ const circuit=circuitDraft(result.draft);if(circuit)result={...result,draft:await withCircuitArtwork(env,result.draft,'manual:'+row.update_id)};
  if(!circuit&&!env.RENDER_REPORT)throw Error('kap_report_renderer_unavailable');
  if(postText(result.draft).length>1024)throw Error('kap_report_caption_limit');
  const hash=await sha256('kap-report:'+row.update_id),id=[hash.slice(0,8),hash.slice(8,12),'4'+hash.slice(13,16),'8'+hash.slice(17,20),hash.slice(20,32)].join('-'),media=`drafts/${id}/1.png`,time=Math.floor(Date.now()/1000),doc=result.documents[0];

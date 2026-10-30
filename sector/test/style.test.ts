@@ -30,7 +30,8 @@ test('one leading emoji only; body, tags, card text and trailing or compound emo
  for(const change of [{headline:'📢🚨 Açıklama'},{headline:'Açıklama 📢'},{headline:'📢 Açıklama 🚨'},{body:'Açıklama 📊'},{card_body:'📈 Yatırım arttı'},{hashtags:['#Borsa','📢#BIST']},{headline:'🇹🇷 Açıklama'},{headline:'👩‍💻 Açıklama'}])assert(invalidEmojiPlacement({...d,...change}));
 });
 test('fund categories override equity tags and do not match unrelated word fragments',()=>{
- for(const title of ['Fon tasfiyesi açıklandı','Yatırım fonlarının getirisi','Fonların ödeme süreci','TEFAS işlemleri','PBLK açıklaması'])assert.deepEqual(editorialPolicy([doc({title,equity_codes:['TEST']})]).required_hashtags,['#Fon','#PBLK','#Tasfiye']);
+ assert.deepEqual(editorialPolicy([doc({title:'Fon tasfiyesi açıklandı',equity_codes:['TEST']})]).required_hashtags,['#Fon','#Tasfiye']);
+ for(const title of ['Yatırım fonlarının getirisi','Fonların ödeme süreci','TEFAS işlemleri','PBLK açıklaması','Şirket tasfiyesi'])assert(!editorialPolicy([doc({title,equity_codes:['TEST']})]).required_hashtags.some(t=>['#Fon','#Tasfiye','#PBLK'].includes(t)));
  for(const title of ['Telefon satışları arttı','Şirket fonlama sağladı','Yeni fonksiyon duyuruldu'])assert.deepEqual(editorialPolicy([doc({title})]).required_hashtags,[]);
 });
 
@@ -39,7 +40,7 @@ test('KAP empty fund fields and buyback budgets do not override company tags',()
  for(const [title,code] of [['BÜLBÜLOĞLU VİNÇ — Yeni İş İlişkisi','BVSAN'],['CVK MADEN — Payların Geri Alınmasına İlişkin Bildirim','CVKMD']]){
   assert.deepEqual(editorialPolicy([doc({source_id:'kap',official:true,title,body,equity_codes:[code]})]).required_hashtags,['#Borsa','#BIST','#'+code]);
  }
- assert.deepEqual(editorialPolicy([doc({source_id:'kap',title:'Özel Durum Açıklaması',body:'Yatırım fonlarının tasfiye sürecine ilişkin açıklama.',equity_codes:['TEST']})]).required_hashtags,['#Fon','#PBLK','#Tasfiye']);
+ assert.deepEqual(editorialPolicy([doc({source_id:'kap',title:'Özel Durum Açıklaması',body:'Yatırım fonlarının tasfiye sürecine ilişkin açıklama.',equity_codes:['TEST']})]).required_hashtags,['#Fon','#Tasfiye']);
 });
 test('recent IPO KAP tickers require exactly one final HalkaArz hashtag',()=>{
  const source=doc({source_id:'kap',official:true,title:'KPEKS — Payların Geri Alınmasına İlişkin Bildirim',equity_codes:['KPEKS']});
@@ -99,7 +100,7 @@ test('KAP company attachments do not turn financial reports into fund stories',(
 test('missing mandatory tags are repaired without a model call or invented ticker',()=>{
  const d={headline:'Yatırım açıklaması',hashtags:['#Yeni Yatırım','#İş-Dünyası']} as Draft;
  assert.deepEqual(repairDraftStyle(d,[doc({equity_codes:['THYAO']})]).hashtags,['#Borsa','#BIST','#THYAO']);
- assert.deepEqual(repairDraftStyle(d,[doc({title:'Fon tasfiyesi'})]).hashtags,['#Fon','#PBLK','#Tasfiye']);
+ assert.deepEqual(repairDraftStyle(d,[doc({title:'Fon tasfiyesi'})]).hashtags,['#Fon','#Tasfiye','#YeniYatırım']);
  assert.deepEqual(repairDraftStyle(d,[doc({title:'Tesla yatırım planlıyor'})]).hashtags,['#YeniYatırım','#İşDünyası']);
 });
 test('verified equity .E suffix is removed from visible text and table cells without changing evidence',()=>{
@@ -128,4 +129,10 @@ test('circuit tickers lead the caption once and source-backed artwork metadata s
  assert(text.startsWith('🚨 #tuprs #thyao #a1cap\nDevre kesici uygulandı\n\n'));
  assert(text.endsWith('#Borsa #BIST'));for(const code of d.card_data!.tickers!)assert.equal(text.split('#'+code.toLowerCase()).length-1,1);
  assert.deepEqual(repairDraftStyle(d,docs),d);
+});
+
+test('fund and liquidation tags require both words in the relevant source; PBLK is not automatic',()=>{
+ for(const title of ['Fon getirileri yükseldi','Şirket tasfiyesi başladı','TEFAS ödeme duyurusu','Telefon fonksiyonları']){const d=repairDraftStyle({...groundedDraft,hashtags:['#Fon','#Tasfiye','#PBLK']},[doc({title})]);assert(!d.hashtags.some(t=>['#Fon','#Tasfiye','#PBLK'].includes(t)),title);}
+ const d=repairDraftStyle({...groundedDraft,hashtags:['#PBLK']},[doc({title:'Yatırım fonlarının tasfiyesi başladı'})]);assert.deepEqual(d.hashtags,['#Fon','#Tasfiye']);
+ const optional=repairDraftStyle({...groundedDraft,hashtags:['#PBLK']},[doc({title:'PBLK fon tasfiyesi açıklandı'})]);assert(optional.hashtags.includes('#PBLK'));
 });

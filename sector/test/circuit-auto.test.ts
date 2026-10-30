@@ -70,3 +70,10 @@ test('a market-wide wave keeps every ticker and splits only Telegram display tex
 test('market-level notice without named shares is archived without inventing a zero-share tweet',async()=>{
  const c=await setup();await activate(c);c.set([{...disclosure(1,'ZZZZ'),subjectCodes:[]}]);assert.equal((await pollCircuitAuto(c.env,at)).state,'unchanged');assert.equal((await c.env.DB.prepare('SELECT COUNT(*) n FROM drafts').first<any>()).n,0);const seen=JSON.parse((await c.env.DB.prepare('SELECT value FROM system_state WHERE key=?').bind('circuit_batch_seen:2026-10-27').first<any>()).value);assert.deepEqual(seen.ids,[1]);
 });
+
+test('all three owner-approved images are hash-bound once per draft and reused on retries',async()=>{
+ const c=await setup(),{loadCircuitArtworkPool}=await import('../scripts/circuit_artwork'),{withCircuitArtwork,storeCircuitArtwork}=await import('../src/circuit-artwork');const pool=await loadCircuitArtworkPool('.');assert.equal(pool.length,3);c.env.CIRCUIT_IMAGES=pool;
+ const draft={headline:'DKB',body:'DKB',hashtags:[],card_data:{report:{rows:[],footer:'',circuit:{}}}}as any;
+ for(let i=0;i<3;i++){const key='choice-'+i;await c.env.DB.prepare('INSERT INTO system_state(key,value) VALUES(?,?)').bind('circuit_artwork_choice:'+key,pool[i].sha256).run();const first=await withCircuitArtwork(c.env,draft,key),again=await withCircuitArtwork(c.env,draft,key);assert.equal(first.circuit_artwork!.sha256,pool[i].sha256);assert.deepEqual(again.circuit_artwork,first.circuit_artwork);const media='drafts/00000000-0000-4000-8000-00000000000'+i+'/1.png';await storeCircuitArtwork(c.env,media,first);const saved=await readMedia(c.env,media,JSON.stringify(first));assert.equal(await bytesHash(saved.images[0]),pool[i].sha256);}
+ const key='random-choice';const selected=await withCircuitArtwork(c.env,draft,key);assert(pool.some(a=>a.sha256===selected.circuit_artwork!.sha256));assert.deepEqual((await withCircuitArtwork(c.env,draft,key)).circuit_artwork,selected.circuit_artwork);
+});

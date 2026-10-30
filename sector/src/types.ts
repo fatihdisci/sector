@@ -34,6 +34,7 @@ export interface Env {
   KAP_BUSINESS_IMAGE?:import('./circuit-artwork').CircuitArtwork;
   KAP_GENERAL_IMAGE?:import('./circuit-artwork').CircuitArtwork;
   NEWS_GENERAL_IMAGES?:import('./news-artwork').NewsArtwork[];
+  CIRCUIT_IMAGES?:import('./circuit-artwork').CircuitArtwork[];
   CIRCUIT_GENERAL_IMAGE?:import('./circuit-artwork').CircuitArtwork;
   CIRCUIT_AUTO_ENABLED?:'true'|'false';
   BOT_WORKFLOW_MODE?:'full'|'news_only';

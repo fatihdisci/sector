@@ -6,5 +6,21 @@
   "sha256": "5daea9e4f1f5af436e38d6a52f1dfde75542f5947a666ea87894e315e92dd051",
   "width": 1672,
   "height": 941,
-  "owner_file": "Owner attachment 2026-10-30 10.28.03"
+  "owner_file": "Owner attachment 2026-10-30 10.28.03",
+  "alternatives": [
+    {
+      "file": "pause.png",
+      "sha256": "4513fd89a6df54cb9af0d8b8322b571481a996a8d8e2043785598b63fde93e5d",
+      "width": 1672,
+      "height": 941,
+      "library_id": "libfile_5203ff22ff10819182922917c39fce99"
+    },
+    {
+      "file": "circuit.png",
+      "sha256": "2a77f10082404b2f12c5c73ac4628b7c35a6a8501957305e2ee22ee5a25becff",
+      "width": 1672,
+      "height": 941,
+      "library_id": "libfile_5fe40abe8ff8819194cbe9885f42b164"
+    }
+  ]
 }
