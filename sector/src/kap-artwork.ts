@@ -1,0 +1,8 @@
+import {bytesHash}from'./media-set';import{verifiedEquityCodes}from'./equity-codes';import type{Env,Draft,Document}from'./types';
+export function kapNews(d:Draft,documents:Document[]){return d.tweet_style!=='owner_ready'&&!d.automated_daily&&!d.circuit_artwork&&!d.card_data?.report&&!d.card_data?.overview&&!['circuit','theoretical','akd','institutional','broker_flow','custody'].includes(d.template)&&documents.some(x=>x.source_id==='kap'&&x.official===true&&/^https:\/\/www\.kap\.org\.tr\/tr\/Bildirim\/\d+$/.test(x.url));}
+export async function withKapArtwork(env:Env,d:Draft,documents:Document[]):Promise<Draft>{
+ const a=env.KAP_GENERAL_IMAGE;if(!a||a.bytes.length<1000||a.bytes.length>5_000_000||a.width<=a.height||a.width>4096||a.height>4096||![137,80,78,71,13,10,26,10].every((x,i)=>a.bytes[i]===x)||await bytesHash(a.bytes)!==a.sha256)throw Error('kap_artwork_unavailable');
+ const v=new DataView(a.bytes.buffer,a.bytes.byteOffset,a.bytes.byteLength);if(v.getUint32(16)!==a.width||v.getUint32(20)!==a.height)throw Error('kap_artwork_dimensions');
+ return {...d,kap_artwork:{sha256:a.sha256,equity_codes:verifiedEquityCodes(documents)}};
+}
+export async function assertKapArtwork(content:string,images:Uint8Array[]){const d=JSON.parse(content)as Draft;if(!d.kap_artwork)return;const a=d.kap_artwork;if(d.tweet_style==='owner_ready'||d.circuit_artwork||d.news_artwork||images.length!==1||!Array.isArray(a.equity_codes)||a.equity_codes.some(c=>!/^[A-Z][A-Z0-9]{3,4}$/.test(c))||await bytesHash(images[0])!==a.sha256)throw Error('kap_artwork_binding');}

@@ -1,3 +1,4 @@
+import {kapNews} from '../src/kap-artwork';
 import {newsArtworkEligible} from '../src/news-artwork';
 import {readFile} from 'node:fs/promises';import {spawn} from 'node:child_process';import {isAbsolute} from 'node:path';
 import contract from '../assets/visual-templates/bc-v1/contract.json';
@@ -42,4 +43,4 @@ export async function createOwnerVisualRuntime(env:Env,options:VisualRunnerOptio
   }
  };return runtime;
 }
-export async function renderModelJob(env:Env,job:VisualLease,draft:Draft,renderCode:()=>Promise<{svg_hash:string;png_base64:string}[]>){if(env.NEWS_GENERAL_IMAGES&&newsArtworkEligible(draft,job.documents))return {cards:[]};if(!visualDocument(job.documents))return {cards:await renderCode()};if(!env.OWNER_VISUAL?.enabled)throw Error('owner_visual_api_disabled');return env.OWNER_VISUAL.render(job,draft);}
+export async function renderModelJob(env:Env,job:VisualLease,draft:Draft,renderCode:()=>Promise<{svg_hash:string;png_base64:string}[]>){if(env.KAP_GENERAL_IMAGE&&kapNews(draft,job.documents))return {cards:[]};if(env.NEWS_GENERAL_IMAGES&&newsArtworkEligible(draft,job.documents))return {cards:[]};if(!visualDocument(job.documents))return {cards:await renderCode()};if(!env.OWNER_VISUAL?.enabled)throw Error('owner_visual_api_disabled');return env.OWNER_VISUAL.render(job,draft);}

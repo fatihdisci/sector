@@ -1,9 +1,10 @@
+import {kapNews} from './kap-artwork';
 import type {Draft,Document,Env} from './types';
 import {bytesHash} from './media-set';
 export type NewsArtwork={id:string;sha256:string;bytes:Uint8Array;width:number;height:number};
 /** Ordinary news only. Owner packages and structured market/report inputs keep their media. */
 export function newsArtworkEligible(d:Draft,documents:Document[]){
- return d.tweet_style!=='owner_ready'&&!d.automated_daily&&!d.circuit_artwork&&!d.card_data?.report&&!d.card_data?.overview&&!['circuit','akd','custody','theoretical','institutional','broker_flow'].includes(d.template)&&!documents.some(x=>x.owner_visual||x.market_data||x.market_movers||x.source_layout||x.gallery_range||x.buyback_evidence);
+ return !kapNews(d,documents)&&d.tweet_style!=='owner_ready'&&!d.automated_daily&&!d.circuit_artwork&&!d.card_data?.report&&!d.card_data?.overview&&!['circuit','akd','custody','theoretical','institutional','broker_flow'].includes(d.template)&&!documents.some(x=>x.owner_visual||x.market_data||x.market_movers||x.source_layout||x.gallery_range||x.buyback_evidence);
 }
 export async function validateNewsArtwork(a:NewsArtwork){
  if(!/^breaking-[1-4]$/.test(a.id)||a.bytes.length<1000||a.bytes.length>5_000_000||a.width<=a.height||a.width>4096||a.height>4096||![137,80,78,71,13,10,26,10].every((x,i)=>a.bytes[i]===x)||await bytesHash(a.bytes)!==a.sha256)throw Error('news_artwork_invalid');

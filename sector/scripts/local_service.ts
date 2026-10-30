@@ -1,3 +1,4 @@
+import {loadKapArtwork} from './kap_artwork';
 import {loadNewsArtwork} from './news_artwork';
 import {loadCircuitArtwork} from './circuit_artwork';
 import {pollCircuitAuto,circuitPollDelay} from '../src/circuit-auto';
@@ -57,6 +58,7 @@ const env={...secrets,DB:await localDatabase(directory+'/sector-haber.sqlite',(a
 const workflowConfig=JSON.parse(await readFile('bot-workflow.json','utf8'));if(workflowConfig.version!==1)throw Error('invalid_bot_workflow');const workflow=process.env.SECTOR_BOT_WORKFLOW_MODE??workflowConfig.mode;if(!['full','news_only'].includes(workflow))throw Error('invalid_bot_workflow');env.BOT_WORKFLOW_MODE=workflow as 'full'|'news_only';if(workflowConfig.circuit_auto?.interval_seconds!==120)throw Error('invalid_circuit_interval');env.CIRCUIT_AUTO_ENABLED=workflowConfig.circuit_auto.enabled===true?'true':'false';
 if(env.CIRCUIT_AUTO_ENABLED==='true')env.CIRCUIT_GENERAL_IMAGE=await loadCircuitArtwork(process.cwd());
 env.NEWS_GENERAL_IMAGES=await loadNewsArtwork(process.cwd());
+env.KAP_GENERAL_IMAGE=await loadKapArtwork(process.cwd());
 const modelRuntime=await loadNewsModelRuntime(process.env,{runtime:directory,python:`${homedir()}/.hermes/hermes-agent/venv/bin/python`,app:process.cwd()});
 const modelSelection=modelRuntime.selection;
 env.AI_PROVIDER=modelSelection.provider;env.AI_API_CONFIG=modelSelection.api;

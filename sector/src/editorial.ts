@@ -286,6 +286,10 @@ function formattedPostText(d:Draft):string {
 
 export function postText(d:Draft,_sources:string[]=[]):string {
  if(d.tweet_style==='owner_ready')return d.body;
+ if(d.kap_artwork){
+  const codes=d.kap_artwork.equity_codes,known=new Set(codes);
+  return hashtagTickers(formattedPostText(d),codes).split(/(https?:\/\/[^\s]+)/u).map(part=>/^https?:\/\//u.test(part)?part:part.replace(/#[\p{L}\p{N}_]+/gu,t=>known.has(t.slice(1).toUpperCase())?'#'+t.slice(1).toUpperCase():t.toLocaleUpperCase('tr-TR'))).join('');
+ }
  const data=d.card_data;
  const codes=[...(d.hashtags??[]).filter(t=>/^#[A-Z][A-Z0-9]{2,4}$/.test(t)&&!['#BIST','#BIST30','#BIST100'].includes(t)).map(t=>t.slice(1)),...(data?.tickers??[]),...(data?.ticker?[data.ticker]:[]),...(['institutional','theoretical'].includes(d.template)?[...(data?.buy??[]),...(data?.sell??[])].map(r=>r.label):[]),...(data?.report?.buyback?.rows??[]).map(r=>r.ticker),...(data?.report?.general?.rows??[]).map(r=>r.ticker)];
  const verifiedViewCodes=new Set([...codes,...(data?.report?.circuit?.selected_tickers??[]),...(data?.movers?[...data.movers.up,...data.movers.down].map(r=>r.symbol):[]),...(data?.overview?.panels.flatMap(p=>p.rows.map(r=>r.label))??[])].map(c=>c.toUpperCase()));

@@ -1,6 +1,6 @@
 import type {Draft,Env} from './types';
 import {sha256} from './utils/text';
-export const READY_CONTENT_TYPES=['news','market_overview','circuit','buyback','general_buyback','broker_flow','akd','custody','institutional','volume','midas','ipo','theoretical_ipo','theoretical_movers'] as const;
+export const READY_CONTENT_TYPES=['news','kap','market_overview','circuit','buyback','general_buyback','broker_flow','akd','custody','institutional','volume','midas','ipo','theoretical_ipo','theoretical_movers'] as const;
 export type ReadyContentType=typeof READY_CONTENT_TYPES[number];
 export type ReadyPublication={content_type:ReadyContentType;quote_tweet_id?:string};
 const headings={theoretical_ipo:'Son halka arzlarda teorik eşleşme verileri',theoretical_movers:'Teorik eşleşmede en çok yükselenler düşenler'};

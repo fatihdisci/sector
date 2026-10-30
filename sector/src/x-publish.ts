@@ -1,3 +1,4 @@
+import {assertKapArtwork} from './kap-artwork';
 import {readyPublication,queuedReadyQuote} from './ready-quote';
 import {sha256} from './utils/text';
 import {assertNewsArtwork} from './news-artwork';
@@ -44,7 +45,7 @@ export async function requestX(env:Env,data:string,messageId:number,callbackId:s
   else {
    const now=Date.now(),due=now+(JSON.parse(row.content).circuit_artwork?0:Number(choice?.[1]??0)*60_000),day=xDay(due),postId=crypto.randomUUID();
    try{
-    const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);await assertCircuitArtwork(env,row.media_key!,row.content,images);await assertNewsArtwork(row.content,images);
+    const {images}=await readMedia(env,row.media_key!,row.content);await assertReadyPost(env,row.id,revision,row.content,images);await assertCircuitArtwork(env,row.media_key!,row.content,images);await assertNewsArtwork(row.content,images);await assertKapArtwork(row.content,images);
     if(!images.length||images.length>4||images.some(b=>b.length>5000000||b.length<8||[137,80,78,71,13,10,26,10].some((v,i)=>b[i]!==v)))throw Error('x_image_invalid');
     const hashes=JSON.stringify(await Promise.all(images.map(bytesHash))),publication=readyPublication(JSON.parse(row.content).owner_ready_publication??{});
     const quoteBinding=publication?.quote_tweet_id?JSON.stringify({content_hash:await sha256(row.content),...publication}):null;
@@ -82,7 +83,7 @@ export async function publishX(env:Env,api:XTransport,clock=Date.now){
   const draft=await env.DB.prepare('SELECT revision,state,expires_at,media_key,delivery_state,verification,content FROM drafts WHERE id=?').bind(row.draft_id).first<{revision:number;state:string;expires_at:number;media_key:string;delivery_state:string;verification:string;content:string}>();
   if(!draft||!xDraftEligible(draft,row.revision,row.media_key,clock()))throw Error('x_stale_draft');
   if(postText(JSON.parse(draft.content))!==row.content||!xTextValid(row.content))throw Error('x_text_capacity_or_revision');
-  const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);await assertCircuitArtwork(env,row.media_key,draft.content,images);await assertNewsArtwork(draft.content,images);
+  const {images}=await readMedia(env,row.media_key,draft.content);await assertReadyPost(env,row.draft_id,row.revision,draft.content,images);await assertCircuitArtwork(env,row.media_key,draft.content,images);await assertNewsArtwork(draft.content,images);await assertKapArtwork(draft.content,images);
   if(row.media_hashes&&JSON.stringify(await Promise.all(images.map(bytesHash)))!==row.media_hashes)throw Error('x_image_changed');
   const quoteTweetId=await queuedReadyQuote(env,row.id,draft.content);
   api.preflight?.(row.content,images.length);

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "enabled": true,
+  "purpose": "kap_disclosure_news",
+  "file": "general.png",
+  "sha256": "8aff59b0b326a0c6d45bebba1af40354523bdb4781f9aead2b9801713662f56e",
+  "width": 1672,
+  "height": 941,
+  "library_id": "libfile_4e0462d5f9388191b9f71873f4d21013",
+  "library_version": 1,
+  "verified": true,
+  "watermark": false
+}
