@@ -41,8 +41,21 @@ def increase_daily_limit(path,old,new):
   if db.execute("SELECT 1 FROM shared_calls WHERE state='reserved' LIMIT 1").fetchone():raise RuntimeError('daily_limit_in_flight')
   before=digest({k:v for k,v in old.items() if k!='plan_id'});after=digest({k:v for k,v in new.items() if k!='plan_id'})
   if db.execute('SELECT terms FROM shared_windows WHERE id=?',(old['window_id'],)).fetchone()!=(before,):raise RuntimeError('daily_limit_parent_mismatch')
-  db.execute('CREATE TABLE IF NOT EXISTS daily_limit_audit(old_terms TEXT PRIMARY KEY,new_terms TEXT,at REAL,old_limit INTEGER,new_limit INTEGER)')
-  db.execute('INSERT INTO daily_limit_audit VALUES(?,?,?,?,?)',(before,after,time.time(),2000000,3000000));db.execute('UPDATE shared_windows SET terms=? WHERE id=?',(after,old['window_id']));db.commit()
+  db.execute('CREATE TABLE IF NOT EXISTS daily_limit_audit(old_terms TEXT PRIMARY KEY,new_terms TEXT,at REAL,old_limit INTEGER,new_limit INTEGER,calls_hash TEXT)')
+  calls=digest([db.execute('SELECT * FROM shared_calls ORDER BY id').fetchall(),db.execute('SELECT * FROM daily_calls ORDER BY id').fetchall()])
+  db.execute('INSERT INTO daily_limit_audit VALUES(?,?,?,?,?,?)',(before,after,time.time(),2000000,3000000,calls));db.execute('UPDATE shared_windows SET terms=? WHERE id=?',(after,old['window_id']));db.commit()
+ except Exception:db.rollback();raise
+ finally:db.close()
+
+def rollback_daily_limit(path,old,new):
+ """Rollback only if no usage/reservation changed since migration; never restore a DB backup."""
+ db=sqlite3.connect(path,timeout=10)
+ try:
+  db.execute('BEGIN IMMEDIATE');before=digest({k:v for k,v in old.items() if k!='plan_id'});after=digest({k:v for k,v in new.items() if k!='plan_id'})
+  audit=db.execute('SELECT calls_hash FROM daily_limit_audit WHERE old_terms=? AND new_terms=?',(before,after)).fetchone()
+  current=digest([db.execute('SELECT * FROM shared_calls ORDER BY id').fetchall(),db.execute('SELECT * FROM daily_calls ORDER BY id').fetchall()])
+  if not audit or audit[0]!=current or db.execute('SELECT terms FROM shared_windows WHERE id=?',(old['window_id'],)).fetchone()!=(after,):raise RuntimeError('daily_limit_rollback_unsafe')
+  db.execute('UPDATE shared_windows SET terms=? WHERE id=?',(before,old['window_id']));db.execute('DELETE FROM daily_limit_audit WHERE old_terms=?',(before,));db.commit()
  except Exception:db.rollback();raise
  finally:db.close()
 

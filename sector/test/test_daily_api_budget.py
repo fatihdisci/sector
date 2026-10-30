@@ -88,3 +88,10 @@ class DailyLimitMigrationTests(DailyBudgetTests):
   with self.assertRaisesRegex(RuntimeError,'usage_missing'):b.settle('unknown','text',{})
   prior=b.used();b.db.close();n=copy.deepcopy(self.s);n['limit_micro_usd']=3000000;n['consent']={'id':'owner-explicit-daily-3','approved_at':time.time(),'paid_balance_risk_accepted':True}
   increase_daily_limit(n['ledger_path'],self.s,n);b=DailyBudget(n['ledger_path'],n);self.assertEqual(b.used(),prior);self.assertEqual(b.s['limit_micro_usd'],3000000);b.db.close()
+
+ def test_rollback_preserves_history_and_rejects_new_usage(self):
+  from daily_api_budget import increase_daily_limit,rollback_daily_limit
+  b=self.open();self.reserve(b,'done');b.settle('done','text',self.response());before=b.used();b.db.close();n=copy.deepcopy(self.s);n['limit_micro_usd']=3000000;n['consent']={'id':'owner-explicit-daily-3','approved_at':time.time(),'paid_balance_risk_accepted':True}
+  increase_daily_limit(n['ledger_path'],self.s,n);rollback_daily_limit(n['ledger_path'],self.s,n);b=self.open();self.assertEqual(b.used(),before);b.db.close()
+  increase_daily_limit(n['ledger_path'],self.s,n);b=DailyBudget(n['ledger_path'],n);self.reserve(b,'later');b.db.close()
+  with self.assertRaisesRegex(RuntimeError,'rollback_unsafe'):rollback_daily_limit(n['ledger_path'],self.s,n)
