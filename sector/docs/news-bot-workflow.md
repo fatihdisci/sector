@@ -89,3 +89,5 @@ Sabah Borsa akışı da resmî RSS dizininden doğrulanarak eklendi: /rss/finans
 Otomatik ve manuel DKB içeriklerinde üç onaylı sabit görselden biri taslak kimliğine bir kez atanır; tekrar teslimat ve X zamanlaması aynı hashli görseli korur. #Fon ve #Tasfiye yalnız her iki konuyu açıkça içeren haberlerde zorunludur; #PBLK sabit etiket değildir. Diğer içeriklerde bu kategori etiketleri kaynak dışı eklenmez.
 
 Yeni haber taslaklarında, kayıtlı birincil kaynağın adı tweetin sonuna ayrı `-KaynakAdı` satırı olarak bağlanır. İsim kayıtlı kaynaktan alınır, model üretemez; önceki taslaklar ve sahibin /hazir metinleri değiştirilmez. Kullanıcının etiket düzenlemesi kaynak satırını korur. /durum X işlemlerinin sayısını gösterir; mevcut olmayan 20 sınırı gösterilmez.
+
+Hazır karttaki **Hemen paylaş** doğrudan sahibin açık paylaşım talebidir; **Zamanla** mevcut zaman seçimini açar. Devre kesici kartları mevcut doğrudan paylaşım yolunu korur. `/hazir` paketi varsayılan olarak yalnız onay kartına alınır.

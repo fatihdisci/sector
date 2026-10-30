@@ -14,7 +14,7 @@ Diğer/Geri ve beğeni seçimleri yalnız mevcut mesajın klavyesini değiştiri
 
 ## Hazır tweet–görsel
 
-Ana menü: **X’te paylaş**, **Düzenle**, **Diğer**. X düğmesi bağlantı/uygunluk koşullarına bağlıdır; gerçek tweet+görsel yayını için açık onaydır. Sahip, revision, süre, medya, günlük 20 API sınırı ve tekrar/belirsiz sonuç korumaları korunur.
+Ana menü: **Hemen paylaş**, **Zamanla**, **Düzenle**, **Diğer**. X düğmesi bağlantı/uygunluk koşullarına bağlıdır; gerçek tweet+görsel yayını için açık onaydır. Sahip, revision, süre, medya, X sağlayıcısının geçerli hesap/API sınırları ve tekrar/belirsiz sonuç korumaları korunur.
 
 Diğer menüsünde yalnız o içerikte kullanılabilen işlemler görünür:
 
