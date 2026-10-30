@@ -519,5 +519,27 @@
     "article_mode": "html",
     "editorial_priority": 55,
     "minimum_score": 60
+  },
+  {
+    "id": "sabah-borsa",
+    "name": "Sabah Borsa",
+    "url": "https://www.sabah.com.tr/rss/finansborsa-haberleri.xml",
+    "family": "sabah",
+    "language": "tr",
+    "official": false,
+    "fresh_hours": 48,
+    "poll_seconds": 60,
+    "checked_at": "2026-10-30T08:12:12.587828+00:00",
+    "terms_url": "https://www.sabah.com.tr/rss-bilgi",
+    "rights_note": "Private editorial monitoring and original attributed facts only. No full-text republication, publisher image rights or bulk/AI-training license assumed. Public X release requires a separate rights review.",
+    "review_mode": "private_facts",
+    "allowed_hosts": [
+      "www.sabah.com.tr",
+      "finans.sabah.com.tr"
+    ],
+    "enabled": true,
+    "article_mode": "html",
+    "editorial_priority": 75,
+    "minimum_score": 60
   }
 ]

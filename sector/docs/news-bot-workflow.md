@@ -83,3 +83,5 @@ Yeni İş İlişkisi başlıklı resmî KAP haberleri onaylı ayrı `assets/kap-
 Slash menüsü `all_private_chats` kapsamında hem dil bağımsız hem `tr` kaydıyla tutulur ve `getMyCommands` ile birebir doğrulanır. `news_only` menüsünde gerçekten çalışan 12 komut bulunur; Haber paneli Web App düğmesi korunur.
 
 Dünya, AA Ekonomi, NTV Para, BirGün Ekonomi ve Haberler Finans public RSS/Atom akışları mevcut okuyucuyla eklendi. 30 Ekim kontrolünde feed/örnek haber erişimi ve ilgili robots yolları doğrulandı. Aktif yatırımcı filtresi, şirket eşleştirmesi, ajans ailesi dedup, seçki ve yayın onayı kuralları değişmez; haber metni/görseli için toplu yeniden yayın lisansı varsayılmaz. Hürriyet/DHA iptali korunur, TRT tekrarlanmaz.
+
+Sabah Borsa akışı da resmî RSS dizininden doğrulanarak eklendi: /rss/finansborsa-haberleri.xml; yayıncı ve finans alt alan adı robots yolları açık, örnek haber mevcut okuyucuda 2487 karakter/1 pasaj olarak okundu. Aynı ailedeki kaynaklar bağımsız doğrulama sayılmaz. Sabah genel ekonomi akışı XML olarak erişilir, ancak örnek tam haber okuması henüz doğrulanmadığı için ayrıca etkinleştirilmedi. TRT Ekonomi önceden kayıtlı ve açık olduğundan tekrarlanmadı.
