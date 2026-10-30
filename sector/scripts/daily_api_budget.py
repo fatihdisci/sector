@@ -29,6 +29,23 @@ def extend_policy_expiry(path,old,new):
  except Exception:db.rollback();raise
  finally:db.close()
 
+def increase_daily_limit(path,old,new):
+ """Explicit 2→3 USD migration; never resets or rewrites calls/reservations."""
+ validate_shared(old,path);validate_shared(new,path)
+ if old.get('mode')!='daily_bot' or old.get('limit_micro_usd')!=2000000 or new.get('limit_micro_usd')!=3000000 or {k:v for k,v in old.items() if k not in ('limit_micro_usd','consent')}!={k:v for k,v in new.items() if k not in ('limit_micro_usd','consent')}:raise RuntimeError('daily_limit_migration_invalid')
+ a,b=old['consent'],new['consent']
+ if b.get('paid_balance_risk_accepted') is not True or b.get('approved_at',0)<a['approved_at'] or b.get('id')==a['id']:raise RuntimeError('daily_limit_consent_invalid')
+ db=sqlite3.connect(path,timeout=10)
+ try:
+  db.execute('BEGIN IMMEDIATE')
+  if db.execute("SELECT 1 FROM shared_calls WHERE state='reserved' LIMIT 1").fetchone():raise RuntimeError('daily_limit_in_flight')
+  before=digest({k:v for k,v in old.items() if k!='plan_id'});after=digest({k:v for k,v in new.items() if k!='plan_id'})
+  if db.execute('SELECT terms FROM shared_windows WHERE id=?',(old['window_id'],)).fetchone()!=(before,):raise RuntimeError('daily_limit_parent_mismatch')
+  db.execute('CREATE TABLE IF NOT EXISTS daily_limit_audit(old_terms TEXT PRIMARY KEY,new_terms TEXT,at REAL,old_limit INTEGER,new_limit INTEGER)')
+  db.execute('INSERT INTO daily_limit_audit VALUES(?,?,?,?,?)',(before,after,time.time(),2000000,3000000));db.execute('UPDATE shared_windows SET terms=? WHERE id=?',(after,old['window_id']));db.commit()
+ except Exception:db.rollback();raise
+ finally:db.close()
+
 def day_at(timestamp=None):
  return datetime.datetime.fromtimestamp(time.time()if timestamp is None else timestamp,ZoneInfo('Europe/Istanbul')).date().isoformat()
 

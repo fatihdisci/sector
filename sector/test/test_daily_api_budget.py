@@ -17,7 +17,7 @@ class DailyBudgetTests(unittest.TestCase):
  def response(self,i=100,o=50,cached=0,reasoning=0):return {'usage':{'input_tokens':i,'output_tokens':o,'input_tokens_details':{'cached_tokens':cached},'output_tokens_details':{'reasoning_tokens':reasoning}}}
  def test_daily_mode_is_explicit_and_old_promo_rules_still_apply(self):
   validate_shared(self.s)
-  for change in ({'mode':'bypass'},{'timezone':'UTC'},{'limit_micro_usd':3000000},{'consent':{}},{'families':['text','vision']}):
+  for change in ({'mode':'bypass'},{'timezone':'UTC'},{'limit_micro_usd':4000000},{'consent':{}},{'families':['text','vision']}):
    with self.assertRaises(RuntimeError):validate_shared(self.s|change)
   s=copy.deepcopy(self.s);s.pop('mode')
   with self.assertRaisesRegex(RuntimeError,'promo_evidence'):validate_shared(s)
@@ -80,3 +80,11 @@ class DailyBudgetTests(unittest.TestCase):
   again=copy.deepcopy(new);again['expires_at']+=86400
   with self.assertRaisesRegex(RuntimeError,'in_flight'):extend_policy_expiry(new['ledger_path'],new,again)
   with self.assertRaisesRegex(RuntimeError,'terms_changed'):DailyBudget(self.s['ledger_path'],self.s)
+
+class DailyLimitMigrationTests(DailyBudgetTests):
+ def test_increase_preserves_settled_unknown_and_rejects_active(self):
+  from daily_api_budget import increase_daily_limit
+  b=self.open();self.reserve(b,'done');b.settle('done','text',self.response());self.reserve(b,'unknown')
+  with self.assertRaisesRegex(RuntimeError,'usage_missing'):b.settle('unknown','text',{})
+  prior=b.used();b.db.close();n=copy.deepcopy(self.s);n['limit_micro_usd']=3000000;n['consent']={'id':'owner-explicit-daily-3','approved_at':time.time(),'paid_balance_risk_accepted':True}
+  increase_daily_limit(n['ledger_path'],self.s,n);b=DailyBudget(n['ledger_path'],n);self.assertEqual(b.used(),prior);self.assertEqual(b.s['limit_micro_usd'],3000000);b.db.close()

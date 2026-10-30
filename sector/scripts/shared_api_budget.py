@@ -16,7 +16,7 @@ def validate_shared(s,path=None,now=None):
  ledger=s.get('ledger_path')
  if not isinstance(ledger,str)or not pathlib.Path(ledger).is_absolute()or pathlib.Path(ledger).is_symlink()or str(pathlib.Path(ledger).resolve())!=ledger or path is not None and str(pathlib.Path(path).resolve())!=ledger:raise RuntimeError('shared_budget_path_mismatch')
  if s.get('mode')=='daily_bot':
-  if s.get('families')!=['text']or s.get('timezone')!='Europe/Istanbul'or s['limit_micro_usd']!=2000000 or s.get('plan_id')is not None or 'promo'in s:raise RuntimeError('daily_budget_terms_invalid')
+  if s.get('families')!=['text']or s.get('timezone')!='Europe/Istanbul'or s['limit_micro_usd'] not in (2000000,3000000) or s.get('plan_id')is not None or 'promo'in s:raise RuntimeError('daily_budget_terms_invalid')
   consent=s.get('consent',{})
   if consent.get('paid_balance_risk_accepted')is not True or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',str(consent.get('id','')))or type(consent.get('approved_at'))not in(int,float)or not math.isfinite(consent['approved_at'])or consent['approved_at']>now:raise RuntimeError('daily_budget_consent_missing')
  elif 'mode'in s:raise RuntimeError('shared_budget_mode_invalid')
