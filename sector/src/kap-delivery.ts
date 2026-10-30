@@ -58,10 +58,13 @@ export class KapDelivery {
   const waiting=await this.env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state IN ('queued','leased','retry_pending') AND kind='kap'").first<{n:number}>();
   const total=await this.env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state IN ('queued','leased','retry_pending')").first<{n:number}>();
   if((waiting?.n??0)>=2||(total?.n??0)>=4)return {state:'model_busy'};
+  // Automatic all-market DKB owns new circuit notifications; preserve earlier explicit selections.
+  const selectedCircuits=this.env.CIRCUIT_AUTO_ENABLED==='true'?(await this.env.DB.prepare("SELECT queue_id FROM kap_previews WHERE state='selected'").all<{queue_id:string}>()).results.map(r=>r.queue_id):[];
+  const automaticCircuits=this.env.CIRCUIT_AUTO_ENABLED==='true';
   const row=s.transaction(()=>{
    s.run("UPDATE queue SET state='ready' WHERE state='preparing' AND id IN (SELECT queue_id FROM kap_model_jobs WHERE lease_until<?)",now);
    for(let i=0;i<100;i++){
-    const r=s.row<{id:string;metadata:string;kind:string;created_at:number}>(`SELECT q.id,q.kind,q.created_at,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 ORDER BY q.available_at ASC,q.id LIMIT 1`,now);
+    const r=s.row<{id:string;metadata:string;kind:string;created_at:number}>(`SELECT q.id,q.kind,q.created_at,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 AND (?=0 OR q.kind!='circuit' OR COALESCE(json_array_length(json_extract(d.metadata,'$.subjectCodes')),0)=0 OR q.created_at<=? OR q.id IN (SELECT value FROM json_each(?))) ORDER BY q.available_at ASC,q.id LIMIT 1`,now,Number(automaticCircuits),activation,JSON.stringify(selectedCircuits));
     if(!r)return null;const d=JSON.parse(r.metadata) as Disclosure;
     if(this.gate(r.id,r.kind)!=='allow')continue;
     s.run("UPDATE queue SET state='preparing' WHERE id=?",r.id);
@@ -72,7 +75,8 @@ export class KapDelivery {
   if(!row){
    // Fresh notifications above always win. Retry only source-complete model
    // failures, never a completed draft or an ambiguous Telegram delivery.
-   for(const r of s.rows<{id:string;metadata:string;job_id:string;kind:string}>("SELECT q.id,q.kind,d.metadata,m.job_id FROM queue q JOIN queue_members qm ON qm.queue_id=q.id JOIN disclosures d ON d.id=qm.disclosure_id JOIN kap_model_jobs m ON m.queue_id=q.id WHERE q.state='needs_review' AND d.silent=0 ORDER BY d.published_at DESC")){
+   for(const r of s.rows<{id:string;metadata:string;job_id:string;kind:string;created_at:number}>("SELECT q.id,q.kind,q.created_at,d.metadata,m.job_id FROM queue q JOIN queue_members qm ON qm.queue_id=q.id JOIN disclosures d ON d.id=qm.disclosure_id JOIN kap_model_jobs m ON m.queue_id=q.id WHERE q.state='needs_review' AND d.silent=0 ORDER BY d.published_at DESC")){
+    if(automaticCircuits&&r.kind==='circuit'&&r.created_at>activation&&JSON.parse(r.metadata).subjectCodes?.length&&!selectedCircuits.includes(r.id))continue;
     if(this.gate(r.id,r.kind)!=='allow')continue;
     if(await retryKapModel(this.env,r.job_id,Math.floor(now/1000))){s.run("UPDATE queue SET state='model_queued' WHERE id=?",r.id);return {state:'model_retry_queued',id:r.id};}
    }

@@ -225,3 +225,10 @@ test('KAP model evidence carries verified per-subject membership from the offici
   assert.deepEqual(loaded[0].index_membership?.bist30,['KPEKS']);assert.deepEqual(loaded[0].index_membership?.bist100,['KPEKS']);
  }finally{s.close();}
 });
+test('automatic share circuit batches do not generate a second KAP preview, while ordinary notices still proceed',async()=>{
+ const {s,env,docs}=await setup();try{
+  await env.DB.prepare(await readFile('migrations/0008_kap_previews.sql','utf8')).run();s.set('selection_activation',NOW-1000);s.run("UPDATE queue SET kind='circuit',created_at=?",NOW);env.CIRCUIT_AUTO_ENABLED='true';let reads=0;
+  const c=new KapDelivery(s,env,async()=>{reads++;return docs},()=>NOW+1);await c.run();assert.equal(reads,0);assert.equal((await env.DB.prepare('SELECT COUNT(*) n FROM kap_previews').first<any>()).n,0);assert.equal(s.row<{state:string}>('SELECT state FROM queue')!.state,'ready');
+  s.run("UPDATE queue SET kind='instant',created_at=?",NOW-1001);assert.equal((await c.run()).state,'model_queued');assert.equal(reads,1);
+ }finally{s.close();}
+});
