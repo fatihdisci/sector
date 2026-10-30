@@ -31,3 +31,24 @@ class VisionTests(unittest.TestCase):
   try:
    with self.assertRaisesRegex(RuntimeError,'halted'):b.reserve('text-job','text','job','generate','0'*64)
   finally:b.db.close()
+ def test_fixed_https_count_and_vision_response_with_image_bytes(self):
+  import json
+  from responses_http import ResponsesHTTP
+  from daily_vision_trial import ResponsesVisionHTTP
+  calls=[];answers=iter([{'input_tokens':2000},{'model':'gpt-6.1-terra','usage':{'input_tokens':2000,'output_tokens':100,'input_tokens_details':{'cached_tokens':0},'output_tokens_details':{'reasoning_tokens':50}}}])
+  def factory(host,**kwargs):
+   class Connection:
+    sock=None
+    def request(self,method,path,body,headers):calls.append((host,method,path,json.loads(body)))
+    def getresponse(self):
+     class Response:
+      status=200;done=False
+      def read(self,n):
+       if self.done:return b''
+       self.done=True;return json.dumps(next(answers)).encode()
+     return Response()
+    def close(self):pass
+   return Connection()
+  http=ResponsesVisionHTTP('test-only-key',deadline=time.time()+30,connection_factory=factory)
+  result=vision_trial(self.s['ledger_path'],self.s,self.req,self.id,http.count,http.send,counter_free_verified=True)
+  self.assertEqual([r[2] for r in calls],['/v1/responses/input_tokens','/v1/responses']);self.assertTrue(all(r[0]=='api.openai.com' for r in calls));self.assertEqual(calls[0][3]['input'],calls[1][3]['input']);self.assertEqual(result['response']['model'],'gpt-6.1-terra')

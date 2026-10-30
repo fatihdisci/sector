@@ -48,3 +48,15 @@ def vision_trial(ledger,terms,request,call_id,counter,send,*,counter_free_verifi
   return {'response':response,'reserved_micro_usd':amount,'charged_micro_usd':charge,'input_limit':max_input}
  except Exception:db.rollback();raise
  finally:db.close()
+
+class ResponsesVisionHTTP:
+ """Fixed OpenAI HTTPS transports; credential supplied only in memory by caller."""
+ def __init__(self,key,*,deadline,connection_factory=None):
+  from responses_http import ResponsesHTTP
+  class CountHTTP(ResponsesHTTP):path='/v1/responses/input_tokens'
+  self._counter=CountHTTP(key,deadline=deadline,connection_factory=connection_factory)
+  self._responses=ResponsesHTTP(key,deadline=deadline,connection_factory=connection_factory)
+ def count(self,request):
+  return self._counter._post({'model':request['model'],'input':request['input']})
+ def send(self,request):
+  return self._responses(request)
