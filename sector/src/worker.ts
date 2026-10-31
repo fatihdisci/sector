@@ -1,3 +1,4 @@
+import {scheduleMessage,scheduleCallback} from './x-schedule';
 import {cardMenuCallback,refreshDraftMenu} from './card-menu';
 import {publicationState} from './telegram-ui';
 import {OUTPUT_LIMIT_MESSAGE} from './output-preferences';
@@ -37,6 +38,7 @@ async function webhook(request:Request,env:Env):Promise<Response> {
  env={...env,TELEGRAM_UPDATE_ID:Number(id)};
  const message=update.message as InputMessage|undefined;
  if(message?.chat&&message.from&&isOwner(env,String(message.from.id),String(message.chat.id),message.chat.type)) {
+  if(await scheduleMessage(env,message))return json({ok:true});
   if(await editorMessage(env,message,Number(id)))return json({ok:true});
   if(await newsroomMessage(env,message))return json({ok:true});
   if(await publicationMessage(env,message,Number(id)))return json({ok:true});
@@ -49,6 +51,7 @@ async function webhook(request:Request,env:Env):Promise<Response> {
  }
  const cb=update.callback_query as {id:string;data:string;from:{id:number};message?:{message_id:number;chat:{id:number;type:string}}}|undefined;
  if(!cb||!cb.message||!isOwner(env,String(cb.from?.id),String(cb.message.chat?.id),cb.message.chat?.type))return json({ok:true});
+ if(await scheduleCallback(env,cb.data,cb.message.message_id,cb.id))return json({ok:true});
  const maintenance=cb.data?.match(/^nm:approve:([a-f0-9-]{36})$/);
  if(maintenance){const answer=await approveMaintenanceRequest(env,maintenance[1],String(cb.from.id),String(cb.message.chat.id),cb.message.message_id);await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:answer})).catch(()=>{});return json({ok:true});}
  const kapPrepare=cb.data?.match(/^kap:prepare:([a-f0-9-]{36})$/);

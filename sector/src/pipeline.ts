@@ -1,3 +1,4 @@
+import {scheduleHoldSql} from './x-schedule-validity';
 import {pollCircuitAuto} from './circuit-auto';
 import {keyboard,telegram} from './telegram';
 import {postText} from './editorial';
@@ -170,7 +171,7 @@ export async function tick(env:Env):Promise<void> {
  finally {await env.DB.prepare("UPDATE system_state SET value='0' WHERE key='tick_lease'").run();}
  await env.DB.batch([
   env.DB.prepare('DELETE FROM edits WHERE expires_at<?').bind(now()),
-  env.DB.prepare("UPDATE drafts SET state='expired',delivery_state='expired' WHERE expires_at<? AND state IN ('pending','deferred','needs_review')").bind(now()),
+  env.DB.prepare(`UPDATE drafts SET state='expired',delivery_state='expired' WHERE expires_at<? AND state IN ('pending','deferred','needs_review') AND NOT ${scheduleHoldSql('drafts')}`).bind(now(),Date.now()),
   env.DB.prepare("UPDATE drafts SET delivery_state='uncertain',lease_until=0 WHERE delivery_state='sending' AND lease_until<?").bind(now()),
   env.DB.prepare("INSERT INTO system_state(key,value) VALUES('last_tick',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(new Date().toISOString())]);
  await cleanupRawDocuments(env);
