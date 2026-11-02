@@ -1,3 +1,4 @@
+import {prepareKapPreview,rejectKapPrepareOwner} from './kap-selection';
 import {scheduleMessage,scheduleCallback} from './x-schedule';
 import {cardMenuCallback,refreshDraftMenu} from './card-menu';
 import {publicationState} from './telegram-ui';
@@ -50,15 +51,17 @@ async function webhook(request:Request,env:Env):Promise<Response> {
   return json({ok:true});
  }
  const cb=update.callback_query as {id:string;data:string;from:{id:number};message?:{message_id:number;chat:{id:number;type:string}}}|undefined;
- if(!cb||!cb.message||!isOwner(env,String(cb.from?.id),String(cb.message.chat?.id),cb.message.chat?.type))return json({ok:true});
+ if(!cb||!cb.message)return json({ok:true});
+ if(!isOwner(env,String(cb.from?.id),String(cb.message.chat?.id),cb.message.chat?.type)){
+  const rejected=cb.data?.match(/^kap:prepare:([a-f0-9-]{36})$/);if(rejected)await rejectKapPrepareOwner(env,rejected[1],cb.message.message_id,String(cb.from?.id)===env.TELEGRAM_USER_ID,String(cb.message.chat?.id)===env.TELEGRAM_CHAT_ID,cb.message.chat?.type==='private');
+  return json({ok:true});
+ }
  if(await scheduleCallback(env,cb.data,cb.message.message_id,cb.id))return json({ok:true});
  const maintenance=cb.data?.match(/^nm:approve:([a-f0-9-]{36})$/);
  if(maintenance){const answer=await approveMaintenanceRequest(env,maintenance[1],String(cb.from.id),String(cb.message.chat.id),cb.message.message_id);await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:answer})).catch(()=>{});return json({ok:true});}
  const kapPrepare=cb.data?.match(/^kap:prepare:([a-f0-9-]{36})$/);
  if(kapPrepare){
-  const changed=await env.DB.prepare("UPDATE kap_previews SET state='selected',selected_at=? WHERE id=? AND message_id=? AND state='sent'").bind(Date.now(),kapPrepare[1],cb.message.message_id).run();
-  const prior=await env.DB.prepare("SELECT state FROM kap_previews WHERE id=? AND message_id=?").bind(kapPrepare[1],cb.message.message_id).first<{state:string}>();
-  await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,text:changed.meta.changes||prior?.state==='selected'?'Hazırlama isteği alındı.':'Bu düğme kullanılamıyor.'})).catch(()=>{});
+  await prepareKapPreview(env,kapPrepare[1],cb.message.message_id,cb.id);
   return json({ok:true});
  }
  const menu=await cardMenuCallback(env,cb.data,cb.message.message_id);if(menu!==null){await telegram(env,'answerCallbackQuery',new URLSearchParams({callback_query_id:cb.id,...(menu?{text:menu}:{})}));return json({ok:true});}

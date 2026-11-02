@@ -41,7 +41,8 @@ export class KapDelivery {
    return 'allow';
   });
  }
- async run():Promise<{state:string;id?:string}> {
+ private owns(row:{id:string;attempts:number;lease_until:number}){return row.lease_until>this.clock()&&!!this.store.row('SELECT 1 FROM kap_model_jobs WHERE queue_id=? AND attempts=? AND lease_until=?',row.id,row.attempts,row.lease_until);}
+ async run():Promise<{state:string;id?:string;awaiting_selection?:number;uncertain_selection?:number}> {
   if(this.env.MODE!=='telegram_review')return {state:'disabled'};
   const s=this.store,now=this.clock();
   if(s.get<number>('selection_activation')===null)s.set('selection_activation',now);
@@ -59,17 +60,21 @@ export class KapDelivery {
   const total=await this.env.DB.prepare("SELECT COUNT(*) AS n FROM model_jobs WHERE state IN ('queued','leased','retry_pending')").first<{n:number}>();
   if((waiting?.n??0)>=2||(total?.n??0)>=4)return {state:'model_busy'};
   // Automatic all-market DKB owns new circuit notifications; preserve earlier explicit selections.
-  const selectedCircuits=this.env.CIRCUIT_AUTO_ENABLED==='true'?(await this.env.DB.prepare("SELECT queue_id FROM kap_previews WHERE state='selected'").all<{queue_id:string}>()).results.map(r=>r.queue_id):[];
+  const needsSelection=this.env.CIRCUIT_AUTO_ENABLED==='true'||!!s.row('SELECT 1 FROM queue WHERE created_at>? LIMIT 1',activation);
+  const previews=needsSelection?(await this.env.DB.prepare('SELECT queue_id,state FROM kap_previews').all<{queue_id:string;state:string}>()).results:[];
+  const selected=previews.filter(p=>p.state==='selected').map(p=>p.queue_id),parked=previews.filter(p=>p.state!=='selected').map(p=>p.queue_id);
+  const selectedCircuits=this.env.CIRCUIT_AUTO_ENABLED==='true'?selected:[];
   const automaticCircuits=this.env.CIRCUIT_AUTO_ENABLED==='true';
   const row=s.transaction(()=>{
    s.run("UPDATE queue SET state='ready' WHERE state='preparing' AND id IN (SELECT queue_id FROM kap_model_jobs WHERE lease_until<?)",now);
    for(let i=0;i<100;i++){
-    const r=s.row<{id:string;metadata:string;kind:string;created_at:number}>(`SELECT q.id,q.kind,q.created_at,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 AND (?=0 OR q.kind!='circuit' OR COALESCE(json_array_length(json_extract(d.metadata,'$.subjectCodes')),0)=0 OR q.created_at<=? OR q.id IN (SELECT value FROM json_each(?))) ORDER BY q.available_at ASC,q.id LIMIT 1`,now,Number(automaticCircuits),activation,JSON.stringify(selectedCircuits));
+    const r=s.row<{id:string;metadata:string;kind:string;created_at:number}>(`SELECT q.id,q.kind,q.created_at,d.metadata FROM queue q JOIN queue_members m ON m.queue_id=q.id JOIN disclosures d ON d.id=m.disclosure_id WHERE q.kind IN ('instant','circuit') AND q.state='ready' AND q.available_at<=? AND d.silent=0 AND (?=0 OR q.kind!='circuit' OR COALESCE(json_array_length(json_extract(d.metadata,'$.subjectCodes')),0)=0 OR q.created_at<=? OR q.id IN (SELECT value FROM json_each(?))) AND (q.created_at<=? OR q.id NOT IN (SELECT value FROM json_each(?))) ORDER BY CASE WHEN q.id IN (SELECT value FROM json_each(?)) THEN 0 ELSE 1 END,q.available_at ASC,q.id LIMIT 1`,now,Number(automaticCircuits),activation,JSON.stringify(selectedCircuits),activation,JSON.stringify(parked),JSON.stringify(selected));
     if(!r)return null;const d=JSON.parse(r.metadata) as Disclosure;
     if(this.gate(r.id,r.kind)!=='allow')continue;
     s.run("UPDATE queue SET state='preparing' WHERE id=?",r.id);
     s.run('INSERT INTO kap_model_jobs(queue_id,attempts,lease_until) VALUES(?,1,?) ON CONFLICT(queue_id) DO UPDATE SET attempts=attempts+1,lease_until=excluded.lease_until',r.id,now+300_000);
-    return {...r,disclosure:d};
+    const lease=s.row<{attempts:number;lease_until:number}>('SELECT attempts,lease_until FROM kap_model_jobs WHERE queue_id=?',r.id)!;
+    return {...r,...lease,disclosure:d};
    }return null;
   });
   if(!row){
@@ -80,7 +85,9 @@ export class KapDelivery {
     if(this.gate(r.id,r.kind)!=='allow')continue;
     if(await retryKapModel(this.env,r.job_id,Math.floor(now/1000))){s.run("UPDATE queue SET state='model_queued' WHERE id=?",r.id);return {state:'model_retry_queued',id:r.id};}
    }
-   return {state:s.row<{n:number}>("SELECT COUNT(*) n FROM queue WHERE state='needs_review'")!.n?'needs_review':'idle'};
+   const parkedCount=s.row<{n:number}>("SELECT COUNT(*) n FROM queue WHERE state='ready' AND created_at>? AND id IN (SELECT value FROM json_each(?))",activation,JSON.stringify(parked))!.n;
+   const ambiguous=previews.filter(p=>p.state!=='selected'&&p.state!=='sent').map(p=>p.queue_id),uncertainCount=s.row<{n:number}>("SELECT COUNT(*) n FROM queue WHERE state='ready' AND created_at>? AND id IN (SELECT value FROM json_each(?))",activation,JSON.stringify(ambiguous))!.n;
+   return {state:uncertainCount?'needs_review':parkedCount?'awaiting_selection':s.row<{n:number}>("SELECT COUNT(*) n FROM queue WHERE state='needs_review'")!.n?'needs_review':'idle',awaiting_selection:parkedCount-uncertainCount,uncertain_selection:uncertainCount};
   }
   try{
    if(row.created_at>activation){
@@ -107,7 +114,9 @@ export class KapDelivery {
     preview=await this.env.DB.prepare('SELECT id,state FROM kap_previews WHERE queue_id=?').bind(row.id).first<{id:string;state:string}>();
    }
    if(preview?.state!=='selected'){
-    s.run("UPDATE queue SET state='ready',available_at=? WHERE id=? AND state='preparing'",now+5000,row.id);
+    if(!this.owns(row))return {state:'lease_lost',id:row.id};
+    s.run("UPDATE queue SET state='ready',available_at=? WHERE id=? AND state='preparing'",now,row.id);
+    s.run('UPDATE kap_model_jobs SET lease_until=0 WHERE queue_id=?',row.id);
     return {state:['uncertain','sending'].includes(preview?.state??'')?'needs_review':'awaiting_selection',id:row.id};
    }
    }
@@ -127,13 +136,18 @@ export class KapDelivery {
     })),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('kap_group_timeout')),remaining);})]).finally(()=>clearTimeout(timer));
     for(const loaded of batch){size+=JSON.stringify(loaded).length;if(size>3_000_000)throw Error('kap_evidence_limit');docs.push(...loaded);}
    }
+   if(!this.owns(row))return {state:'lease_lost',id:row.id};
    const eligibility=this.gate(row.id,row.kind);if(eligibility!=='allow')return{state:eligibility==='hold'?'policy_review':'suppressed',id:row.id};if(s.row<{state:string}>('SELECT state FROM queue WHERE id=?',row.id)?.state==='suppressed')return{state:'suppressed',id:row.id};
    if(row.kind==='circuit'&&members.some(d=>!docs.some(doc=>doc.official&&doc.source_id==='kap'&&doc.url===d.url)))throw Error('kap_group_evidence_missing');
-   if(!await quota(this.env,'kap-ai-budget')){s.run("UPDATE queue SET state='ready',available_at=? WHERE id=?",now+1800_000,row.id);return {state:'budget_wait',id:row.id};}
+   const hasQuota=await quota(this.env,'kap-ai-budget');
+   if(!this.owns(row))return {state:'lease_lost',id:row.id};
+   if(!hasQuota){s.run("UPDATE queue SET state='ready',available_at=? WHERE id=?",now+1800_000,row.id);return {state:'budget_wait',id:row.id};}
    const jobId=await enqueueEvidence(this.env,docs,'kap','',row.created_at>activation?row.id:undefined);
+   if(!this.owns(row))return {state:'lease_lost',id:row.id};
    s.transaction(()=>{s.run('UPDATE kap_model_jobs SET job_id=?,lease_until=0,last_error=NULL WHERE queue_id=?',jobId,row.id);s.run("UPDATE queue SET state='model_queued' WHERE id=? AND state='preparing'",row.id);});
    return {state:'model_queued',id:row.id};
   }catch(e){
+   if(!this.owns(row))return {state:'lease_lost',id:row.id};
    const attempts=s.row<{attempts:number}>('SELECT attempts FROM kap_model_jobs WHERE queue_id=?',row.id)!.attempts;
    const error=e instanceof Error&&/^[a-z_]{3,70}$/.test(e.message)?e.message:'kap_evidence_failed';
    s.transaction(()=>{s.run("UPDATE queue SET state=?,available_at=? WHERE id=? AND state='preparing'",attempts<3?'ready':'needs_review',now+Math.min(300_000,30_000*2**attempts),row.id);s.run('UPDATE kap_model_jobs SET lease_until=0,last_error=? WHERE queue_id=?',error,row.id);});
